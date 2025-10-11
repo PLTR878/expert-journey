@@ -5,40 +5,119 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>PLTR AI Super Investor Dashboard</title>
 <style>
-body{font-family:system-ui;background:#0b0f17;color:#e5e7eb;margin:0}
-header{background:#111827;padding:1rem;text-align:center;font-size:1.3rem}
-section{padding:1rem}
-.card{background:#1f2937;border-radius:12px;margin-bottom:1rem;padding:1rem}
-table{width:100%;border-collapse:collapse}
-th,td{padding:.5rem;border-bottom:1px solid #374151;text-align:left}
+body {
+  font-family: system-ui;
+  background: #0b0f17;
+  color: #e5e7eb;
+  margin: 0;
+  padding-bottom: 5rem;
+}
+header {
+  background: #111827;
+  padding: 1rem;
+  text-align: center;
+  font-size: 1.3rem;
+}
+section {
+  padding: 1rem;
+}
+.card {
+  background: #1f2937;
+  border-radius: 14px;
+  margin-bottom: 1.2rem;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.stock {
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 0.7rem;
+  margin-bottom: 0.6rem;
+  background: #111827;
+}
+.stock h4 {
+  margin: 0 0 0.3rem 0;
+  color: #60a5fa;
+}
+.stock small {
+  color: #9ca3af;
+}
+.value {
+  font-weight: bold;
+  color: #22d3ee;
+}
 </style>
 </head>
 <body>
 <header>💎 PLTR AI Super Investor Dashboard</header>
-<section id="daily" class="card"><h3>📈 หุ้นเด่นวันนี้</h3><div id="dailyOut">Loading...</div></section>
-<section id="long" class="card"><h3>💎 หุ้นต้นน้ำ อนาคตไกล</h3><div id="longOut">Loading...</div></section>
-<section id="port" class="card"><h3>💰 พอร์ตจำลอง (ทุน 10,000 บาท)</h3><div id="portOut">Loading...</div></section>
+
+<section id="daily" class="card">
+  <h3>📈 หุ้นเด่นวันนี้</h3>
+  <div id="dailyOut">Loading...</div>
+</section>
+
+<section id="long" class="card">
+  <h3>🚀 หุ้นต้นน้ำ อนาคตไกล</h3>
+  <div id="longOut">Loading...</div>
+</section>
+
+<section id="port" class="card">
+  <h3>💰 พอร์ตจำลอง (ทุน 10,000 บาท)</h3>
+  <div id="portOut">Loading...</div>
+</section>
+
 <script>
-async function loadDaily(){
- const r=await fetch('/api/daily');const d=await r.json();
- let html='<table><tr><th>Symbol</th><th>Price</th><th>Score</th></tr>';
- d.items.forEach(x=>html+=`<tr><td>${x.symbol}</td><td>${x.price.toFixed(2)}</td><td>${x.score}</td></tr>`);
- document.getElementById('dailyOut').innerHTML=html+'</table>';
+async function loadDaily() {
+  const r = await fetch('/api/daily');
+  const d = await r.json();
+  let html = '';
+  d.items.forEach(x => {
+    html += `
+      <div class="stock">
+        <h4>${x.symbol}</h4>
+        <small>ราคา: <span class="value">${x.price.toFixed(2)}</span></small><br>
+        <small>คะแนนความเด่น: <span class="value">${x.score}</span></small>
+      </div>`;
+  });
+  document.getElementById('dailyOut').innerHTML = html;
 }
-async function loadLong(){
- const r=await fetch('/api/longterm');const d=await r.json();
- let html='<table><tr><th>Sector</th><th>Symbol</th><th>Score</th></tr>';
- d.items.forEach(x=>html+=`<tr><td>${x.sector}</td><td>${x.symbol}</td><td>${x.score}</td></tr>`);
- document.getElementById('longOut').innerHTML=html+'</table>';
+
+async function loadLong() {
+  const r = await fetch('/api/longterm');
+  const d = await r.json();
+  let html = '';
+  d.items.forEach(x => {
+    html += `
+      <div class="stock">
+        <h4>${x.symbol}</h4>
+        <small>กลุ่ม: ${x.sector}</small><br>
+        <small>คะแนนอนาคต: <span class="value">${x.score}</span></small>
+      </div>`;
+  });
+  document.getElementById('longOut').innerHTML = html;
 }
-async function loadPort(){
- const r=await fetch('/api/portfolio');const d=await r.json();
- let html=`<p>ทุนเริ่มต้น ${d.capital} บาท</p><table><tr><th>Symbol</th><th>ถือ</th><th>ราคา</th><th>มูลค่า</th></tr>`;
- d.portfolio.forEach(x=>html+=`<tr><td>${x.symbol}</td><td>${x.hold.toFixed(2)}</td><td>${x.price.toFixed(2)}</td><td>${x.value.toFixed(2)}</td></tr>`);
- html+=`</table><p>รวมมูลค่า: ${d.total.toFixed(2)} บาท (กำไร ${d.profit} บาท)</p>`;
- document.getElementById('portOut').innerHTML=html;
+
+async function loadPort() {
+  const r = await fetch('/api/portfolio');
+  const d = await r.json();
+  let html = `<p>ทุนเริ่มต้น: <span class="value">${d.capital}</span> บาท</p>`;
+  d.portfolio.forEach(x => {
+    html += `
+      <div class="stock">
+        <h4>${x.symbol}</h4>
+        <small>ถือ: ${x.hold}</small><br>
+        <small>ราคา: <span class="value">${x.price.toFixed(2)}</span></small><br>
+        <small>มูลค่า: <span class="value">${x.value.toFixed(2)}</span></small>
+      </div>`;
+  });
+  html += `<p>รวมมูลค่า: <span class="value">${d.total.toFixed(2)}</span> บาท<br>
+  💹 กำไร: <span class="value">${d.profit}</span> บาท</p>`;
+  document.getElementById('portOut').innerHTML = html;
 }
-loadDaily();loadLong();loadPort();
+
+loadDaily();
+loadLong();
+loadPort();
 </script>
 </body>
 </html>
