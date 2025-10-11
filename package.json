@@ -1,8 +1,8 @@
 {
-  "name": "pltr-ai",
+  "name": "expert-ai",
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "yahoo-finance2": "^3.10.3"
+    "yahoo-finance2": "latest"
   }
 }
