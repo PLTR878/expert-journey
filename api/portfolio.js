@@ -1,19 +1,21 @@
-import yahooFinance from "yahoo-finance2";
+export default function handler(req, res) {
+  const capital = 10000;
+  const portfolio = [
+    { symbol: "PLTR", hold: 20, price: 41.25 },
+    { symbol: "BBAI", hold: 50, price: 3.72 },
+    { symbol: "AI", hold: 10, price: 24.18 },
+  ];
 
-export default async function handler(req,res){
-  try{
-    const startCapital=10000;
-    const picks=["PLTR","TSLA","NVDA","SMCI","SOFI"];
-    const prices=[];
-    for(const s of picks){
-      const {quotes=[]}=await yahooFinance.chart(s,{interval:"1d",range:"1mo"});
-      if(!quotes.length)continue;
-      prices.push({symbol:s,price:quotes.at(-1).close});
-    }
-    const avg=prices.reduce((a,b)=>a+b.price,0)/prices.length;
-    const alloc=startCapital/prices.length;
-    const portfolio=prices.map(p=>({symbol:p.symbol,hold:alloc/p.price,price:p.price,value:alloc}));
-    const total=portfolio.reduce((a,b)=>a+b.value,0);
-    res.json({capital:startCapital,portfolio,total,profit:(total-startCapital).toFixed(2)});
-  }catch(e){res.status(500).json({error:e.message});}
+  const total = portfolio.reduce((sum, x) => sum + x.hold * x.price, 0);
+  const profit = (total - capital).toFixed(2);
+
+  res.status(200).json({
+    capital,
+    portfolio: portfolio.map(x => ({
+      ...x,
+      value: x.hold * x.price,
+    })),
+    total,
+    profit,
+  });
 }
