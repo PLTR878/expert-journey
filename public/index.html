@@ -17,6 +17,7 @@ header {
   padding: 1rem;
   text-align: center;
   font-size: 1.3rem;
+  font-weight: bold;
 }
 section {
   padding: 1rem;
@@ -46,28 +47,54 @@ section {
   font-weight: bold;
   color: #22d3ee;
 }
+.refresh-btn {
+  background: #2563eb;
+  border: none;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  float: right;
+}
+.refresh-btn:hover {
+  background: #1d4ed8;
+}
+h3 {
+  margin: 0 0 0.6rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 </style>
 </head>
 <body>
 <header>💎 PLTR AI Super Investor Dashboard</header>
 
 <section id="daily" class="card">
-  <h3>📈 หุ้นเด่นวันนี้</h3>
+  <h3>📈 หุ้นเด่นวันนี้ 
+    <button class="refresh-btn" onclick="loadDaily()">🔄 สแกนใหม่</button>
+  </h3>
   <div id="dailyOut">Loading...</div>
 </section>
 
 <section id="long" class="card">
-  <h3>🚀 หุ้นต้นน้ำ อนาคตไกล</h3>
+  <h3>🚀 หุ้นต้นน้ำ อนาคตไกล 
+    <button class="refresh-btn" onclick="loadLong()">🔄 สแกนใหม่</button>
+  </h3>
   <div id="longOut">Loading...</div>
 </section>
 
 <section id="port" class="card">
-  <h3>💰 พอร์ตจำลอง (ทุน 10,000 บาท)</h3>
+  <h3>💰 พอร์ตจำลอง (ทุน 10,000 บาท)
+    <button class="refresh-btn" onclick="loadPort()">🔄 อัปเดต</button>
+  </h3>
   <div id="portOut">Loading...</div>
 </section>
 
 <script>
 async function loadDaily() {
+  document.getElementById('dailyOut').innerHTML = "⏳ กำลังสแกน...";
   const r = await fetch('/api/daily');
   const d = await r.json();
   let html = '';
@@ -83,6 +110,7 @@ async function loadDaily() {
 }
 
 async function loadLong() {
+  document.getElementById('longOut').innerHTML = "⏳ กำลังสแกน...";
   const r = await fetch('/api/longterm');
   const d = await r.json();
   let html = '';
@@ -98,6 +126,7 @@ async function loadLong() {
 }
 
 async function loadPort() {
+  document.getElementById('portOut').innerHTML = "⏳ กำลังคำนวณ...";
   const r = await fetch('/api/portfolio');
   const d = await r.json();
   let html = `<p>ทุนเริ่มต้น: <span class="value">${d.capital}</span> บาท</p>`;
@@ -115,6 +144,7 @@ async function loadPort() {
   document.getElementById('portOut').innerHTML = html;
 }
 
+// โหลดตอนเปิดหน้า
 loadDaily();
 loadLong();
 loadPort();
