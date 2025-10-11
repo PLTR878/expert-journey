@@ -1,8 +1,36 @@
+<script>
+async function scanOne(){
+  const s = document.getElementById('sym').value.trim().toUpperCase();
+  if(!s) return;
+  document.getElementById('out').innerHTML = '⏳ กำลังสแกน...';
+  try {
+    const r = await fetch(`/api/score?symbol=${s}`);
+    const d = await r.json();
+    if (d.error){ 
+      document.getElementById('out').innerHTML='❌ '+d.error; 
+      return; 
+    }
+    const color = d.trend==='Up'?'#22c55e':d.trend==='Down'?'#ef4444':'#e5e7eb';
+    const chg = d.change!=null ? d.change.toFixed(2)+'%' : '-';
+    document.getElementById('out').innerHTML = `
+      <div class="stock">
+        <b style="color:#60a5fa">${d.symbol}</b><br>
+        ราคา: <span class="value">${d.price}</span> | เปลี่ยนแปลง: <span style="color:${color}">${chg}</span><br>
+        RSI14: <span class="value">${d.rsi14 ?? '-'}</span> | แนวโน้ม: <span style="color:${color}">${d.trend}</span> | คะแนน: <span class="value">${d.score}</span><br>
+        <button class="btn" onclick="openTv('${d.symbol}')">ดูกราฟ TradingView</button>
+      </div>`;
+  } catch(err){
+    document.getElementById('out').innerHTML = '❌ ไม่สามารถดึงข้อมูลได้';
+    console.error(err);
+  }
+}
+
+// ✅ ฟังก์ชันเปิดกราฟ TradingView
 function openTv(symbol){
   const m = document.getElementById('tvModal');
   const box = document.getElementById('tv');
 
-  // สร้างพื้นที่สำหรับกราฟ
+  // พื้นที่สำหรับกราฟ
   box.innerHTML = '<div id="tv_chart" style="height:500px"></div>';
 
   // ลบสคริปต์ TradingView เดิมออก (ถ้ามี)
@@ -26,6 +54,13 @@ function openTv(symbol){
   };
   document.body.appendChild(script);
 
-  // แสดงกล่อง modal
+  // แสดง modal
   m.style.display = 'flex';
 }
+
+// ✅ ปิด popup กราฟ
+function closeTv(){ 
+  document.getElementById('tvModal').style.display='none'; 
+  document.getElementById('tv').innerHTML=''; 
+}
+  </script>
