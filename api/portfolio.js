@@ -1,3 +1,5 @@
+export const config = { runtime: "nodejs" };
+
 export default async function handler(req, res) {
   try {
     const capital = 10000;
@@ -16,7 +18,7 @@ export default async function handler(req, res) {
 
     const portfolio = holdings.map(h => {
       const s = stocks.find(st => st.symbol === h.symbol);
-      const price = s ? s.regularMarketPrice : 0;
+      const price = s ? s.regularMarketPrice ?? 0 : 0;
       return {
         symbol: h.symbol,
         hold: h.hold,
