@@ -17,20 +17,18 @@ function rsi(values, period = 14) {
 export default async function handler(req, res) {
   try {
     const symbol = (req.query.symbol || "PLTR").toUpperCase();
+    const base = `https://${req.headers.host}`;
 
-    // ราคา snapshot
-    const q = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`);
-    const qd = await q.json();
-    const quote = qd.quoteResponse?.result?.[0];
+    // ----- quote ผ่าน proxy ภายใน -----
+    const qd = await fetch(`${base}/api/proxy?kind=quote&symbol=${encodeURIComponent(symbol)}`).then(r=>r.json());
+    const quote = qd?.quoteResponse?.result?.[0];
     if (!quote) return res.status(404).json({ error: "Quote not found" });
 
-    // แท่งเทียน 6 เดือน (1 วัน)
-    const c = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`);
-    const cd = await c.json();
-    const closes = cd.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+    // ----- candles ผ่าน proxy ภายใน -----
+    const cd = await fetch(`${base}/api/proxy?kind=chart&symbol=${encodeURIComponent(symbol)}&range=6mo&interval=1d`).then(r=>r.json());
+    const closes = cd?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
     const clean = closes.filter(v => typeof v === "number");
 
-    // อินดิเคเตอร์
     const rsi14 = clean.length ? rsi(clean, 14) : null;
 
     let trend = "Neutral", score = 70;
