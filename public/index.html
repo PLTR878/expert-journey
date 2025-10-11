@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AI Stock Scanner + TradingView v2</title>
+<title>AI Stock Scanner + TradingView v3</title>
 <style>
 body{font-family:system-ui;background:#0b0f17;color:#e5e7eb;margin:0}
 header{background:#111827;padding:1rem;text-align:center;font-weight:700}
@@ -44,14 +44,17 @@ async function scanOne(){
   if(!s) return;
   document.getElementById('out').innerHTML = '⏳ กำลังสแกน...';
   try {
-    // 🔹 ดึงข้อมูลราคาจาก Yahoo / TradingView JSON
-    const priceData = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${s}`);
-    const priceJson = await priceData.json();
-    const lastPrice = priceJson?.chart?.result?.[0]?.meta?.regularMarketPrice || null;
-    const change = priceJson?.chart?.result?.[0]?.meta?.regularMarketChangePercent || null;
+    // ✅ ดึงข้อมูลจาก API ฝั่งเซิร์ฟเวอร์ของเราเอง
+    const res = await fetch(`/api/price?symbol=${s}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
 
-    // 🔹 จำลองข้อมูล RSI และคะแนน (ในอนาคตอาจใช้ API จริง)
-    const rsi = Math.floor(Math.random()*40)+30; // mock RSI 30-70
+    const lastPrice = data.price;
+    const change = data.change;
+    const currency = data.currency || "USD";
+
+    // 🔹 สร้าง RSI และแนวโน้มจำลอง (AI วิเคราะห์)
+    const rsi = Math.floor(Math.random()*40)+30;
     const trend = rsi>60?"Up":rsi<40?"Down":"Neutral";
     const score = Math.floor((rsi/100)*100);
     const suggest = trend==="Up"?"📈 แนวโน้มขาขึ้น – ควรถือ/ซื้อเพิ่ม":
@@ -65,7 +68,7 @@ async function scanOne(){
     document.getElementById('out').innerHTML = `
       <div class="stock">
         <b style="color:#60a5fa">${s}</b><br>
-        ราคา: <span class="value">${priceText} USD</span> | เปลี่ยนแปลง: <span style="color:${color}">${chg}</span><br>
+        ราคา: <span class="value">${priceText} ${currency}</span> | เปลี่ยนแปลง: <span style="color:${color}">${chg}</span><br>
         RSI14: <span class="value">${rsi}</span> | แนวโน้ม: <span style="color:${color}">${trend}</span> | คะแนน: <span class="value">${score}</span><br>
         🔍 วิเคราะห์ AI: ${suggest}<br>
         <button class="btn" onclick="openTv('${s}')">ดูกราฟ TradingView</button>
