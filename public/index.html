@@ -1,3 +1,43 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI Stock Scanner + TradingView</title>
+<style>
+body{font-family:system-ui;background:#0b0f17;color:#e5e7eb;margin:0}
+header{background:#111827;padding:1rem;text-align:center;font-weight:700}
+section{padding:1rem}
+.card{background:#1f2937;margin:1rem;border-radius:12px;padding:1rem}
+.btn{background:#2563eb;color:#fff;border:none;border-radius:8px;padding:.5rem .8rem}
+.stock{background:#111827;border:1px solid #374151;border-radius:10px;padding:.7rem;margin:.5rem 0}
+.value{color:#22d3ee;font-weight:700}
+input{background:#0b1220;border:1px solid #374151;color:#e5e7eb;border-radius:8px;padding:.5rem}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center}
+.modal .box{background:#0b1220;border-radius:12px;width:95%;max-width:900px;padding:10px}
+</style>
+</head>
+
+<body>
+<header>🤖 AI Stock Scanner (Yahoo Data) + TradingView</header>
+
+<section class="card">
+  <b>ใส่สัญลักษณ์:</b>
+  <input id="sym" value="PLTR" style="width:160px;margin-left:.5rem">
+  <button class="btn" onclick="scanOne()">สแกน</button>
+</section>
+
+<section class="card">
+  <div id="out">ยังไม่มีผลลัพธ์</div>
+</section>
+
+<div class="modal" id="tvModal">
+  <div class="box">
+    <button class="btn" onclick="closeTv()">ปิด</button>
+    <div id="tv"></div>
+  </div>
+</div>
+
 <script>
 async function scanOne(){
   const s = document.getElementById('sym').value.trim().toUpperCase();
@@ -25,19 +65,14 @@ async function scanOne(){
   }
 }
 
-// ✅ ฟังก์ชันเปิดกราฟ TradingView
 function openTv(symbol){
   const m = document.getElementById('tvModal');
   const box = document.getElementById('tv');
-
-  // พื้นที่สำหรับกราฟ
   box.innerHTML = '<div id="tv_chart" style="height:500px"></div>';
 
-  // ลบสคริปต์ TradingView เดิมออก (ถ้ามี)
   const oldScript = document.querySelector('script[src="https://s3.tradingview.com/tv.js"]');
   if (oldScript) oldScript.remove();
 
-  // โหลดสคริปต์ใหม่
   const script = document.createElement('script');
   script.src = 'https://s3.tradingview.com/tv.js';
   script.onload = () => {
@@ -53,14 +88,13 @@ function openTv(symbol){
     });
   };
   document.body.appendChild(script);
-
-  // แสดง modal
   m.style.display = 'flex';
 }
 
-// ✅ ปิด popup กราฟ
 function closeTv(){ 
   document.getElementById('tvModal').style.display='none'; 
   document.getElementById('tv').innerHTML=''; 
 }
-  </script>
+</script>
+</body>
+</html>
