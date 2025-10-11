@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AI Stock Scanner + TradingView v2</title>
+<title>AI Stock Scanner + TradingView</title>
 <style>
 body{font-family:system-ui;background:#0b0f17;color:#e5e7eb;margin:0}
 header{background:#111827;padding:1rem;text-align:center;font-weight:700}
@@ -19,7 +19,7 @@ input{background:#0b1220;border:1px solid #374151;color:#e5e7eb;border-radius:8p
 </head>
 
 <body>
-<header>🤖 AI Stock Scanner (Real Price + RSI + TradingView)</header>
+<header>🤖 AI Stock Scanner (Yahoo Data) + TradingView</header>
 
 <section class="card">
   <b>ใส่สัญลักษณ์:</b>
@@ -44,31 +44,20 @@ async function scanOne(){
   if(!s) return;
   document.getElementById('out').innerHTML = '⏳ กำลังสแกน...';
   try {
-    // 🔹 ดึงข้อมูลราคาจาก Yahoo / TradingView JSON
-    const priceData = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${s}`);
-    const priceJson = await priceData.json();
-    const lastPrice = priceJson?.chart?.result?.[0]?.meta?.regularMarketPrice || null;
-    const change = priceJson?.chart?.result?.[0]?.meta?.regularMarketChangePercent || null;
-
-    // 🔹 จำลองข้อมูล RSI และคะแนน (ในอนาคตอาจใช้ API จริง)
-    const rsi = Math.floor(Math.random()*40)+30; // mock RSI 30-70
-    const trend = rsi>60?"Up":rsi<40?"Down":"Neutral";
-    const score = Math.floor((rsi/100)*100);
-    const suggest = trend==="Up"?"📈 แนวโน้มขาขึ้น – ควรถือ/ซื้อเพิ่ม":
-                     trend==="Down"?"📉 แนวโน้มขาลง – ระวังรอแนวรับ":
-                     "⚖️ ยังไม่ชัดเจน – รอดูสัญญาณเพิ่ม";
-
-    const chg = change ? change.toFixed(2)+'%' : '-';
-    const color = trend==='Up'?'#22c55e':trend==='Down'?'#ef4444':'#e5e7eb';
-    const priceText = lastPrice ? lastPrice.toFixed(2) : 'N/A';
-
+    const r = await fetch(`/api/score?symbol=${s}`);
+    const d = await r.json();
+    if (d.error){ 
+      document.getElementById('out').innerHTML='❌ '+d.error; 
+      return; 
+    }
+    const color = d.trend==='Up'?'#22c55e':d.trend==='Down'?'#ef4444':'#e5e7eb';
+    const chg = d.change!=null ? d.change.toFixed(2)+'%' : '-';
     document.getElementById('out').innerHTML = `
       <div class="stock">
-        <b style="color:#60a5fa">${s}</b><br>
-        ราคา: <span class="value">${priceText} USD</span> | เปลี่ยนแปลง: <span style="color:${color}">${chg}</span><br>
-        RSI14: <span class="value">${rsi}</span> | แนวโน้ม: <span style="color:${color}">${trend}</span> | คะแนน: <span class="value">${score}</span><br>
-        🔍 วิเคราะห์ AI: ${suggest}<br>
-        <button class="btn" onclick="openTv('${s}')">ดูกราฟ TradingView</button>
+        <b style="color:#60a5fa">${d.symbol}</b><br>
+        ราคา: <span class="value">${d.price}</span> | เปลี่ยนแปลง: <span style="color:${color}">${chg}</span><br>
+        RSI14: <span class="value">${d.rsi14 ?? '-'}</span> | แนวโน้ม: <span style="color:${color}">${d.trend}</span> | คะแนน: <span class="value">${d.score}</span><br>
+        <button class="btn" onclick="openTv('${d.symbol}')">ดูกราฟ TradingView</button>
       </div>`;
   } catch(err){
     document.getElementById('out').innerHTML = '❌ ไม่สามารถดึงข้อมูลได้';
