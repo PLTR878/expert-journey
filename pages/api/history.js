@@ -1,32 +1,24 @@
-// /pages/api/history.js
+// ดึงข้อมูลราคาย้อนหลังจาก Yahoo Finance
 export default async function handler(req, res) {
-  const { symbol, range = '6mo', interval = '1d' } = req.query || {};
-  if (!symbol) return res.status(400).json({ error: 'symbol is required' });
-
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-      symbol
-    )}?range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`;
-
-    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!r.ok) throw new Error(`Yahoo responded ${r.status}`);
+    const { symbol, range = '6mo', interval = '1d' } = req.query;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
+    const r = await fetch(url);
     const j = await r.json();
-    const result = j?.chart?.result?.[0];
-    if (!result) throw new Error('no result');
+    const d = j?.chart?.result?.[0];
+    if (!d) return res.status(404).json({ error: 'no data' });
 
-    const ts = result.timestamp || [];
-    const q = result.indicators?.quote?.[0] || {};
-    const rows = ts.map((t, i) => ({
-      t: (t || 0) * 1000,                // ms
-      o: q.open?.[i] ?? null,
-      h: q.high?.[i] ?? null,
-      l: q.low?.[i] ?? null,
-      c: q.close?.[i] ?? null,
-      v: q.volume?.[i] ?? null,
-    })).filter(r => Number.isFinite(r.c));
+    const rows = d.timestamp.map((t, i) => ({
+      t: t * 1000,
+      o: d.indicators.quote[0].open[i],
+      h: d.indicators.quote[0].high[i],
+      l: d.indicators.quote[0].low[i],
+      c: d.indicators.quote[0].close[i],
+      v: d.indicators.quote[0].volume[i],
+    }));
 
     res.status(200).json({ rows });
   } catch (e) {
-    res.status(500).json({ error: e?.message || 'history failed' });
+    res.status(500).json({ error: e.message });
   }
 }
