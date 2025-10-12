@@ -69,29 +69,39 @@ export default function Analyze() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
-        {/* ✅ กราฟพร้อมหัวฝังในกรอบ */}
+        {/* ✅ กราฟพร้อม Header พรีเมียม */}
         <div className="relative rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-          {/* gradient ด้านบน */}
-          <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#0b1220]/90 to-transparent z-10 pointer-events-none"></div>
+          {/* Gradient บนหัว */}
+          <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-[#0b1220]/95 to-transparent z-10 pointer-events-none"></div>
 
-          {/* หัว AMD — ฝังในกราฟ */}
-          <div className="absolute top-2 left-3 right-3 z-20 flex items-center justify-between text-sm sm:text-base font-semibold text-gray-200">
+          {/* Header แบบโปร */}
+          <div className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between text-gray-200">
+            {/* Back */}
             <button
               onClick={() => push('/')}
-              className="text-gray-400 hover:text-white transition font-medium"
+              className="flex items-center gap-1 text-[13px] sm:text-[14px] text-gray-400 hover:text-white transition font-medium"
             >
-              ← Back
+              <span className="text-lg leading-none">←</span>
+              <span className="tracking-wide">Back</span>
             </button>
-            <div className="flex-1 text-center text-[15px] sm:text-[17px] tracking-wide">
-              <span className="text-white">{symbol || '—'}</span>
-              <span className="opacity-60 font-normal ml-1">— Realtime Analysis</span>
+
+            {/* ชื่อหุ้น */}
+            <div className="flex-1 text-center">
+              <span className="text-[17px] sm:text-[18px] font-bold tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                {symbol || '—'}
+              </span>
+              <span className="ml-1 text-[14px] sm:text-[15px] text-gray-400 font-light tracking-wide">
+                — Realtime Analysis
+              </span>
             </div>
-            <div className="text-right font-semibold text-[14px] sm:text-[15px] text-green-400 drop-shadow">
+
+            {/* ราคา */}
+            <div className="text-right text-[15px] sm:text-[16px] font-semibold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-lg border border-emerald-400/20 shadow-sm">
               ${fmt(price, 2)}
             </div>
           </div>
 
-          {/* กราฟ */}
+          {/* ✅ กราฟ */}
           <div className="relative z-0">
             <Chart candles={hist} markers={markers} />
           </div>
@@ -99,6 +109,7 @@ export default function Analyze() {
 
         {/* ✅ AI + Indicators */}
         <div className="grid md:grid-cols-2 gap-4">
+          {/* Trade Signal */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold">AI Trade Signal</h2>
@@ -122,6 +133,7 @@ export default function Analyze() {
             </div>
           </section>
 
+          {/* Indicators */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <h2 className="text-lg font-semibold">Indicators</h2>
             {!ind ? (
@@ -181,4 +193,4 @@ function Info({ label, value, className = '' }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-          }
+                }
