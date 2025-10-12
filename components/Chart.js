@@ -54,10 +54,10 @@ export default function Chart({ candles = [], markers = [] }) {
 
   return (
     <div
-      className={`relative w-full ${
+      className={`relative ${
         isFull
-          ? 'fixed inset-0 z-[9999] bg-[#0b1220]'
-          : 'h-[500px] rounded-2xl overflow-hidden border border-white/10'
+          ? 'fixed top-0 left-0 w-screen h-screen z-[9999] bg-[#0b1220]'
+          : 'w-full h-[500px] rounded-2xl overflow-hidden border border-white/10'
       }`}
     >
       <div ref={chartRef} className="w-full h-full" />
@@ -73,4 +73,4 @@ export default function Chart({ candles = [], markers = [] }) {
       </button>
     </div>
   );
-}
+          }
