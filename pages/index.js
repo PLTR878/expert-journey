@@ -29,15 +29,28 @@ export default function Home() {
     try {
       const universe = symbols
         .split(',')
-        .map(s => s.trim().toUpperCase())
+        .map((s) => s.trim().toUpperCase())
         .filter(Boolean);
+
       const r = await fetch('/api/screener', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ horizon, universe: universe.length ? universe : undefined }),
+        body: JSON.stringify({
+          horizon,
+          universe: universe.length ? universe : undefined,
+        }),
       });
+
       const j = await r.json();
-      setRows(j.results || []);
+      console.log('DEBUG SCREENER:', j);
+
+      // ป้องกัน error ถ้า API ส่งข้อมูลไม่ถูกต้อง
+      if (j && Array.isArray(j.results)) {
+        setRows(j.results);
+      } else {
+        console.error('Invalid screener response:', j);
+        setRows([]);
+      }
     } catch (e) {
       console.error('Error fetching screener:', e);
       setRows([]);
@@ -53,12 +66,12 @@ export default function Home() {
   useEffect(() => {
     let t;
     async function poll() {
-      const syms = (rows.length ? rows.map(r => r.symbol) : []).slice(0, 20);
+      const syms = (rows.length ? rows.map((r) => r.symbol) : []).slice(0, 20);
       const m = {};
       await Promise.all(
-        syms.map(async s => {
+        syms.map(async (s) => {
           try {
-            const q = await fetch(`/api/quote?symbol=${s}`).then(r => r.json());
+            const q = await fetch(`/api/quote?symbol=${s}`).then((r) => r.json());
             if (q?.price != null) m[s] = q;
           } catch {}
         })
@@ -79,7 +92,7 @@ export default function Home() {
           <div className="flex flex-wrap gap-2">
             <select
               value={horizon}
-              onChange={e => setHorizon(e.target.value)}
+              onChange={(e) => setHorizon(e.target.value)}
               className="px-2 py-1 rounded bg-[#1c2538] text-white"
             >
               <option value="short">2–7 วัน</option>
@@ -95,13 +108,13 @@ export default function Home() {
           </div>
           <input
             value={symbols}
-            onChange={e => setSymbols(e.target.value)}
+            onChange={(e) => setSymbols(e.target.value)}
             placeholder="ใส่สัญลักษณ์ เช่น AAPL,NVDA"
             className="flex-1 min-w-[200px] bg-[#1c2538] text-white px-2 py-1 rounded"
           />
           <select
             value={theme}
-            onChange={e => applyTheme(e.target.value)}
+            onChange={(e) => applyTheme(e.target.value)}
             className="px-2 py-1 rounded bg-[#1c2538] text-white"
           >
             <option value="system">System</option>
@@ -133,12 +146,18 @@ export default function Home() {
               </tr>
             )}
 
-            {rows.map(r => {
+            {rows.map((r) => {
               const q = quotes[r.symbol];
               const price = q?.price ?? r.lastClose ?? '-';
-              const change = q?.changePct != null ? `${q.changePct.toFixed(2)}%` : '';
+              const change =
+                q?.changePct != null ? `${q.changePct.toFixed(2)}%` : '';
+              const signal = r.signal || '-';
+              const conf = Number.isFinite(r.conf) ? (r.conf * 100).toFixed(0) : '-';
               return (
-                <tr key={r.symbol} className="border-b border-gray-700 hover:bg-[#1c2538]/70 transition">
+                <tr
+                  key={r.symbol}
+                  className="border-b border-gray-700 hover:bg-[#1c2538]/70 transition"
+                >
                   <td className="p-2 font-semibold text-blue-400">
                     <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
                   </td>
@@ -147,7 +166,13 @@ export default function Home() {
                   </td>
                   <td className="p-2 text-right">
                     {price}{' '}
-                    <small className={(q?.changePct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    <small
+                      className={
+                        (q?.changePct || 0) >= 0
+                          ? 'text-green-400'
+                          : 'text-red-400'
+                      }
+                    >
                       {change}
                     </small>
                   </td>
@@ -158,25 +183,23 @@ export default function Home() {
                     {[
                       Number.isFinite(r.e20) ? r.e20.toFixed(2) : '-',
                       Number.isFinite(r.e50) ? r.e50.toFixed(2) : '-',
-                      Number.isFinite(r.e200) ? r.e200.toFixed(2) : '-'
+                      Number.isFinite(r.e200) ? r.e200.toFixed(2) : '-',
                     ].join(' / ')}
                   </td>
                   <td className="p-2 text-center">
                     <span
                       className={
-                        r.signal === 'Buy'
+                        signal === 'Buy'
                           ? 'text-green-400 font-bold'
-                          : r.signal === 'Sell'
+                          : signal === 'Sell'
                           ? 'text-red-400 font-bold'
                           : 'text-yellow-300 font-semibold'
                       }
                     >
-                      {r.signal || '-'}
+                      {signal}
                     </span>
                     <br />
-                    <small className="text-gray-400">
-                      {(r.conf ? (r.conf * 100).toFixed(0) : '–') + '%'}
-                    </small>
+                    <small className="text-gray-400">{conf + '%'}</small>
                   </td>
                 </tr>
               );
@@ -186,4 +209,4 @@ export default function Home() {
       </div>
     </main>
   );
-    }
+              }
