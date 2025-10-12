@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ✅ ใช้ endpoint ที่ให้ราคาจริง Real-Time จาก Yahoo
+    // ✅ ใช้ Yahoo API ตัวใหม่ที่ให้ราคาจริง
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`;
     const response = await fetch(url);
     const data = await response.json();
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const q = data?.quoteResponse?.result?.[0];
     if (!q) return res.status(404).json({ error: "Symbol not found" });
 
-    // ✅ ดึงราคาจริง พร้อม fallback เผื่อกรณี Yahoo ไม่มีข้อมูล
+    // ✅ ราคาปัจจุบันจริง
     const price =
       q.regularMarketPrice ??
       q.postMarketPrice ??
@@ -29,17 +29,18 @@ export default async function handler(req, res) {
       q.preMarketChangePercent ??
       0;
 
+    // ✅ สร้าง RSI / Signal จำลอง
     const rsi = Math.floor(Math.random() * 40) + 30;
-    const trend = rsi > 60 ? "Up" : rsi < 40 ? "Down" : "Neutral";
-    const score = Math.round((rsi / 100) * 10 * (1 + changePct / 50));
+    const signal = rsi > 65 ? "Sell" : rsi < 40 ? "Buy" : "Hold";
+    const conf = Math.random();
 
     res.status(200).json({
       symbol,
       price,
       changePct,
       rsi,
-      trend,
-      score,
+      signal,
+      conf,
       marketState: q.marketState,
       time: q.regularMarketTime
     });
