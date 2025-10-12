@@ -42,7 +42,7 @@ async function getFund(baseUrl, s) {
   } catch { return null; }
 }
 
-// --- ฟังก์ชันคำนวณจริง (จากระบบเก่า) ---
+// --- ฟังก์ชันคำนวณจริง ---
 function scoreShort(rows) {
   const c = rows.map(r=>r.c);
   const e20 = ema(c,20);
@@ -126,6 +126,29 @@ export default async function handler(req, res) {
       }
     }
 
+    // ✅ เพิ่มส่วนนี้เพื่ออัปเดตราคาจริงจาก Yahoo Finance
+    for (const r of out) {
+      try {
+        const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${r.symbol}`;
+        const resQuote = await fetch(url);
+        const data = await resQuote.json();
+        const q = data.quoteResponse.result[0];
+
+        const realPrice =
+          q.regularMarketPrice ??
+          q.postMarketPrice ??
+          q.preMarketPrice ??
+          q.previousClose ??
+          null;
+
+        if (realPrice && !isNaN(realPrice)) {
+          r.lastClose = realPrice;
+        }
+      } catch (e) {
+        console.warn("price fallback failed for", r.symbol);
+      }
+    }
+
     const ranked = out
       .filter(x => typeof x.score === 'number')
       .sort((a,b) => (b.score??0) - (a.score??0))
@@ -135,4 +158,4 @@ export default async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: e?.message || 'screener failed' });
   }
-    }
+      }
