@@ -1,46 +1,62 @@
 // /pages/api/ai-trade.js
+import { ema, macd, rsi } from '../../lib/indicators';
+
 export default async function handler(req, res) {
   try {
-    const { symbol } = req.query || {};
-    if (!symbol) return res.status(400).json({ error: 'symbol is required' });
-
+    const { symbol, range = '6mo', interval = '1d' } = req.query;
     const base = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
-    const ind = await fetch(`${base}/api/indicators?symbol=${encodeURIComponent(symbol)}`).then(r => r.json());
+    const data = await fetch(`${base}/api/history?symbol=${symbol}&range=${range}&interval=${interval}`).then(r=>r.json());
+    const rows = data.rows || [];
+    if (!rows.length) return res.status(404).json({ error: 'no data' });
 
-    const rsi = ind?.rsi14 ?? null;
-    const macdHist = ind?.macd?.hist ?? null;
-    const ema20 = ind?.ema20 ?? null;
-    const last = ind?.lastClose ?? null;
+    const c = rows.map(r=>r.c);
+    const e20 = ema(c, 20);
+    const e50 = ema(c, 50);
+    const { line, signal, hist } = macd(c, 12, 26, 9);
+    const R = rsi(c, 14);
 
-    // กติกาอย่างง่ายแต่ใช้งานได้จริง
+    const last = rows.at(-1);
+    const prev = rows.at(-2) || last;
+
+    // คะแนนสัญญาณ
+    let score = 0;
+    if (last.c > e20.at(-1)) score++;
+    if (e20.at(-1) > e50.at(-1)) score++;
+    if (hist.at(-1) > 0) score++;
+    if (line.at(-1) > signal.at(-1)) score++;
+    if (R.at(-1) > 55) score++;
+
     let action = 'Hold';
-    let reason = 'Neutral';
+    let reason = 'Uptrend intact';
+    let conf = (score / 5).toFixed(2);
+    let entry = '-', stop = '-', target = '-';
 
-    if (rsi != null && macdHist != null && last != null && ema20 != null) {
-      const aboveEma = last > ema20;
-      if (rsi < 32 && macdHist > 0) {
-        action = 'Buy';
-        reason = 'RSI oversold + MACD bullish';
-      } else if (rsi > 68 && macdHist < 0) {
-        action = 'Sell';
-        reason = 'RSI overbought + MACD bearish';
-      } else if (aboveEma && macdHist >= 0) {
-        action = 'Hold';
-        reason = 'Uptrend intact';
-      } else {
-        action = 'Hold';
-        reason = 'No strong edge';
-      }
+    // ตัดสินใจ
+    if (score >= 4) {
+      action = 'Buy';
+      reason = 'Strong bullish momentum';
+      entry = last.c.toFixed(2);
+      target = (last.c * 1.1).toFixed(2);
+      stop = (last.c * 0.95).toFixed(2);
+    } else if (score <= 1) {
+      action = 'Sell';
+      reason = 'Bearish reversal';
+      entry = last.c.toFixed(2);
+      target = (last.c * 0.9).toFixed(2);
+      stop = (last.c * 1.05).toFixed(2);
     }
 
     res.status(200).json({
       symbol,
       action,
-      confidence: action === 'Hold' ? 0.55 : 0.7,
       reason,
-      indicators: ind || {},
+      confidence: conf,
+      entry,
+      target,
+      stop,
+      lastClose: last.c
     });
   } catch (e) {
-    res.status(500).json({ error: e?.message || 'ai-trade failed' });
+    res.status(500).json({ error: e.message });
   }
-}
+      }
