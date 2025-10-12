@@ -1,215 +1,70 @@
 import { useEffect, useState } from "react";
 
-const DEFAULT_UNIVERSE = [];
-
 export default function Home() {
-  const [horizon, setHorizon] = useState("short");
-  const [rows, setRows] = useState([]);
+  const [dataShort, setDataShort] = useState([]);
+  const [dataMedium, setDataMedium] = useState([]);
+  const [dataLong, setDataLong] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [symbols, setSymbols] = useState(DEFAULT_UNIVERSE.join(","));
-  const [quotes, setQuotes] = useState({});
-  const [theme, setTheme] = useState("system");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [error, setError] = useState("");
+  const [theme, setTheme] = useState("dark");
 
-  // ---------- Theme ----------
-  function applyTheme(next) {
-    setTheme(next);
-    const root = document.documentElement;
-    if (next === "dark") root.classList.add("dark");
-    else if (next === "light") root.classList.remove("dark");
-    else {
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? root.classList.add("dark")
-        : root.classList.remove("dark");
-    }
-  }
+  // Theme
+  useEffect(() => {
+    if (theme === "dark") document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+  }, [theme]);
 
-  // ---------- Run Screener ----------
-  async function run() {
+  // Load Data
+  async function loadAll() {
     setLoading(true);
-    setErrorMsg("");
-    try {
-      const universe = symbols
-        .split(",")
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean);
+    setError("");
 
-      const r = await fetch("/api/screener", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          horizon,
-          universe: universe.length ? universe : undefined,
-        }),
-      });
-
-      const j = await r.json();
-      console.log("📊 DEBUG screener result:", j);
-
-      if (j && Array.isArray(j.results)) {
-        setRows(j.results);
-      } else {
-        throw new Error("Invalid API response structure");
+    async function fetchData(horizon) {
+      try {
+        const res = await fetch("/api/screener", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ horizon }),
+        });
+        const j = await res.json();
+        console.log("✅ Screener", horizon, j);
+        return j?.results || [];
+      } catch (err) {
+        console.error("❌ Error:", err);
+        return [];
       }
+    }
+
+    try {
+      const [shortData, mediumData, longData] = await Promise.all([
+        fetchData("short"),
+        fetchData("medium"),
+        fetchData("long"),
+      ]);
+      setDataShort(shortData);
+      setDataMedium(mediumData);
+      setDataLong(longData);
     } catch (err) {
-      console.error("❌ Screener error:", err);
-      setErrorMsg(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
-      setRows([]);
+      setError("โหลดข้อมูลไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => applyTheme("system"), []);
-  useEffect(() => run(), [horizon]);
-
-  // ---------- Poll Quotes ----------
   useEffect(() => {
-    let t;
-    async function poll() {
-      try {
-        const syms = (rows.length ? rows.map((r) => r.symbol) : []).slice(0, 20);
-        const m = {};
-        await Promise.all(
-          syms.map(async (s) => {
-            const q = await fetch(`/api/quote?symbol=${s}`).then((r) =>
-              r.json()
-            );
-            if (q?.price != null) m[s] = q;
-          })
-        );
-        setQuotes(m);
-      } catch (err) {
-        console.error("⚠️ Poll error:", err);
-      }
-    }
-    poll();
-    t = setInterval(poll, 12000);
-    return () => clearInterval(t);
-  }, [rows.length]);
+    loadAll();
+  }, []);
 
-  // ---------- Safe render ----------
-  function safeRenderRow(r) {
-    try {
-      const q = quotes[r.symbol] || {};
-      const price = q.price ?? r.lastClose ?? "-";
-      const change =
-        q.changePct != null ? `${q.changePct.toFixed(2)}%` : "";
-      const signal = r.signal || "-";
-      const conf = Number.isFinite(r.conf)
-        ? (r.conf * 100).toFixed(0)
-        : "-";
-      return (
-        <tr
-          key={r.symbol}
-          className="border-b border-gray-700 hover:bg-[#1c2538]/70 transition"
-        >
-          <td className="p-2 font-semibold text-blue-400">
-            <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
-          </td>
-          <td className="p-2 text-right">
-            {Number.isFinite(r.score) ? r.score.toFixed(3) : "-"}
-          </td>
-          <td className="p-2 text-right">
-            {price}{" "}
-            <small
-              className={
-                (q.changePct || 0) >= 0
-                  ? "text-green-400"
-                  : "text-red-400"
-              }
-            >
-              {change}
-            </small>
-          </td>
-          <td className="p-2 text-right">
-            {Number.isFinite(r.rsi) ? r.rsi.toFixed(1) : "-"}
-          </td>
-          <td className="p-2 text-center">
-            {[
-              Number.isFinite(r.e20) ? r.e20.toFixed(2) : "-",
-              Number.isFinite(r.e50) ? r.e50.toFixed(2) : "-",
-              Number.isFinite(r.e200) ? r.e200.toFixed(2) : "-",
-            ].join(" / ")}
-          </td>
-          <td className="p-2 text-center">
-            <span
-              className={
-                signal === "Buy"
-                  ? "text-green-400 font-bold"
-                  : signal === "Sell"
-                  ? "text-red-400 font-bold"
-                  : "text-yellow-300 font-semibold"
-              }
-            >
-              {signal}
-            </span>
-            <br />
-            <small className="text-gray-400">{conf + "%"}</small>
-          </td>
-        </tr>
-      );
-    } catch (err) {
-      console.error("❌ Render row error:", err);
-      return (
-        <tr key={Math.random()} className="text-red-400">
-          <td colSpan="6" className="p-2 text-center">
-            ⚠️ Error rendering row
-          </td>
-        </tr>
-      );
-    }
-  }
-
-  // ---------- UI ----------
-  return (
-    <main className="min-h-screen bg-[#0b1220] text-white">
-      <header className="sticky top-0 bg-[#101829]/90 backdrop-blur-md border-b border-gray-700 z-50">
-        <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-2">
-          <b className="text-xl font-semibold">📊 US AI Screener</b>
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={horizon}
-              onChange={(e) => setHorizon(e.target.value)}
-              className="px-2 py-1 rounded bg-[#1c2538] text-white"
-            >
-              <option value="short">2–7 วัน</option>
-              <option value="medium">1–2 เดือน</option>
-              <option value="long">10–20 ปี</option>
-            </select>
-            <button
-              onClick={run}
-              className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold"
-            >
-              {loading ? "กำลังสแกน..." : "สแกนใหม่"}
-            </button>
-          </div>
-          <input
-            value={symbols}
-            onChange={(e) => setSymbols(e.target.value)}
-            placeholder="ใส่สัญลักษณ์ เช่น AAPL,NVDA"
-            className="flex-1 min-w-[200px] bg-[#1c2538] text-white px-2 py-1 rounded"
-          />
-          <select
-            value={theme}
-            onChange={(e) => applyTheme(e.target.value)}
-            className="px-2 py-1 rounded bg-[#1c2538] text-white"
-          >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+  // Table Component
+  const renderTable = (title, color, data) => (
+    <div className="my-6">
+      <h2 className={`text-xl font-bold mb-3 ${color}`}>{title}</h2>
+      {data.length === 0 ? (
+        <div className="text-gray-400 text-sm mb-6">
+          ⚠️ ไม่มีข้อมูล หรือ API ไม่ส่งผลลัพธ์
         </div>
-      </header>
-
-      <div className="px-3 py-4 overflow-x-auto">
-        {errorMsg && (
-          <div className="text-red-400 text-center my-4">
-            ⚠️ Error: {errorMsg}
-          </div>
-        )}
-
-        <table className="w-full text-sm border-collapse">
+      ) : (
+        <table className="w-full text-sm border-collapse mb-6">
           <thead className="bg-[#162034] text-gray-300">
             <tr>
               <th className="p-2 text-left">สัญลักษณ์</th>
@@ -221,18 +76,83 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && !errorMsg && (
-              <tr>
-                <td colSpan="6" className="py-8 text-center text-gray-400">
-                  🔍 ยังไม่มีรายการ — กรอกสัญลักษณ์ด้านบนแล้วกด “สแกนใหม่”
-                  <br /> (ตัวอย่าง: AAPL, MSFT, NVDA)
+            {data.map((r) => (
+              <tr
+                key={r.symbol}
+                className="border-b border-gray-700 hover:bg-[#1c2538]/70 transition"
+              >
+                <td className="p-2 font-semibold text-blue-400">
+                  <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                </td>
+                <td className="p-2 text-right">
+                  {r.score ? r.score.toFixed(3) : "-"}
+                </td>
+                <td className="p-2 text-right">
+                  {r.lastClose?.toFixed?.(2) ?? "-"}
+                </td>
+                <td className="p-2 text-right">{r.rsi?.toFixed?.(1) ?? "-"}</td>
+                <td className="p-2 text-center">
+                  {[
+                    r.e20?.toFixed?.(2) ?? "-",
+                    r.e50?.toFixed?.(2) ?? "-",
+                    r.e200?.toFixed?.(2) ?? "-",
+                  ].join(" / ")}
+                </td>
+                <td className="p-2 text-center">
+                  <span
+                    className={
+                      r.signal === "Buy"
+                        ? "text-green-400 font-bold"
+                        : r.signal === "Sell"
+                        ? "text-red-400 font-bold"
+                        : "text-yellow-300 font-semibold"
+                    }
+                  >
+                    {r.signal || "-"}
+                  </span>
+                  <br />
+                  <small className="text-gray-400">
+                    {r.conf ? (r.conf * 100).toFixed(0) + "%" : "-"}
+                  </small>
                 </td>
               </tr>
-            )}
-            {rows.map((r) => safeRenderRow(r))}
+            ))}
           </tbody>
         </table>
+      )}
+    </div>
+  );
+
+  // UI
+  return (
+    <main className="min-h-screen bg-[#0b1220] text-white">
+      <header className="sticky top-0 bg-[#101829]/90 backdrop-blur-md border-b border-gray-700 z-50">
+        <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
+          <b className="text-xl font-semibold">🌍 Visionary Stock Screener</b>
+          <button
+            onClick={loadAll}
+            className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold"
+          >
+            {loading ? "กำลังโหลด..." : "รีเฟรชทั้งหมด"}
+          </button>
+          <select
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className="px-2 py-1 rounded bg-[#1c2538] text-white"
+          >
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+      </header>
+
+      <div className="px-4 py-5">
+        {error && <div className="text-center text-red-400">{error}</div>}
+
+        {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
+        {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
+        {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-blue-400", dataLong)}
       </div>
     </main>
   );
-                                 }
+                  }
