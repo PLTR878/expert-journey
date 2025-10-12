@@ -4,17 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 export default function Chart({ candles = [], markers = [] }) {
   const chartRef = useRef();
   const [chart, setChart] = useState(null);
-  const [series, setSeries] = useState(null);
   const [isFull, setIsFull] = useState(false);
 
-  // ✅ สร้างกราฟ
   useEffect(() => {
     if (!chartRef.current) return;
 
     const chartInstance = createChart(chartRef.current, {
       layout: {
         background: { color: '#0b1220' },
-        textColor: '#e5e7eb',
+        textColor: '#f3f4f6', // ✅ สีตัวหนังสือชัดมากขึ้น
       },
       grid: {
         vertLines: { color: '#1e293b' },
@@ -23,8 +21,9 @@ export default function Chart({ candles = [], markers = [] }) {
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: {
         borderColor: '#334155',
-        textColor: '#f8fafc',
-        scaleMargins: { top: 0.15, bottom: 0.05 },
+        textColor: '#ffffff', // ✅ ตัวเลขราคาด้านขวาสีขาวชัดสุด
+        scaleMargins: { top: 0.1, bottom: 0.05 },
+        mode: 1, // normal scale mode
       },
       timeScale: {
         borderColor: '#334155',
@@ -40,9 +39,10 @@ export default function Chart({ candles = [], markers = [] }) {
       borderDownColor: '#ef4444',
       wickUpColor: '#00c48a',
       wickDownColor: '#ef4444',
+      priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
     });
 
-    const data = candles.map(c => ({
+    const data = candles.map((c) => ({
       time: c.t / 1000,
       open: c.o,
       high: c.h,
@@ -52,8 +52,9 @@ export default function Chart({ candles = [], markers = [] }) {
 
     candleSeries.setData(data);
     if (markers?.length) candleSeries.setMarkers(markers);
+    chartInstance.timeScale().fitContent();
 
-    // ✅ เพิ่มเส้นราคา + แถบ Label ชัดเจน
+    // ✅ เส้นราคา + Label สีฟ้าอ่อนดูเด่น
     if (data.length > 0) {
       const last = data[data.length - 1];
       candleSeries.createPriceLine({
@@ -63,21 +64,21 @@ export default function Chart({ candles = [], markers = [] }) {
         lineStyle: 0,
         axisLabelVisible: true,
         title: `Price ${last.close.toFixed(2)}`,
+        titleFontSize: 12,
+        axisLabelColor: '#1e3a8a', // ✅ พื้นหลัง Label สีฟ้าเข้ม
       });
     }
 
-    chartInstance.timeScale().fitContent();
     setChart(chartInstance);
-    setSeries(candleSeries);
     return () => chartInstance.remove();
   }, [candles, markers]);
 
-  // ✅ จัดการ fullscreen
+  // ✅ Fullscreen ปรับขนาด + หมุนจอ
   useEffect(() => {
     if (!chart) return;
 
     const resize = () => {
-      chart.resize(window.innerWidth, window.innerHeight);
+      chart.resize(window.innerWidth, isFull ? window.innerHeight : 500);
     };
 
     if (isFull) {
@@ -117,4 +118,4 @@ export default function Chart({ candles = [], markers = [] }) {
       </button>
     </div>
   );
-                 }
+          }
