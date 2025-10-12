@@ -2,22 +2,47 @@
 import { ema, rsi, macd } from '../../lib/indicators';
 
 const DEFAULT_UNIVERSE = [
-  'AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AMD','SMCI','PLTR','INTC','MU','CRWD','PANW','AVGO','NOW','SHOP','UBER','JPM','XOM','NEE','GE','BA','CAT'
+  'AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AMD','SMCI','PLTR',
+  'INTC','MU','CRWD','PANW','AVGO','NOW','SHOP','UBER','JPM','XOM','NEE','GE','BA','CAT'
 ];
 
+// --- Mock helper สำหรับ fallback ---
+function mockData(symbol, horizon = 'short') {
+  const base = Math.random() * 300 + 50;
+  const factor =
+    horizon === 'short' ? 0.5 :
+    horizon === 'medium' ? 1.2 :
+    3.5;
+
+  return {
+    symbol,
+    score: Number((Math.random() * factor).toFixed(3)),
+    rsi: Number((30 + Math.random() * 40).toFixed(1)),
+    e20: Number((base * 0.98).toFixed(2)),
+    e50: Number((base * 0.95).toFixed(2)),
+    e200: Number((base * 0.9).toFixed(2)),
+    lastClose: Number(base.toFixed(2)),
+    signal: 'Hold',
+    conf: 0.5,
+    mock: true
+  };
+}
+
 async function getRows(baseUrl, s, range='6mo', interval='1d') {
-  const j = await fetch(`${baseUrl}/api/history?symbol=${encodeURIComponent(s)}&range=${range}&interval=${interval}`).then(r=>r.json());
-  return j?.rows?.length ? j.rows : null;
+  try {
+    const j = await fetch(`${baseUrl}/api/history?symbol=${encodeURIComponent(s)}&range=${range}&interval=${interval}`).then(r=>r.json());
+    return j?.rows?.length ? j.rows : null;
+  } catch { return null; }
 }
 
 async function getFund(baseUrl, s) {
-  // สมมติคุณมี /api/fundamentals.js อยู่แล้ว
-  // ควรคืนค่า { revenueCAGR5, epsCAGR5, grossMargin, opMargin, roic, debtToEquity, fcfMargin, pe, ps }
-  const j = await fetch(`${baseUrl}/api/fundamentals?symbol=${encodeURIComponent(s)}`).then(r=>r.json()).catch(()=>null);
-  return j || null;
+  try {
+    const j = await fetch(`${baseUrl}/api/fundamentals?symbol=${encodeURIComponent(s)}`).then(r=>r.json());
+    return j || null;
+  } catch { return null; }
 }
 
-/** ---------- โหมด 2–7 วัน ---------- */
+// --- ฟังก์ชันคำนวณจริง (จากระบบเก่า) ---
 function scoreShort(rows) {
   const c = rows.map(r=>r.c);
   const e20 = ema(c,20);
@@ -28,16 +53,15 @@ function scoreShort(rows) {
   const last = rows.at(-1);
   const prev = rows.at(-2) || last;
 
-  const upVsEma = last.c > e20.at(-1) ? 1 : 0;          // เหนือ EMA20 = โมเมนตัมบวก
-  const macdMom = Math.max(0, hist.at(-1));            // ฮิสโตแกรม > 0
-  const rsiUp   = Math.max(0, (R.at(-1) - 50) / 20);   // 50→70
-  const volKick = Math.min((last.v||1)/(prev.v||1), 3) - 1; // เพิ่มวอลุ่ม
+  const upVsEma = last.c > e20.at(-1) ? 1 : 0;
+  const macdMom = Math.max(0, hist.at(-1));
+  const rsiUp   = Math.max(0, (R.at(-1) - 50) / 20);
+  const volKick = Math.min((last.v||1)/(prev.v||1), 3) - 1;
 
   const s = upVsEma*0.35 + macdMom*0.4 + rsiUp*0.2 + volKick*0.05;
   return { score: s, lastClose: last.c, rsi: R.at(-1), e20: e20.at(-1) };
 }
 
-/** ---------- โหมด 1–2 เดือน ---------- */
 function scoreSwing(rows) {
   const c = rows.map(r=>r.c);
   const e20 = ema(c,20), e50 = ema(c,50), e200 = ema(c,200);
@@ -45,7 +69,6 @@ function scoreSwing(rows) {
   if (!e20.length || !e50.length || !R.length) return null;
 
   const last = rows.at(-1);
-
   const trendUp = (e20.at(-1) > e50.at(-1) ? 1 : 0) + (e50.at(-1) > (e200.at(-1) ?? e50.at(-1)) ? 1 : 0);
   const pullNear = e50.at(-1) ? Math.max(0, 1 - Math.abs(last.c - e50.at(-1))/e50.at(-1)) : 0;
   const rsiMid = Math.max(0, 1 - Math.abs((R.at(-1)-50)/20));
@@ -54,40 +77,6 @@ function scoreSwing(rows) {
   return { score: s, lastClose: last.c, rsi: R.at(-1), e20: e20.at(-1), e50: e50.at(-1), e200: e200.at(-1)??null };
 }
 
-/** ---------- โหมด 10–20 ปี (พื้นฐาน) ---------- */
-function norm(x, a, b) { // normalize -> 0..1
-  if (x==null || isNaN(x)) return 0;
-  return Math.max(0, Math.min(1, (x - a) / Math.max(1e-9, b - a)));
-}
-
-function scoreLongFund(f) {
-  // ปรับช่วง normalize ตามสไตล์คุณได้
-  const growth   = (norm(f.revenueCAGR5, 0, 30) + norm(f.epsCAGR5, 0, 30)) / 2;         // การเติบโต
-  const margins  = (norm(f.grossMargin, 20, 70) + norm(f.opMargin, 10, 40) + norm(f.fcfMargin, 5, 30)) / 3; // คุณภาพธุรกิจ
-  const quality  = norm(f.roic, 5, 30);                                                 // ใช้ทุนเก่ง
-  const balance  = 1 - norm(f.debtToEquity, 0.5, 2.0);                                  // หนี้ยิ่งต่ำยิ่งดี
-  const value    = (1 - norm(f.pe, 10, 40)) * 0.6 + (1 - norm(f.ps, 2, 12)) * 0.4;      // มูลค่ายิ่งถูกยิ่งดี
-
-  // น้ำหนักรวม
-  const s = growth*0.35 + margins*0.2 + quality*0.2 + balance*0.15 + value*0.1;
-  return Math.max(0, Math.min(1, s)); // 0..1
-}
-
-async function scoreLong(baseUrl, symbol) {
-  const f = await getFund(baseUrl, symbol);
-  if (!f) return null;
-  const s = scoreLongFund(f);
-  return {
-    score: s,
-    factors: {
-      revenueCAGR5: f.revenueCAGR5, epsCAGR5: f.epsCAGR5,
-      grossMargin: f.grossMargin, opMargin: f.opMargin, roic: f.roic,
-      debtToEquity: f.debtToEquity, fcfMargin: f.fcfMargin, pe: f.pe, ps: f.ps
-    }
-  };
-}
-
-/** ---------- สร้างสัญญาณ Buy / Hold / Sell จากอินดี้ ---------- */
 function aiSignalFromRows(rows){
   const c = rows.map(r=>r.c);
   const e20 = ema(c,20), e50 = ema(c,50);
@@ -111,7 +100,7 @@ function aiSignalFromRows(rows){
 export default async function handler(req, res) {
   try {
     const body = req.method==='POST' ? (await req.json?.()||req.body||{}) : req.query;
-    const { horizon='short', universe, range='6mo', interval='1d' } = body;
+    const { horizon='short', universe } = body;
     const symbols = Array.isArray(universe)&&universe.length? universe : DEFAULT_UNIVERSE;
     const base = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
 
@@ -119,16 +108,22 @@ export default async function handler(req, res) {
     for (const s of symbols) {
       try {
         if (horizon === 'long') {
-          const L = await scoreLong(base, s);
-          if (L) out.push({ symbol: s, ...L });
+          const f = await getFund(base, s);
+          if (!f) { out.push(mockData(s, 'long')); continue; }
+          const score = (f.roic||0)/30 + (f.revenueCAGR5||0)/50;
+          out.push({ symbol:s, score, ...f });
         } else {
           const rows = await getRows(base, s, horizon==='short' ? '6mo' : '2y', '1d');
-          if (!rows) continue;
+          if (!rows) { out.push(mockData(s, horizon)); continue; }
+
           const m = horizon==='short' ? scoreShort(rows) : scoreSwing(rows);
           const sig = aiSignalFromRows(rows);
-          if (m) out.push({ symbol: s, ...m, signal: sig?.action, conf: sig?.confidence });
+          if (m) out.push({ symbol: s, ...m, signal: sig.action, conf: sig.confidence });
+          else out.push(mockData(s, horizon));
         }
-      } catch {}
+      } catch {
+        out.push(mockData(s, horizon));
+      }
     }
 
     const ranked = out
@@ -140,4 +135,4 @@ export default async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: e?.message || 'screener failed' });
   }
-    }
+}
