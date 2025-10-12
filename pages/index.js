@@ -9,6 +9,7 @@ export default function Home() {
   const [symbols, setSymbols] = useState(DEFAULT_UNIVERSE.join(','));
   const [quotes, setQuotes] = useState({});
   const [theme, setTheme] = useState('system');
+  const [errorMsg, setErrorMsg] = useState('');
 
   // ---------- Theme ----------
   function applyTheme(next) {
@@ -26,6 +27,7 @@ export default function Home() {
   // ---------- Run Screener ----------
   async function run() {
     setLoading(true);
+    setErrorMsg('');
     try {
       const universe = symbols
         .split(',')
@@ -42,17 +44,16 @@ export default function Home() {
       });
 
       const j = await r.json();
-      console.log('DEBUG SCREENER:', j);
+      console.log('📊 DEBUG screener result:', j);
 
-      // ป้องกัน error ถ้า API ส่งข้อมูลไม่ถูกต้อง
       if (j && Array.isArray(j.results)) {
         setRows(j.results);
       } else {
-        console.error('Invalid screener response:', j);
-        setRows([]);
+        throw new Error('Invalid API format: no results array');
       }
-    } catch (e) {
-      console.error('Error fetching screener:', e);
+    } catch (err) {
+      console.error('❌ Screener error:', err);
+      setErrorMsg(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
       setRows([]);
     } finally {
       setLoading(false);
@@ -66,17 +67,19 @@ export default function Home() {
   useEffect(() => {
     let t;
     async function poll() {
-      const syms = (rows.length ? rows.map((r) => r.symbol) : []).slice(0, 20);
-      const m = {};
-      await Promise.all(
-        syms.map(async (s) => {
-          try {
+      try {
+        const syms = (rows.length ? rows.map((r) => r.symbol) : []).slice(0, 20);
+        const m = {};
+        await Promise.all(
+          syms.map(async (s) => {
             const q = await fetch(`/api/quote?symbol=${s}`).then((r) => r.json());
             if (q?.price != null) m[s] = q;
-          } catch {}
-        })
-      );
-      setQuotes(m);
+          })
+        );
+        setQuotes(m);
+      } catch (err) {
+        console.error('⚠️ Poll error:', err);
+      }
     }
     poll();
     t = setInterval(poll, 12000);
@@ -125,6 +128,12 @@ export default function Home() {
       </header>
 
       <div className="px-3 py-4 overflow-x-auto">
+        {errorMsg && (
+          <div className="text-red-400 text-center my-4">
+            ⚠️ Error: {errorMsg}
+          </div>
+        )}
+
         <table className="w-full text-sm border-collapse">
           <thead className="bg-[#162034] text-gray-300">
             <tr>
@@ -137,7 +146,7 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
+            {rows.length === 0 && !errorMsg && (
               <tr>
                 <td colSpan="6" className="py-8 text-center text-gray-400">
                   🔍 ยังไม่มีรายการ — กรอกสัญลักษณ์ด้านบนแล้วกด “สแกนใหม่”
@@ -147,12 +156,14 @@ export default function Home() {
             )}
 
             {rows.map((r) => {
-              const q = quotes[r.symbol];
-              const price = q?.price ?? r.lastClose ?? '-';
+              const q = quotes[r.symbol] || {};
+              const price = q.price ?? r.lastClose ?? '-';
               const change =
-                q?.changePct != null ? `${q.changePct.toFixed(2)}%` : '';
+                q.changePct != null ? `${q.changePct.toFixed(2)}%` : '';
               const signal = r.signal || '-';
-              const conf = Number.isFinite(r.conf) ? (r.conf * 100).toFixed(0) : '-';
+              const conf = Number.isFinite(r.conf)
+                ? (r.conf * 100).toFixed(0)
+                : '-';
               return (
                 <tr
                   key={r.symbol}
@@ -168,7 +179,7 @@ export default function Home() {
                     {price}{' '}
                     <small
                       className={
-                        (q?.changePct || 0) >= 0
+                        (q.changePct || 0) >= 0
                           ? 'text-green-400'
                           : 'text-red-400'
                       }
