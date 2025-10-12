@@ -9,14 +9,12 @@ function computeSignal({ lastClose, ema20, ema50, rsi, macd }) {
   if (![lastClose, ema20, ema50, rsi, macd?.hist, macd?.line, macd?.signal].every(v => Number.isFinite(v))) {
     return { action: 'Hold', confidence: 0.5, reason: 'Insufficient data' };
   }
-
   let score = 0;
   if (lastClose > ema20) score += 1;
   if (ema20 > ema50) score += 1;
   if (macd.hist > 0) score += 1;
   if (macd.line > macd.signal) score += 1;
   if (rsi > 50) score += 1;
-
   if (score >= 4) return { action: 'Buy', confidence: score / 5, reason: 'Strong bullish momentum' };
   if (score <= 1) return { action: 'Sell', confidence: (2 - score) / 2, reason: 'Bearish pressure' };
   return { action: 'Hold', confidence: 0.5, reason: 'Neutral / mixed signals' };
@@ -69,13 +67,13 @@ export default function Analyze() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
-        {/* ✅ กราฟพร้อม Header พรีเมียม */}
+        {/* ✅ กราฟพร้อม Header แบบโปร ไม่บังกราฟ */}
         <div className="relative rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
           {/* Gradient บนหัว */}
-          <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-[#0b1220]/95 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[#0b1220]/95 to-transparent z-10 pointer-events-none"></div>
 
-          {/* Header แบบโปร */}
-          <div className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between text-gray-200">
+          {/* Header */}
+          <div className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between text-gray-200 select-none">
             {/* Back */}
             <button
               onClick={() => push('/')}
@@ -101,15 +99,14 @@ export default function Analyze() {
             </div>
           </div>
 
-          {/* ✅ กราฟ */}
-          <div className="relative z-0">
+          {/* ✅ กราฟเลื่อนลง ไม่โดนบัง */}
+          <div className="relative z-0 pt-14">
             <Chart candles={hist} markers={markers} />
           </div>
         </div>
 
         {/* ✅ AI + Indicators */}
         <div className="grid md:grid-cols-2 gap-4">
-          {/* Trade Signal */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold">AI Trade Signal</h2>
@@ -133,7 +130,6 @@ export default function Analyze() {
             </div>
           </section>
 
-          {/* Indicators */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <h2 className="text-lg font-semibold">Indicators</h2>
             {!ind ? (
@@ -165,9 +161,7 @@ export default function Analyze() {
               Refresh
             </button>
           </div>
-
           {!news?.length && <div className="text-sm opacity-70 mt-3">No recent headlines.</div>}
-
           <ul className="mt-3 space-y-2">
             {news?.slice(0, 12).map((n, i) => (
               <li key={i} className="rounded-xl p-3 bg-black/20 border border-white/10">
@@ -193,4 +187,4 @@ function Info({ label, value, className = '' }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-                }
+    }
