@@ -41,10 +41,9 @@ export default function Chart({ candles = [], markers = [] }) {
     return () => chart.remove();
   }, [candles, markers]);
 
-  // 👉 ปุ่ม Fullscreen
+  // 👉 Fullscreen ที่เต็มจริง (ทั้งจอมือถือ)
   const handleFullscreen = () => {
-    const el = chartContainerRef.current;
-    if (!el) return;
+    const el = document.documentElement; // ใช้ทั้งหน้าจอ
     if (el.requestFullscreen) el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     else if (el.msRequestFullscreen) el.msRequestFullscreen();
@@ -52,16 +51,16 @@ export default function Chart({ candles = [], markers = [] }) {
 
   return (
     <div className="relative w-full h-[500px] rounded-2xl overflow-hidden border border-white/10">
-      {/* ตัวกราฟ */}
+      {/* Chart */}
       <div ref={chartContainerRef} className="w-full h-full" />
 
-      {/* ปุ่ม Fullscreen */}
+      {/* ปุ่ม Fullscreen (ซ้ายบน) */}
       <button
         onClick={handleFullscreen}
-        className="absolute top-2 right-2 z-10 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20"
+        className="absolute top-2 left-2 z-10 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20"
       >
         Fullscreen
       </button>
     </div>
   );
-        }
+    }
