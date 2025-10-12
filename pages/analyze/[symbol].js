@@ -67,11 +67,10 @@ export default function Analyze() {
   const price = ind?.lastClose || hist?.at(-1)?.c || 0;
 
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white">
-      {/* ───── Header ───── */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0c1426]/95 backdrop-blur-md">
+    <>
+      {/* ✅ Header อยู่กับที่แน่นอน */}
+      <header className="fixed top-0 left-0 right-0 z-[999] border-b border-white/10 bg-[#0c1426]/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
-          {/* ปุ่มย้อนกลับ */}
           <button
             onClick={() => push('/')}
             className="px-3 py-1 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
@@ -79,110 +78,100 @@ export default function Analyze() {
             ← Back
           </button>
 
-          {/* ชื่อ Symbol */}
           <h1 className="text-lg sm:text-xl font-semibold tracking-wide text-center flex-1">
             {symbol || '—'} <span className="opacity-60">— Realtime Analysis</span>
           </h1>
 
-          {/* ราคาปัจจุบัน */}
           <div className="px-2 py-1 text-sm rounded-md bg-white/10 border border-white/10 min-w-[70px] text-center font-medium">
             ${fmt(price, 2)}
           </div>
         </div>
       </header>
 
-      {/* ───── Body ───── */}
-      <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
-        {/* กราฟ */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-2">
-          <Chart candles={hist} markers={markers} />
-        </div>
-
-        {/* ─── AI Trade Signal + Indicators ─── */}
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* AI Trade Signal */}
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-start justify-between">
-              <h2 className="text-lg font-semibold">AI Trade Signal</h2>
-              <span
-                className={
-                  'text-right text-base font-bold ' +
-                  (sig.action === 'Buy'
-                    ? 'text-green-400'
-                    : sig.action === 'Sell'
-                    ? 'text-red-400'
-                    : 'text-yellow-300')
-                }
-              >
-                {sig.action}
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <Info label="Target" value={fmt(price * 1.08, 2)} />
-              <Info label="Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
-              <Info label="Reason" value={sig.reason} className="col-span-2" />
-            </div>
-          </section>
-
-          {/* Indicators */}
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <h2 className="text-lg font-semibold">Indicators</h2>
-            {!ind ? (
-              <div className="text-sm opacity-70 mt-2">Loading…</div>
-            ) : (
-              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
-                <Info label="RSI(14)" value={fmt(ind.rsi, 1)} />
-                <Info label="EMA20/50/200" value={`${fmt(ind.ema20)} / ${fmt(ind.ema50)} / ${fmt(ind.ema200)}`} />
-                <Info
-                  label="MACD (L/S/H)"
-                  value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`}
-                />
-                <Info label="ATR(14)" value={fmt(ind.atr, 3)} />
-                <Info label="Status" value={loading ? 'Loading…' : 'Live'} />
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* ─── Market News ─── */}
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Market News</h2>
-            <button
-              onClick={() => location.reload()}
-              className="text-sm px-3 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
-            >
-              Refresh
-            </button>
+      {/* ✅ Padding ด้านบน กัน header ทับเนื้อหา */}
+      <main className="pt-[64px] min-h-screen bg-[#0b1220] text-white">
+        <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-2">
+            <Chart candles={hist} markers={markers} />
           </div>
 
-          {!news?.length && <div className="text-sm opacity-70 mt-3">No recent headlines.</div>}
-
-          <ul className="mt-3 space-y-2">
-            {news?.slice(0, 12).map((n, i) => (
-              <li key={i} className="rounded-xl p-3 bg-black/20 border border-white/10">
-                <a
-                  href={n.url || n.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium hover:underline"
+          <div className="grid md:grid-cols-2 gap-4">
+            <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-start justify-between">
+                <h2 className="text-lg font-semibold">AI Trade Signal</h2>
+                <span
+                  className={
+                    'text-right text-base font-bold ' +
+                    (sig.action === 'Buy'
+                      ? 'text-green-400'
+                      : sig.action === 'Sell'
+                      ? 'text-red-400'
+                      : 'text-yellow-300')
+                  }
                 >
-                  {n.title || n.headline}
-                </a>
-                <div className="text-xs opacity-60 mt-1">
-                  {(n.source || n.publisher || '').toString()} • {(n.publishedAt || n.time || '').toString()}
+                  {sig.action}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <Info label="Target" value={fmt(price * 1.08, 2)} />
+                <Info label="Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
+                <Info label="Reason" value={sig.reason} className="col-span-2" />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <h2 className="text-lg font-semibold">Indicators</h2>
+              {!ind ? (
+                <div className="text-sm opacity-70 mt-2">Loading…</div>
+              ) : (
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
+                  <Info label="RSI(14)" value={fmt(ind.rsi, 1)} />
+                  <Info label="EMA20/50/200" value={`${fmt(ind.ema20)} / ${fmt(ind.ema50)} / ${fmt(ind.ema200)}`} />
+                  <Info
+                    label="MACD (L/S/H)"
+                    value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`}
+                  />
+                  <Info label="ATR(14)" value={fmt(ind.atr, 3)} />
+                  <Info label="Status" value={loading ? 'Loading…' : 'Live'} />
                 </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-    </main>
+              )}
+            </section>
+          </div>
+
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Market News</h2>
+              <button
+                onClick={() => location.reload()}
+                className="text-sm px-3 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {!news?.length && <div className="text-sm opacity-70 mt-3">No recent headlines.</div>}
+
+            <ul className="mt-3 space-y-2">
+              {news?.slice(0, 12).map((n, i) => (
+                <li key={i} className="rounded-xl p-3 bg-black/20 border border-white/10">
+                  <a href={n.url || n.link} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                    {n.title || n.headline}
+                  </a>
+                  <div className="text-xs opacity-60 mt-1">
+                    {(n.source || n.publisher || '').toString()} • {(n.publishedAt || n.time || '').toString()}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </main>
+    </>
   );
 }
 
-/* ───── Info Card ───── */
+/* Info card */
 function Info({ label, value, className = '' }) {
   return (
     <div className={`rounded-xl bg-black/20 border border-white/10 p-3 ${className}`}>
@@ -190,4 +179,4 @@ function Info({ label, value, className = '' }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-                  }
+    }
