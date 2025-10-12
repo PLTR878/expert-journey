@@ -1,42 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 const DEFAULT_UNIVERSE = [];
 
 export default function Home() {
-  const [horizon, setHorizon] = useState('short');
+  const [horizon, setHorizon] = useState("short");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [symbols, setSymbols] = useState(DEFAULT_UNIVERSE.join(','));
+  const [symbols, setSymbols] = useState(DEFAULT_UNIVERSE.join(","));
   const [quotes, setQuotes] = useState({});
-  const [theme, setTheme] = useState('system');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [theme, setTheme] = useState("system");
+  const [errorMsg, setErrorMsg] = useState("");
 
   // ---------- Theme ----------
   function applyTheme(next) {
     setTheme(next);
     const root = document.documentElement;
-    if (next === 'dark') root.classList.add('dark');
-    else if (next === 'light') root.classList.remove('dark');
+    if (next === "dark") root.classList.add("dark");
+    else if (next === "light") root.classList.remove("dark");
     else {
-      window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? root.classList.add('dark')
-        : root.classList.remove('dark');
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? root.classList.add("dark")
+        : root.classList.remove("dark");
     }
   }
 
   // ---------- Run Screener ----------
   async function run() {
     setLoading(true);
-    setErrorMsg('');
+    setErrorMsg("");
     try {
       const universe = symbols
-        .split(',')
+        .split(",")
         .map((s) => s.trim().toUpperCase())
         .filter(Boolean);
 
-      const r = await fetch('/api/screener', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const r = await fetch("/api/screener", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           horizon,
           universe: universe.length ? universe : undefined,
@@ -44,23 +44,23 @@ export default function Home() {
       });
 
       const j = await r.json();
-      console.log('📊 DEBUG screener result:', j);
+      console.log("📊 DEBUG screener result:", j);
 
       if (j && Array.isArray(j.results)) {
         setRows(j.results);
       } else {
-        throw new Error('Invalid API format: no results array');
+        throw new Error("Invalid API response structure");
       }
     } catch (err) {
-      console.error('❌ Screener error:', err);
-      setErrorMsg(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      console.error("❌ Screener error:", err);
+      setErrorMsg(err.message || "เกิดข้อผิดพลาดในการโหลดข้อมูล");
       setRows([]);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => applyTheme('system'), []);
+  useEffect(() => applyTheme("system"), []);
   useEffect(() => run(), [horizon]);
 
   // ---------- Poll Quotes ----------
@@ -72,19 +72,94 @@ export default function Home() {
         const m = {};
         await Promise.all(
           syms.map(async (s) => {
-            const q = await fetch(`/api/quote?symbol=${s}`).then((r) => r.json());
+            const q = await fetch(`/api/quote?symbol=${s}`).then((r) =>
+              r.json()
+            );
             if (q?.price != null) m[s] = q;
           })
         );
         setQuotes(m);
       } catch (err) {
-        console.error('⚠️ Poll error:', err);
+        console.error("⚠️ Poll error:", err);
       }
     }
     poll();
     t = setInterval(poll, 12000);
     return () => clearInterval(t);
   }, [rows.length]);
+
+  // ---------- Safe render ----------
+  function safeRenderRow(r) {
+    try {
+      const q = quotes[r.symbol] || {};
+      const price = q.price ?? r.lastClose ?? "-";
+      const change =
+        q.changePct != null ? `${q.changePct.toFixed(2)}%` : "";
+      const signal = r.signal || "-";
+      const conf = Number.isFinite(r.conf)
+        ? (r.conf * 100).toFixed(0)
+        : "-";
+      return (
+        <tr
+          key={r.symbol}
+          className="border-b border-gray-700 hover:bg-[#1c2538]/70 transition"
+        >
+          <td className="p-2 font-semibold text-blue-400">
+            <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+          </td>
+          <td className="p-2 text-right">
+            {Number.isFinite(r.score) ? r.score.toFixed(3) : "-"}
+          </td>
+          <td className="p-2 text-right">
+            {price}{" "}
+            <small
+              className={
+                (q.changePct || 0) >= 0
+                  ? "text-green-400"
+                  : "text-red-400"
+              }
+            >
+              {change}
+            </small>
+          </td>
+          <td className="p-2 text-right">
+            {Number.isFinite(r.rsi) ? r.rsi.toFixed(1) : "-"}
+          </td>
+          <td className="p-2 text-center">
+            {[
+              Number.isFinite(r.e20) ? r.e20.toFixed(2) : "-",
+              Number.isFinite(r.e50) ? r.e50.toFixed(2) : "-",
+              Number.isFinite(r.e200) ? r.e200.toFixed(2) : "-",
+            ].join(" / ")}
+          </td>
+          <td className="p-2 text-center">
+            <span
+              className={
+                signal === "Buy"
+                  ? "text-green-400 font-bold"
+                  : signal === "Sell"
+                  ? "text-red-400 font-bold"
+                  : "text-yellow-300 font-semibold"
+              }
+            >
+              {signal}
+            </span>
+            <br />
+            <small className="text-gray-400">{conf + "%"}</small>
+          </td>
+        </tr>
+      );
+    } catch (err) {
+      console.error("❌ Render row error:", err);
+      return (
+        <tr key={Math.random()} className="text-red-400">
+          <td colSpan="6" className="p-2 text-center">
+            ⚠️ Error rendering row
+          </td>
+        </tr>
+      );
+    }
+  }
 
   // ---------- UI ----------
   return (
@@ -106,7 +181,7 @@ export default function Home() {
               onClick={run}
               className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold"
             >
-              {loading ? 'กำลังสแกน...' : 'สแกนใหม่'}
+              {loading ? "กำลังสแกน..." : "สแกนใหม่"}
             </button>
           </div>
           <input
@@ -154,70 +229,10 @@ export default function Home() {
                 </td>
               </tr>
             )}
-
-            {rows.map((r) => {
-              const q = quotes[r.symbol] || {};
-              const price = q.price ?? r.lastClose ?? '-';
-              const change =
-                q.changePct != null ? `${q.changePct.toFixed(2)}%` : '';
-              const signal = r.signal || '-';
-              const conf = Number.isFinite(r.conf)
-                ? (r.conf * 100).toFixed(0)
-                : '-';
-              return (
-                <tr
-                  key={r.symbol}
-                  className="border-b border-gray-700 hover:bg-[#1c2538]/70 transition"
-                >
-                  <td className="p-2 font-semibold text-blue-400">
-                    <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
-                  </td>
-                  <td className="p-2 text-right">
-                    {Number.isFinite(r.score) ? r.score.toFixed(3) : '-'}
-                  </td>
-                  <td className="p-2 text-right">
-                    {price}{' '}
-                    <small
-                      className={
-                        (q.changePct || 0) >= 0
-                          ? 'text-green-400'
-                          : 'text-red-400'
-                      }
-                    >
-                      {change}
-                    </small>
-                  </td>
-                  <td className="p-2 text-right">
-                    {Number.isFinite(r.rsi) ? r.rsi.toFixed(1) : '-'}
-                  </td>
-                  <td className="p-2 text-center">
-                    {[
-                      Number.isFinite(r.e20) ? r.e20.toFixed(2) : '-',
-                      Number.isFinite(r.e50) ? r.e50.toFixed(2) : '-',
-                      Number.isFinite(r.e200) ? r.e200.toFixed(2) : '-',
-                    ].join(' / ')}
-                  </td>
-                  <td className="p-2 text-center">
-                    <span
-                      className={
-                        signal === 'Buy'
-                          ? 'text-green-400 font-bold'
-                          : signal === 'Sell'
-                          ? 'text-red-400 font-bold'
-                          : 'text-yellow-300 font-semibold'
-                      }
-                    >
-                      {signal}
-                    </span>
-                    <br />
-                    <small className="text-gray-400">{conf + '%'}</small>
-                  </td>
-                </tr>
-              );
-            })}
+            {rows.map((r) => safeRenderRow(r))}
           </tbody>
         </table>
       </div>
     </main>
   );
-    }
+                                 }
