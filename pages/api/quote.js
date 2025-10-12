@@ -1,3 +1,4 @@
+// /pages/api/quote.js
 export default async function handler(req, res) {
   const { symbol } = req.query;
 
@@ -6,33 +7,44 @@ export default async function handler(req, res) {
   }
 
   try {
+    // ✅ ใช้ endpoint ที่ให้ราคาจริง Real-Time จาก Yahoo
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`;
     const response = await fetch(url);
     const data = await response.json();
 
-    const q = data.quoteResponse.result[0];
-    if (!q) {
-      return res.status(404).json({ error: "Symbol not found" });
-    }
+    const q = data?.quoteResponse?.result?.[0];
+    if (!q) return res.status(404).json({ error: "Symbol not found" });
 
-    const price = q.regularMarketPrice ?? q.previousClose ?? null;
-    const change = q.regularMarketChangePercent ?? 0;
+    // ✅ ดึงราคาจริง พร้อม fallback เผื่อกรณี Yahoo ไม่มีข้อมูล
+    const price =
+      q.regularMarketPrice ??
+      q.postMarketPrice ??
+      q.preMarketPrice ??
+      q.previousClose ??
+      null;
+
+    const changePct =
+      q.regularMarketChangePercent ??
+      q.postMarketChangePercent ??
+      q.preMarketChangePercent ??
+      0;
+
     const rsi = Math.floor(Math.random() * 40) + 30;
     const trend = rsi > 60 ? "Up" : rsi < 40 ? "Down" : "Neutral";
-    const score = Math.floor((rsi / 100) * 10 * (1 + change / 50));
+    const score = Math.round((rsi / 100) * 10 * (1 + changePct / 50));
 
-    return res.status(200).json({
+    res.status(200).json({
       symbol,
       price,
-      change,
+      changePct,
       rsi,
       trend,
       score,
-      time: q.regularMarketTime,
-      marketState: q.marketState
+      marketState: q.marketState,
+      time: q.regularMarketTime
     });
-  } catch (e) {
-    console.error(e);
+  } catch (error) {
+    console.error("❌ Quote error:", error);
     res.status(500).json({ error: "Failed to fetch quote data" });
   }
-  }
+}
