@@ -27,10 +27,14 @@ function computeSignal({ lastClose, ema20, ema50, rsi, macd }) {
 // ---------- TradingView Widget ----------
 function TVChart({ symbol, theme = 'dark' }) {
   const id = useRef(`tv_${Math.random().toString(36).slice(2)}`);
+
   useEffect(() => {
-    const s = document.createElement('script');
-    s.src = 'https://s3.tradingview.com/tv.js';
-    s.onload = () => {
+    if (!symbol) return;
+
+    // ตรวจว่า script โหลดแล้วหรือยัง
+    const existingScript = document.getElementById('tv-script');
+    const createWidget = () => {
+      if (typeof window.TradingView === 'undefined') return;
       // eslint-disable-next-line no-undef
       new TradingView.widget({
         autosize: true,
@@ -48,13 +52,31 @@ function TVChart({ symbol, theme = 'dark' }) {
         studies: ['EMA@tv-basicstudies', 'MACD@tv-basicstudies', 'RSI@tv-basicstudies'],
       });
     };
-    document.body.appendChild(s);
+
+    if (!existingScript) {
+      const s = document.createElement('script');
+      s.id = 'tv-script';
+      s.src = 'https://s3.tradingview.com/tv.js';
+      s.async = true;
+      s.onload = createWidget;
+      document.body.appendChild(s);
+    } else {
+      createWidget();
+    }
+
+    // cleanup
     return () => {
-      try { document.body.removeChild(s); } catch {}
+      const el = document.getElementById(id.current);
+      if (el) el.innerHTML = '';
     };
   }, [symbol, theme]);
 
-  return <div id={id.current} className="h-[520px] w-full rounded-2xl overflow-hidden border border-white/10" />;
+  return (
+    <div
+      id={id.current}
+      className="h-[520px] w-full rounded-2xl overflow-hidden border border-white/10 bg-black/10"
+    />
+  );
 }
 
 // ---------- Page ----------
@@ -83,7 +105,6 @@ export default function AnalyzePage() {
         const [i, n, q] = await Promise.all([iRes.json(), nRes.json(), qRes.json()]);
         if (!alive) return;
 
-        // normalize indicators payload
         setInd({
           lastClose: i?.lastClose ?? i?.close ?? null,
           ema20: i?.ema20 ?? i?.e20 ?? null,
@@ -101,7 +122,7 @@ export default function AnalyzePage() {
         if (alive) setLoading(false);
       }
     })();
-    // soft realtime quote polling
+
     const t = setInterval(async () => {
       try {
         const q = await fetch(`/api/quote?symbol=${symbol}`).then(r => r.json());
@@ -147,10 +168,8 @@ export default function AnalyzePage() {
 
       {/* Body */}
       <div className="mx-auto max-w-6xl px-3 py-4 space-y-4">
-        {/* Chart */}
         <TVChart symbol={symbol} theme={theme} />
 
-        {/* Top row: AI Card + Quick Stats */}
         <div className="grid md:grid-cols-2 gap-4">
           {/* AI Trade Signal */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -170,24 +189,10 @@ export default function AnalyzePage() {
               </span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-black/20 border border-white/10 p-3">
-                <div className="opacity-70">Entry</div>
-                <div className="text-lg font-semibold">-</div>
-              </div>
-              <div className="rounded-xl bg-black/20 border border-white/10 p-3">
-                <div className="opacity-70">Target</div>
-                <div className="text-lg font-semibold">
-                  {Number.isFinite(ind?.ema20) ? fmt(ind.ema20 * 1.11, 2) : '-'}
-                </div>
-              </div>
-              <div className="rounded-xl bg-black/20 border border-white/10 p-3">
-                <div className="opacity-70">Stop</div>
-                <div className="text-lg font-semibold">-</div>
-              </div>
-              <div className="rounded-xl bg-black/20 border border-white/10 p-3">
-                <div className="opacity-70">Confidence</div>
-                <div className="text-lg font-semibold">{fmt(signal.confidence * 100, 0)}%</div>
-              </div>
+              <Info label="Entry" value="-" />
+              <Info label="Target" value={Number.isFinite(ind?.ema20) ? fmt(ind.ema20 * 1.11, 2) : '-'} />
+              <Info label="Stop" value="-" />
+              <Info label="Confidence" value={`${fmt(signal.confidence * 100, 0)}%`} />
             </div>
             <div className="mt-3 text-sm opacity-80">
               <b>Reason:</b> {signal.reason}
@@ -200,12 +205,8 @@ export default function AnalyzePage() {
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <Info label="Last Close" value={`$${fmt(ind?.lastClose)}`} />
               <Info label="RSI(14)" value={fmt(ind?.rsi, 1)} />
-              <Info label="EMA20/50/200" value={
-                `${fmt(ind?.ema20) } / ${ fmt(ind?.ema50) } / ${ fmt(ind?.ema200)}`
-              } />
-              <Info label="MACD (line/signal/hist)" value={
-                `${fmt(ind?.macd?.line)} / ${fmt(ind?.macd?.signal)} / ${fmt(ind?.macd?.hist)}`
-              } />
+              <Info label="EMA20/50/200" value={`${fmt(ind?.ema20)} / ${fmt(ind?.ema50)} / ${fmt(ind?.ema200)}`} />
+              <Info label="MACD (line/signal/hist)" value={`${fmt(ind?.macd?.line)} / ${fmt(ind?.macd?.signal)} / ${fmt(ind?.macd?.hist)}`} />
               <Info label="ATR(14)" value={fmt(ind?.atr, 3)} />
               <Info label="Data Status" value={loading ? 'Loading…' : 'Live'} />
             </div>
@@ -217,16 +218,14 @@ export default function AnalyzePage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Market News</h2>
             <button
-              onClick={() => symbol && location.reload()}
+              onClick={() => location.reload()}
               className="text-sm px-3 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             >
               Refresh
             </button>
           </div>
 
-          {!news?.length && (
-            <div className="text-sm opacity-70 mt-3">No recent headlines.</div>
-          )}
+          {!news?.length && <div className="text-sm opacity-70 mt-3">No recent headlines.</div>}
 
           <ul className="mt-3 space-y-2">
             {news?.slice(0, 12).map((n, i) => (
@@ -246,8 +245,6 @@ export default function AnalyzePage() {
             ))}
           </ul>
         </section>
-
-        <div className="h-8" />
       </div>
     </main>
   );
@@ -260,4 +257,4 @@ function Info({ label, value }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-  }
+              }
