@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 export default function Chart({ candles = [], markers = [] }) {
   const chartRef = useRef();
   const [chart, setChart] = useState(null);
+  const [series, setSeries] = useState(null);
   const [isFull, setIsFull] = useState(false);
 
   // ✅ สร้างกราฟ
@@ -11,20 +12,34 @@ export default function Chart({ candles = [], markers = [] }) {
     if (!chartRef.current) return;
 
     const chartInstance = createChart(chartRef.current, {
-      layout: { background: { color: '#0b1220' }, textColor: '#DDD' },
-      grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
+      layout: {
+        background: { color: '#0b1220' },
+        textColor: '#e5e7eb',
+      },
+      grid: {
+        vertLines: { color: '#1e293b' },
+        horzLines: { color: '#1e293b' },
+      },
       crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: { borderColor: '#555' },
-      timeScale: { borderColor: '#555', timeVisible: true },
+      rightPriceScale: {
+        borderColor: '#334155',
+        textColor: '#f8fafc',
+        scaleMargins: { top: 0.15, bottom: 0.05 },
+      },
+      timeScale: {
+        borderColor: '#334155',
+        timeVisible: true,
+        secondsVisible: false,
+      },
     });
 
     const candleSeries = chartInstance.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderUpColor: '#26a69a',
-      borderDownColor: '#ef5350',
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
+      upColor: '#00c48a',
+      downColor: '#ef4444',
+      borderUpColor: '#00c48a',
+      borderDownColor: '#ef4444',
+      wickUpColor: '#00c48a',
+      wickDownColor: '#ef4444',
     });
 
     const data = candles.map(c => ({
@@ -37,13 +52,27 @@ export default function Chart({ candles = [], markers = [] }) {
 
     candleSeries.setData(data);
     if (markers?.length) candleSeries.setMarkers(markers);
-    chartInstance.timeScale().fitContent();
 
+    // ✅ เพิ่มเส้นราคา + แถบ Label ชัดเจน
+    if (data.length > 0) {
+      const last = data[data.length - 1];
+      candleSeries.createPriceLine({
+        price: last.close,
+        color: '#60a5fa',
+        lineWidth: 2,
+        lineStyle: 0,
+        axisLabelVisible: true,
+        title: `Price ${last.close.toFixed(2)}`,
+      });
+    }
+
+    chartInstance.timeScale().fitContent();
     setChart(chartInstance);
+    setSeries(candleSeries);
     return () => chartInstance.remove();
   }, [candles, markers]);
 
-  // ✅ จัดการ fullscreen + หมุนแนวนอน
+  // ✅ จัดการ fullscreen
   useEffect(() => {
     if (!chart) return;
 
@@ -73,10 +102,9 @@ export default function Chart({ candles = [], markers = [] }) {
           : 'w-full h-[500px] rounded-2xl overflow-hidden border border-white/10'
       }`}
     >
-      {/* พื้นที่กราฟ */}
       <div ref={chartRef} className="absolute inset-0 w-full h-full" />
 
-      {/* ปุ่ม toggle fullscreen */}
+      {/* ปุ่ม Fullscreen */}
       <button
         onClick={() => setIsFull(!isFull)}
         className={`absolute top-3 left-3 z-[10000] px-3 py-1 rounded text-xs font-medium border ${
@@ -89,4 +117,4 @@ export default function Chart({ candles = [], markers = [] }) {
       </button>
     </div>
   );
-      }
+                 }
