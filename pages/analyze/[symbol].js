@@ -67,115 +67,110 @@ export default function Analyze() {
   const price = ind?.lastClose || hist?.at(-1)?.c || 0;
 
   return (
-    <>
-      {/* ✅ Header แบบฝังในพื้นหลัง */}
-      <header className="fixed top-0 left-0 right-0 z-[9999] bg-[#0b1220]/95 backdrop-blur-sm border-b border-white/5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-2">
-          {/* Back เป็นแค่ข้อความ */}
-          <button
-            onClick={() => push('/')}
-            className="text-gray-300 hover:text-white transition text-sm"
-          >
-            ← Back
-          </button>
+    <main className="min-h-screen bg-[#0b1220] text-white">
+      <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
+        {/* ✅ กราฟพร้อมหัวฝังในกรอบ */}
+        <div className="relative rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          {/* gradient ด้านบน */}
+          <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#0b1220]/90 to-transparent z-10 pointer-events-none"></div>
 
-          {/* ชื่อหุ้น + คำอธิบาย */}
-          <h1 className="text-lg sm:text-xl font-semibold tracking-wide text-gray-200 text-center flex-1">
-            {symbol || '—'} <span className="opacity-60 font-normal">— Realtime Analysis</span>
-          </h1>
+          {/* หัว AMD — ฝังในกราฟ */}
+          <div className="absolute top-2 left-3 right-3 z-20 flex items-center justify-between text-sm sm:text-base font-semibold text-gray-200">
+            <button
+              onClick={() => push('/')}
+              className="text-gray-400 hover:text-white transition font-medium"
+            >
+              ← Back
+            </button>
+            <div className="flex-1 text-center text-[15px] sm:text-[17px] tracking-wide">
+              <span className="text-white">{symbol || '—'}</span>
+              <span className="opacity-60 font-normal ml-1">— Realtime Analysis</span>
+            </div>
+            <div className="text-right font-semibold text-[14px] sm:text-[15px] text-green-400 drop-shadow">
+              ${fmt(price, 2)}
+            </div>
+          </div>
 
-          {/* ราคาแบบฝัง */}
-          <div className="text-gray-100 text-sm font-medium">
-            ${fmt(price, 2)}
+          {/* กราฟ */}
+          <div className="relative z-0">
+            <Chart candles={hist} markers={markers} />
           </div>
         </div>
-      </header>
 
-      {/* ✅ กัน header ทับกราฟ */}
-      <main className="mt-[56px] min-h-screen bg-[#0b1220] text-white relative z-0 overflow-x-hidden">
-        <div className="max-w-6xl mx-auto px-3 py-4 space-y-4 relative z-0">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-2 relative z-0">
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <Chart candles={hist} markers={markers} />
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* AI Trade Signal */}
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-start justify-between">
-                <h2 className="text-lg font-semibold">AI Trade Signal</h2>
-                <span
-                  className={
-                    'text-right text-base font-bold ' +
-                    (sig.action === 'Buy'
-                      ? 'text-green-400'
-                      : sig.action === 'Sell'
-                      ? 'text-red-400'
-                      : 'text-yellow-300')
-                  }
-                >
-                  {sig.action}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <Info label="Target" value={fmt(price * 1.08, 2)} />
-                <Info label="Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
-                <Info label="Reason" value={sig.reason} className="col-span-2" />
-              </div>
-            </section>
-
-            {/* Indicators */}
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <h2 className="text-lg font-semibold">Indicators</h2>
-              {!ind ? (
-                <div className="text-sm opacity-70 mt-2">Loading…</div>
-              ) : (
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
-                  <Info label="RSI(14)" value={fmt(ind.rsi, 1)} />
-                  <Info label="EMA20/50/200" value={`${fmt(ind.ema20)} / ${fmt(ind.ema50)} / ${fmt(ind.ema200)}`} />
-                  <Info
-                    label="MACD (L/S/H)"
-                    value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`}
-                  />
-                  <Info label="ATR(14)" value={fmt(ind.atr, 3)} />
-                  <Info label="Status" value={loading ? 'Loading…' : 'Live'} />
-                </div>
-              )}
-            </section>
-          </div>
-
-          {/* Market News */}
+        {/* ✅ AI + Indicators */}
+        <div className="grid md:grid-cols-2 gap-4">
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Market News</h2>
-              <button
-                onClick={() => location.reload()}
-                className="text-sm px-3 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+            <div className="flex items-start justify-between">
+              <h2 className="text-lg font-semibold">AI Trade Signal</h2>
+              <span
+                className={
+                  'text-right text-base font-bold ' +
+                  (sig.action === 'Buy'
+                    ? 'text-green-400'
+                    : sig.action === 'Sell'
+                    ? 'text-red-400'
+                    : 'text-yellow-300')
+                }
               >
-                Refresh
-              </button>
+                {sig.action}
+              </span>
             </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <Info label="Target" value={fmt(price * 1.08, 2)} />
+              <Info label="Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
+              <Info label="Reason" value={sig.reason} className="col-span-2" />
+            </div>
+          </section>
 
-            {!news?.length && <div className="text-sm opacity-70 mt-3">No recent headlines.</div>}
-
-            <ul className="mt-3 space-y-2">
-              {news?.slice(0, 12).map((n, i) => (
-                <li key={i} className="rounded-xl p-3 bg-black/20 border border-white/10">
-                  <a href={n.url || n.link} target="_blank" rel="noreferrer" className="font-medium hover:underline">
-                    {n.title || n.headline}
-                  </a>
-                  <div className="text-xs opacity-60 mt-1">
-                    {(n.source || n.publisher || '').toString()} • {(n.publishedAt || n.time || '').toString()}
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <h2 className="text-lg font-semibold">Indicators</h2>
+            {!ind ? (
+              <div className="text-sm opacity-70 mt-2">Loading…</div>
+            ) : (
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
+                <Info label="RSI(14)" value={fmt(ind.rsi, 1)} />
+                <Info label="EMA20/50/200" value={`${fmt(ind.ema20)} / ${fmt(ind.ema50)} / ${fmt(ind.ema200)}`} />
+                <Info
+                  label="MACD (L/S/H)"
+                  value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`}
+                />
+                <Info label="ATR(14)" value={fmt(ind.atr, 3)} />
+                <Info label="Status" value={loading ? 'Loading…' : 'Live'} />
+              </div>
+            )}
           </section>
         </div>
-      </main>
-    </>
+
+        {/* ✅ ข่าว */}
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Market News</h2>
+            <button
+              onClick={() => location.reload()}
+              className="text-sm px-3 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {!news?.length && <div className="text-sm opacity-70 mt-3">No recent headlines.</div>}
+
+          <ul className="mt-3 space-y-2">
+            {news?.slice(0, 12).map((n, i) => (
+              <li key={i} className="rounded-xl p-3 bg-black/20 border border-white/10">
+                <a href={n.url || n.link} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                  {n.title || n.headline}
+                </a>
+                <div className="text-xs opacity-60 mt-1">
+                  {(n.source || n.publisher || '').toString()} • {(n.publishedAt || n.time || '').toString()}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </main>
   );
 }
 
@@ -186,4 +181,4 @@ function Info({ label, value, className = '' }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-  }
+          }
