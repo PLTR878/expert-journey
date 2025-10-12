@@ -2,12 +2,12 @@ import { createChart, CrosshairMode } from 'lightweight-charts';
 import { useEffect, useRef } from 'react';
 
 export default function Chart({ candles = [], markers = [] }) {
-  const ref = useRef();
-  const chartRef = useRef(); // สำหรับ requestFullscreen
+  const chartContainerRef = useRef();
 
   useEffect(() => {
-    if (!ref.current) return;
-    const chart = createChart(ref.current, {
+    if (!chartContainerRef.current) return;
+
+    const chart = createChart(chartContainerRef.current, {
       height: 500,
       layout: { background: { color: '#0b1220' }, textColor: '#DDD' },
       grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
@@ -34,33 +34,34 @@ export default function Chart({ candles = [], markers = [] }) {
     }));
 
     candleSeries.setData(formatted);
-    if (markers.length) candleSeries.setMarkers(markers);
+    if (markers?.length) candleSeries.setMarkers(markers);
 
     chart.timeScale().fitContent();
-    chartRef.current = chart;
 
     return () => chart.remove();
   }, [candles, markers]);
 
+  // 👉 ปุ่ม Fullscreen
   const handleFullscreen = () => {
-    if (ref.current?.requestFullscreen) {
-      ref.current.requestFullscreen();
-    } else if (ref.current?.webkitRequestFullscreen) {
-      ref.current.webkitRequestFullscreen();
-    } else if (ref.current?.msRequestFullscreen) {
-      ref.current.msRequestFullscreen();
-    }
+    const el = chartContainerRef.current;
+    if (!el) return;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.msRequestFullscreen) el.msRequestFullscreen();
   };
 
   return (
-    <div ref={ref} className="relative w-full h-[500px] rounded-2xl overflow-hidden">
+    <div className="relative w-full h-[500px] rounded-2xl overflow-hidden border border-white/10">
+      {/* ตัวกราฟ */}
+      <div ref={chartContainerRef} className="w-full h-full" />
+
       {/* ปุ่ม Fullscreen */}
       <button
         onClick={handleFullscreen}
-        className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20"
+        className="absolute top-2 right-2 z-10 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20"
       >
         Fullscreen
       </button>
     </div>
   );
-}
+        }
