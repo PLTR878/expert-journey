@@ -67,8 +67,15 @@ export default function Analyze() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
-        {/* ✅ กราฟพร้อม Header แบบโปร ไม่บังกราฟ */}
-        <div className="relative rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        
+        {/* ✅ กราฟพร้อม Header พรีเมียม */}
+        <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.4)] border border-white/10">
+          {/* เส้นขอบเงาด้านใน */}
+          <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_2px_10px_rgba(255,255,255,0.05),inset_0_-6px_15px_rgba(0,0,0,0.7)]"></div>
+
+          {/* แสงสะท้อนขอบบน */}
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent"></div>
+
           {/* Gradient บนหัว */}
           <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[#0b1220]/95 to-transparent z-10 pointer-events-none"></div>
 
@@ -85,7 +92,7 @@ export default function Analyze() {
 
             {/* ชื่อหุ้น */}
             <div className="flex-1 text-center">
-              <span className="text-[17px] sm:text-[18px] font-bold tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+              <span className="text-[17px] sm:text-[18px] font-bold tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
                 {symbol || '—'}
               </span>
               <span className="ml-1 text-[14px] sm:text-[15px] text-gray-400 font-light tracking-wide">
@@ -94,12 +101,12 @@ export default function Analyze() {
             </div>
 
             {/* ราคา */}
-            <div className="text-right text-[15px] sm:text-[16px] font-semibold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-lg border border-emerald-400/20 shadow-sm">
+            <div className="text-right text-[15px] sm:text-[16px] font-semibold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-lg border border-emerald-400/20 shadow-[0_0_6px_rgba(16,185,129,0.3)]">
               ${fmt(price, 2)}
             </div>
           </div>
 
-          {/* ✅ กราฟเลื่อนลง ไม่โดนบัง */}
+          {/* ✅ กราฟ */}
           <div className="relative z-0 pt-14">
             <Chart candles={hist} markers={markers} />
           </div>
@@ -107,7 +114,7 @@ export default function Analyze() {
 
         {/* ✅ AI + Indicators */}
         <div className="grid md:grid-cols-2 gap-4">
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_3px_rgba(255,255,255,0.05)]">
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold">AI Trade Signal</h2>
               <span
@@ -130,7 +137,7 @@ export default function Analyze() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[inset_0_1px_3px_rgba(255,255,255,0.05)]">
             <h2 className="text-lg font-semibold">Indicators</h2>
             {!ind ? (
               <div className="text-sm opacity-70 mt-2">Loading…</div>
@@ -187,4 +194,4 @@ function Info({ label, value, className = '' }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-    }
+                }
