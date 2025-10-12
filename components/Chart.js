@@ -6,11 +6,11 @@ export default function Chart({ candles = [], markers = [] }) {
   const [chart, setChart] = useState(null);
   const [isFull, setIsFull] = useState(false);
 
+  // ✅ สร้างกราฟ
   useEffect(() => {
     if (!chartRef.current) return;
 
     const chartInstance = createChart(chartRef.current, {
-      height: 500,
       layout: { background: { color: '#0b1220' }, textColor: '#DDD' },
       grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
       crosshair: { mode: CrosshairMode.Normal },
@@ -43,34 +43,50 @@ export default function Chart({ candles = [], markers = [] }) {
     return () => chartInstance.remove();
   }, [candles, markers]);
 
+  // ✅ จัดการ fullscreen + หมุนแนวนอน
   useEffect(() => {
     if (!chart) return;
-    // ปรับขนาดอัตโนมัติเมื่อเปลี่ยนโหมดเต็มจอ
-    chart.resize(
-      window.innerWidth,
-      isFull ? window.innerHeight : 500
-    );
+
+    const resize = () => {
+      chart.resize(window.innerWidth, window.innerHeight);
+    };
+
+    if (isFull) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      screen.orientation?.lock?.('landscape').catch(() => {});
+      resize();
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      screen.orientation?.unlock?.();
+      chart.resize(window.innerWidth, 500);
+    }
+
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
   }, [isFull, chart]);
 
   return (
     <div
       className={`relative ${
         isFull
-          ? 'fixed top-0 left-0 w-screen h-screen z-[9999] bg-[#0b1220]'
+          ? 'fixed inset-0 z-[9999] bg-[#0b1220] w-screen h-screen'
           : 'w-full h-[500px] rounded-2xl overflow-hidden border border-white/10'
       }`}
     >
-      <div ref={chartRef} className="w-full h-full" />
+      {/* พื้นที่กราฟ */}
+      <div ref={chartRef} className="absolute inset-0 w-full h-full" />
 
-      {/* ปุ่ม Fullscreen / Exit */}
+      {/* ปุ่ม toggle fullscreen */}
       <button
         onClick={() => setIsFull(!isFull)}
-        className={`absolute top-3 left-3 z-[10000] bg-white/10 hover:bg-white/20 text-xs px-3 py-1 rounded border border-white/20 ${
-          isFull ? 'text-red-300' : ''
+        className={`absolute top-3 left-3 z-[10000] px-3 py-1 rounded text-xs font-medium border ${
+          isFull
+            ? 'bg-red-500/20 text-red-300 border-red-400/40 hover:bg-red-500/40'
+            : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
         }`}
       >
         {isFull ? 'Exit Fullscreen' : 'Fullscreen'}
       </button>
     </div>
   );
-          }
+      }
