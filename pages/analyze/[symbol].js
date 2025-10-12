@@ -68,31 +68,33 @@ export default function Analyze() {
 
   return (
     <>
-      {/* ✅ Header ลอยค้าง 100% */}
-      <header className="fixed top-0 left-0 right-0 z-[9999] border-b border-white/10 bg-[#0c1426]/95 backdrop-blur-lg shadow-md">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
+      {/* ✅ Header แบบฝังในพื้นหลัง */}
+      <header className="fixed top-0 left-0 right-0 z-[9999] bg-[#0b1220]/95 backdrop-blur-sm border-b border-white/5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-2">
+          {/* Back เป็นแค่ข้อความ */}
           <button
             onClick={() => push('/')}
-            className="px-3 py-1 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
+            className="text-gray-300 hover:text-white transition text-sm"
           >
             ← Back
           </button>
 
-          <h1 className="text-lg sm:text-xl font-semibold tracking-wide text-center flex-1">
-            {symbol || '—'} <span className="opacity-60">— Realtime Analysis</span>
+          {/* ชื่อหุ้น + คำอธิบาย */}
+          <h1 className="text-lg sm:text-xl font-semibold tracking-wide text-gray-200 text-center flex-1">
+            {symbol || '—'} <span className="opacity-60 font-normal">— Realtime Analysis</span>
           </h1>
 
-          <div className="px-2 py-1 text-sm rounded-md bg-white/10 border border-white/10 min-w-[70px] text-center font-medium">
+          {/* ราคาแบบฝัง */}
+          <div className="text-gray-100 text-sm font-medium">
             ${fmt(price, 2)}
           </div>
         </div>
       </header>
 
-      {/* ✅ เพิ่ม margin-top เพื่อกัน header ทับกราฟ */}
-      <main className="mt-[72px] min-h-screen bg-[#0b1220] text-white relative z-0 overflow-x-hidden">
+      {/* ✅ กัน header ทับกราฟ */}
+      <main className="mt-[56px] min-h-screen bg-[#0b1220] text-white relative z-0 overflow-x-hidden">
         <div className="max-w-6xl mx-auto px-3 py-4 space-y-4 relative z-0">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-2 relative z-0">
-            {/* กราฟอยู่ layer ต่ำกว่า header */}
             <div style={{ position: 'relative', zIndex: 1 }}>
               <Chart candles={hist} markers={markers} />
             </div>
@@ -184,4 +186,4 @@ function Info({ label, value, className = '' }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-              }
+  }
