@@ -35,32 +35,31 @@ export default function Chart({ candles = [], markers = [] }) {
 
     candleSeries.setData(formatted);
     if (markers?.length) candleSeries.setMarkers(markers);
-
     chart.timeScale().fitContent();
 
     return () => chart.remove();
   }, [candles, markers]);
 
-  // 👉 Fullscreen ที่เต็มจริง (ทั้งจอมือถือ)
+  // ฟังก์ชันขยายเต็มจอ
   const handleFullscreen = () => {
-    const el = document.documentElement; // ใช้ทั้งหน้าจอ
+    const el = document.documentElement;
     if (el.requestFullscreen) el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     else if (el.msRequestFullscreen) el.msRequestFullscreen();
   };
 
   return (
-    <div className="relative w-full h-[500px] rounded-2xl overflow-hidden border border-white/10">
-      {/* Chart */}
-      <div ref={chartContainerRef} className="w-full h-full" />
+    <div className="relative w-full h-[500px] rounded-2xl overflow-hidden border border-white/10 pointer-events-none">
+      {/* chart area */}
+      <div ref={chartContainerRef} className="w-full h-full pointer-events-auto" />
 
       {/* ปุ่ม Fullscreen (ซ้ายบน) */}
       <button
         onClick={handleFullscreen}
-        className="absolute top-2 left-2 z-10 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20"
+        className="absolute top-2 left-2 z-20 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20 pointer-events-auto"
       >
         Fullscreen
       </button>
     </div>
   );
-    }
+}
