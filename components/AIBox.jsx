@@ -1,19 +1,19 @@
-export default function AIBox({ signal }){
-  if(!signal) return null;
-  const color = signal.action==='Buy' ? 'text-green-600' : signal.action==='Sell' ? 'text-red-600' : 'text-slate-400';
-  return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-lg">AI Trade Signal</h3>
-        <span className={`font-semibold ${color}`}>{signal.action}</span>
+<div className="card p-4">
+  <h3 className="font-bold">สัญญาณการเทรดโดย AI</h3>
+  {signal ? (
+    <>
+      <div className="flex justify-between items-center">
+        <span>คำแนะนำ:</span>
+        <span className={`font-bold ${signal.action === 'Buy' ? 'text-green-500' : signal.action === 'Sell' ? 'text-red-500' : 'text-gray-400'}`}>
+          {signal.action === 'Buy' ? 'ซื้อ' : signal.action === 'Sell' ? 'ขาย' : 'ถือ'}
+        </span>
       </div>
-      <div className="grid grid-cols-2 gap-2 text-sm mt-2">
-        <div><b>Entry:</b> {signal.entry_zone||'-'}</div>
-        <div><b>Target:</b> {signal.target||'-'}</div>
-        <div><b>Stop:</b> {signal.stop_loss||'-'}</div>
-        <div><b>Confidence:</b> {signal.confidence??'-'}%</div>
-      </div>
-      {signal.reason && <p className="text-sm mt-2"><b>Reason:</b> {signal.reason}</p>}
-    </div>
-  )
-}
+      <div>เป้าหมายราคา: {signal.target || '-'}</div>
+      <div>จุดตัดขาดทุน: {signal.stop || '-'}</div>
+      <div>ความมั่นใจของ AI: {(signal.confidence * 100).toFixed(1)}%</div>
+      <div>เหตุผล: {signal.reason || '-'}</div>
+    </>
+  ) : (
+    <p>กำลังวิเคราะห์ด้วย AI...</p>
+  )}
+</div>
