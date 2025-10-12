@@ -68,8 +68,8 @@ export default function Analyze() {
 
   return (
     <>
-      {/* ✅ Header อยู่กับที่แน่นอน */}
-      <header className="fixed top-0 left-0 right-0 z-[999] border-b border-white/10 bg-[#0c1426]/95 backdrop-blur-md">
+      {/* ✅ Header ลอยค้าง 100% */}
+      <header className="fixed top-0 left-0 right-0 z-[9999] border-b border-white/10 bg-[#0c1426]/95 backdrop-blur-lg shadow-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
           <button
             onClick={() => push('/')}
@@ -88,14 +88,18 @@ export default function Analyze() {
         </div>
       </header>
 
-      {/* ✅ Padding ด้านบน กัน header ทับเนื้อหา */}
-      <main className="pt-[64px] min-h-screen bg-[#0b1220] text-white">
-        <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-2">
-            <Chart candles={hist} markers={markers} />
+      {/* ✅ เพิ่ม margin-top เพื่อกัน header ทับกราฟ */}
+      <main className="mt-[72px] min-h-screen bg-[#0b1220] text-white relative z-0 overflow-x-hidden">
+        <div className="max-w-6xl mx-auto px-3 py-4 space-y-4 relative z-0">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-2 relative z-0">
+            {/* กราฟอยู่ layer ต่ำกว่า header */}
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <Chart candles={hist} markers={markers} />
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
+            {/* AI Trade Signal */}
             <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-start justify-between">
                 <h2 className="text-lg font-semibold">AI Trade Signal</h2>
@@ -119,6 +123,7 @@ export default function Analyze() {
               </div>
             </section>
 
+            {/* Indicators */}
             <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <h2 className="text-lg font-semibold">Indicators</h2>
               {!ind ? (
@@ -139,6 +144,7 @@ export default function Analyze() {
             </section>
           </div>
 
+          {/* Market News */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Market News</h2>
@@ -171,7 +177,6 @@ export default function Analyze() {
   );
 }
 
-/* Info card */
 function Info({ label, value, className = '' }) {
   return (
     <div className={`rounded-xl bg-black/20 border border-white/10 p-3 ${className}`}>
@@ -179,4 +184,4 @@ function Info({ label, value, className = '' }) {
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-    }
+              }
