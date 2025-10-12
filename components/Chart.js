@@ -1,8 +1,9 @@
 import { createChart, CrosshairMode } from 'lightweight-charts';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Chart({ candles = [], markers = [] }) {
   const chartContainerRef = useRef();
+  const [isFull, setIsFull] = useState(false);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -37,28 +38,37 @@ export default function Chart({ candles = [], markers = [] }) {
     if (markers?.length) candleSeries.setMarkers(markers);
     chart.timeScale().fitContent();
 
-    return () => chart.remove();
+    // ตรวจจับสถานะ fullscreen
+    const handleChange = () => setIsFull(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleChange);
+
+    return () => {
+      chart.remove();
+      document.removeEventListener('fullscreenchange', handleChange);
+    };
   }, [candles, markers]);
 
-  // ฟังก์ชันขยายเต็มจอ
   const handleFullscreen = () => {
     const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+    if (!document.fullscreenElement) {
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
   };
 
   return (
-    <div className="relative w-full h-[500px] rounded-2xl overflow-hidden border border-white/10 pointer-events-none">
-      {/* chart area */}
+    <div className={`relative w-full ${isFull ? 'h-screen fixed inset-0 z-50 bg-[#0b1220]' : 'h-[500px] rounded-2xl overflow-hidden border border-white/10'}`}>
       <div ref={chartContainerRef} className="w-full h-full pointer-events-auto" />
 
-      {/* ปุ่ม Fullscreen (ซ้ายบน) */}
+      {/* ปุ่ม Fullscreen / Exit */}
       <button
         onClick={handleFullscreen}
-        className="absolute top-2 left-2 z-20 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20 pointer-events-auto"
+        className="absolute top-2 left-2 z-50 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20 pointer-events-auto"
       >
-        Fullscreen
+        {isFull ? 'Exit Fullscreen' : 'Fullscreen'}
       </button>
     </div>
   );
