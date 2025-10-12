@@ -1,10 +1,9 @@
-// /pages/analyze/[symbol].js
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+const Chart = dynamic(() => import('../../components/Chart'), { ssr: false });
 
-// ---------- Utils ----------
-const fmt = (n, d = 2) =>
-  (Number.isFinite(n) ? Number(n).toFixed(d) : '-');
+const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : '-');
 
 function computeSignal({ lastClose, ema20, ema50, rsi, macd }) {
   if (![lastClose, ema20, ema50, rsi, macd?.hist, macd?.line, macd?.signal]
@@ -24,116 +23,48 @@ function computeSignal({ lastClose, ema20, ema50, rsi, macd }) {
   return { action: 'Hold', confidence: 0.5, reason: 'Neutral / mixed signals' };
 }
 
-// ---------- TradingView Widget ----------
-function TVChart({ symbol, theme = 'dark' }) {
-  const id = useRef(`tv_${Math.random().toString(36).slice(2)}`);
-
-  useEffect(() => {
-    if (!symbol) return;
-
-    // ตรวจว่า script โหลดแล้วหรือยัง
-    const existingScript = document.getElementById('tv-script');
-    const createWidget = () => {
-      if (typeof window.TradingView === 'undefined') return;
-      // eslint-disable-next-line no-undef
-      new TradingView.widget({
-        autosize: true,
-        symbol,
-        interval: '60',
-        timezone: 'Etc/UTC',
-        theme: theme === 'light' ? 'light' : 'dark',
-        style: '1',
-        locale: 'en',
-        toolbar_bg: 'rgba(0,0,0,0)',
-        hide_top_toolbar: false,
-        hide_legend: false,
-        save_image: false,
-        container_id: id.current,
-        studies: ['EMA@tv-basicstudies', 'MACD@tv-basicstudies', 'RSI@tv-basicstudies'],
-      });
-    };
-
-    if (!existingScript) {
-      const s = document.createElement('script');
-      s.id = 'tv-script';
-      s.src = 'https://s3.tradingview.com/tv.js';
-      s.async = true;
-      s.onload = createWidget;
-      document.body.appendChild(s);
-    } else {
-      createWidget();
-    }
-
-    // cleanup
-    return () => {
-      const el = document.getElementById(id.current);
-      if (el) el.innerHTML = '';
-    };
-  }, [symbol, theme]);
-
-  return (
-    <div
-      id={id.current}
-      className="h-[520px] w-full rounded-2xl overflow-hidden border border-white/10 bg-black/10"
-    />
-  );
-}
-
-// ---------- Page ----------
-export default function AnalyzePage() {
+export default function Analyze() {
   const { query, push } = useRouter();
-  const symbol = useMemo(() => String(query.symbol || '').toUpperCase(), [query.symbol]);
-
-  const [theme, setTheme] = useState('dark');
-  const [loading, setLoading] = useState(true);
+  const symbol = (query.symbol || '').toString().toUpperCase();
+  const [hist, setHist] = useState([]);
   const [ind, setInd] = useState(null);
+  const [signal, setSignal] = useState(null);
   const [news, setNews] = useState([]);
-  const [quote, setQuote] = useState(null);
-  const signal = useMemo(() => ind ? computeSignal(ind) : { action: 'Hold', confidence: 0.5, reason: '-' }, [ind]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!symbol) return;
-    let alive = true;
     (async () => {
       setLoading(true);
       try {
-        const [iRes, nRes, qRes] = await Promise.all([
-          fetch(`/api/indicators?symbol=${symbol}`),
-          fetch(`/api/news?symbol=${symbol}`),
-          fetch(`/api/quote?symbol=${symbol}`),
+        const [h, i, n] = await Promise.all([
+          fetch(`/api/history?symbol=${symbol}&range=6mo&interval=1d`).then(r => r.json()),
+          fetch(`/api/indicators?symbol=${symbol}`).then(r => r.json()),
+          fetch(`/api/news?symbol=${symbol}`).then(r => r.json()),
         ]);
-        const [i, n, q] = await Promise.all([iRes.json(), nRes.json(), qRes.json()]);
-        if (!alive) return;
-
-        setInd({
-          lastClose: i?.lastClose ?? i?.close ?? null,
-          ema20: i?.ema20 ?? i?.e20 ?? null,
-          ema50: i?.ema50 ?? i?.e50 ?? null,
-          ema200: i?.ema200 ?? i?.e200 ?? null,
-          rsi: i?.rsi ?? null,
-          macd: i?.macd ?? { line: null, signal: null, hist: null },
-          atr: i?.atr ?? null,
-        });
-        setNews(Array.isArray(n?.items) ? n.items : (n || []));
-        setQuote(q || null);
+        setHist(h.rows || []);
+        setInd(i || {});
+        setNews(n.items || []);
       } catch (e) {
         console.error(e);
       } finally {
-        if (alive) setLoading(false);
+        setLoading(false);
       }
     })();
-
-    const t = setInterval(async () => {
-      try {
-        const q = await fetch(`/api/quote?symbol=${symbol}`).then(r => r.json());
-        setQuote(q || null);
-      } catch {}
-    }, 12000);
-
-    return () => { alive = false; clearInterval(t); };
   }, [symbol]);
 
-  const price = quote?.price ?? ind?.lastClose;
+  const markers = useMemo(() => {
+    if (!ind || !hist?.length) return [];
+    const last = hist.at(-1)?.t;
+    const t = Math.floor((last || Date.now()) / 1000);
+    const sig = computeSignal(ind);
+    if (sig.action === 'Buy') return [{ time: t, position: 'belowBar', color: '#22c55e', shape: 'arrowUp', text: `BUY ${symbol}` }];
+    if (sig.action === 'Sell') return [{ time: t, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `SELL ${symbol}` }];
+    return [{ time: t, position: 'inBar', color: '#64748b', shape: 'circle', text: `HOLD ${symbol}` }];
+  }, [JSON.stringify(ind), hist?.length]);
+
+  const sig = computeSignal(ind || {});
+  const price = ind?.lastClose || hist?.at(-1)?.c || 0;
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
@@ -149,27 +80,19 @@ export default function AnalyzePage() {
           <h1 className="text-xl font-semibold tracking-wide">
             {symbol || '—'} <span className="opacity-60">— Realtime Analysis</span>
           </h1>
-
-          <div className="ml-auto flex items-center gap-2">
-            <div className="px-2 py-1 text-sm rounded bg-white/5 border border-white/10">
-              {Number.isFinite(price) ? `$${fmt(price, 2)}` : '—'}
-            </div>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-              className="bg-[#17233f] text-white text-sm px-2 py-1 rounded border border-white/10"
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
+          <div className="ml-auto px-2 py-1 text-sm rounded bg-white/5 border border-white/10">
+            ${fmt(price, 2)}
           </div>
         </div>
       </header>
 
       {/* Body */}
       <div className="mx-auto max-w-6xl px-3 py-4 space-y-4">
-        <TVChart symbol={symbol} theme={theme} />
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-2">
+          <Chart candles={hist} markers={markers} />
+        </div>
 
+        {/* AI + Indicators */}
         <div className="grid md:grid-cols-2 gap-4">
           {/* AI Trade Signal */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -178,38 +101,38 @@ export default function AnalyzePage() {
               <span
                 className={
                   'text-right text-base font-bold ' +
-                  (signal.action === 'Buy'
+                  (sig.action === 'Buy'
                     ? 'text-green-400'
-                    : signal.action === 'Sell'
+                    : sig.action === 'Sell'
                     ? 'text-red-400'
                     : 'text-yellow-300')
                 }
               >
-                {signal.action}
+                {sig.action}
               </span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <Info label="Entry" value="-" />
-              <Info label="Target" value={Number.isFinite(ind?.ema20) ? fmt(ind.ema20 * 1.11, 2) : '-'} />
-              <Info label="Stop" value="-" />
-              <Info label="Confidence" value={`${fmt(signal.confidence * 100, 0)}%`} />
-            </div>
-            <div className="mt-3 text-sm opacity-80">
-              <b>Reason:</b> {signal.reason}
+              <Info label="Target" value={fmt(price * 1.08, 2)} />
+              <Info label="Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
+              <Info label="Reason" value={sig.reason} className="col-span-2" />
             </div>
           </section>
 
           {/* Indicators */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <h2 className="text-lg font-semibold">Indicators</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <Info label="Last Close" value={`$${fmt(ind?.lastClose)}`} />
-              <Info label="RSI(14)" value={fmt(ind?.rsi, 1)} />
-              <Info label="EMA20/50/200" value={`${fmt(ind?.ema20)} / ${fmt(ind?.ema50)} / ${fmt(ind?.ema200)}`} />
-              <Info label="MACD (line/signal/hist)" value={`${fmt(ind?.macd?.line)} / ${fmt(ind?.macd?.signal)} / ${fmt(ind?.macd?.hist)}`} />
-              <Info label="ATR(14)" value={fmt(ind?.atr, 3)} />
-              <Info label="Data Status" value={loading ? 'Loading…' : 'Live'} />
-            </div>
+            {!ind ? (
+              <div className="text-sm opacity-70 mt-2">Loading…</div>
+            ) : (
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
+                <Info label="RSI(14)" value={fmt(ind.rsi, 1)} />
+                <Info label="EMA20/50/200" value={`${fmt(ind.ema20)} / ${fmt(ind.ema50)} / ${fmt(ind.ema200)}`} />
+                <Info label="MACD (L/S/H)" value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`} />
+                <Info label="ATR(14)" value={fmt(ind.atr, 3)} />
+                <Info label="Status" value={loading ? 'Loading…' : 'Live'} />
+              </div>
+            )}
           </section>
         </div>
 
@@ -253,8 +176,8 @@ export default function AnalyzePage() {
 function Info({ label, value }) {
   return (
     <div className="rounded-xl bg-black/20 border border-white/10 p-3">
-      <div className="opacity-70">{label}</div>
+      <div className="opacity-70 text-xs">{label}</div>
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-              }
+        }
