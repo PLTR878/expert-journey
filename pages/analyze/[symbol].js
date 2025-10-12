@@ -1,13 +1,12 @@
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-const Chart = dynamic(() => import('../../components/Chart'), { ssr: false });
 
+const Chart = dynamic(() => import('../../components/Chart'), { ssr: false });
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : '-');
 
 function computeSignal({ lastClose, ema20, ema50, rsi, macd }) {
-  if (![lastClose, ema20, ema50, rsi, macd?.hist, macd?.line, macd?.signal]
-    .every(v => Number.isFinite(v))) {
+  if (![lastClose, ema20, ema50, rsi, macd?.hist, macd?.line, macd?.signal].every(v => Number.isFinite(v))) {
     return { action: 'Hold', confidence: 0.5, reason: 'Insufficient data' };
   }
 
@@ -28,7 +27,6 @@ export default function Analyze() {
   const symbol = (query.symbol || '').toString().toUpperCase();
   const [hist, setHist] = useState([]);
   const [ind, setInd] = useState(null);
-  const [signal, setSignal] = useState(null);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,8 +56,10 @@ export default function Analyze() {
     const last = hist.at(-1)?.t;
     const t = Math.floor((last || Date.now()) / 1000);
     const sig = computeSignal(ind);
-    if (sig.action === 'Buy') return [{ time: t, position: 'belowBar', color: '#22c55e', shape: 'arrowUp', text: `BUY ${symbol}` }];
-    if (sig.action === 'Sell') return [{ time: t, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `SELL ${symbol}` }];
+    if (sig.action === 'Buy')
+      return [{ time: t, position: 'belowBar', color: '#22c55e', shape: 'arrowUp', text: `BUY ${symbol}` }];
+    if (sig.action === 'Sell')
+      return [{ time: t, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `SELL ${symbol}` }];
     return [{ time: t, position: 'inBar', color: '#64748b', shape: 'circle', text: `HOLD ${symbol}` }];
   }, [JSON.stringify(ind), hist?.length]);
 
@@ -68,31 +68,37 @@ export default function Analyze() {
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0c1426]/90 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-3 py-3 flex items-center gap-3">
+      {/* ───── Header ───── */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0c1426]/95 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
+          {/* ปุ่มย้อนกลับ */}
           <button
             onClick={() => push('/')}
-            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
+            className="px-3 py-1 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
           >
             ← Back
           </button>
-          <h1 className="text-xl font-semibold tracking-wide">
+
+          {/* ชื่อ Symbol */}
+          <h1 className="text-lg sm:text-xl font-semibold tracking-wide text-center flex-1">
             {symbol || '—'} <span className="opacity-60">— Realtime Analysis</span>
           </h1>
-          <div className="ml-auto px-2 py-1 text-sm rounded bg-white/5 border border-white/10">
+
+          {/* ราคาปัจจุบัน */}
+          <div className="px-2 py-1 text-sm rounded-md bg-white/10 border border-white/10 min-w-[70px] text-center font-medium">
             ${fmt(price, 2)}
           </div>
         </div>
       </header>
 
-      {/* Body */}
-      <div className="mx-auto max-w-6xl px-3 py-4 space-y-4">
+      {/* ───── Body ───── */}
+      <div className="max-w-6xl mx-auto px-3 py-4 space-y-4">
+        {/* กราฟ */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-2">
           <Chart candles={hist} markers={markers} />
         </div>
 
-        {/* AI + Indicators */}
+        {/* ─── AI Trade Signal + Indicators ─── */}
         <div className="grid md:grid-cols-2 gap-4">
           {/* AI Trade Signal */}
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -128,7 +134,10 @@ export default function Analyze() {
                 <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
                 <Info label="RSI(14)" value={fmt(ind.rsi, 1)} />
                 <Info label="EMA20/50/200" value={`${fmt(ind.ema20)} / ${fmt(ind.ema50)} / ${fmt(ind.ema200)}`} />
-                <Info label="MACD (L/S/H)" value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`} />
+                <Info
+                  label="MACD (L/S/H)"
+                  value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`}
+                />
                 <Info label="ATR(14)" value={fmt(ind.atr, 3)} />
                 <Info label="Status" value={loading ? 'Loading…' : 'Live'} />
               </div>
@@ -136,7 +145,7 @@ export default function Analyze() {
           </section>
         </div>
 
-        {/* News */}
+        {/* ─── Market News ─── */}
         <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Market News</h2>
@@ -173,11 +182,12 @@ export default function Analyze() {
   );
 }
 
-function Info({ label, value }) {
+/* ───── Info Card ───── */
+function Info({ label, value, className = '' }) {
   return (
-    <div className="rounded-xl bg-black/20 border border-white/10 p-3">
+    <div className={`rounded-xl bg-black/20 border border-white/10 p-3 ${className}`}>
       <div className="opacity-70 text-xs">{label}</div>
       <div className="text-base font-semibold break-all">{value}</div>
     </div>
   );
-        }
+                  }
