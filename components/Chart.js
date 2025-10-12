@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 
 export default function Chart({ candles = [], markers = [] }) {
   const ref = useRef();
+  const chartRef = useRef(); // สำหรับ requestFullscreen
 
   useEffect(() => {
     if (!ref.current) return;
@@ -36,8 +37,30 @@ export default function Chart({ candles = [], markers = [] }) {
     if (markers.length) candleSeries.setMarkers(markers);
 
     chart.timeScale().fitContent();
+    chartRef.current = chart;
+
     return () => chart.remove();
   }, [candles, markers]);
 
-  return <div ref={ref} className="w-full h-[500px]" />;
+  const handleFullscreen = () => {
+    if (ref.current?.requestFullscreen) {
+      ref.current.requestFullscreen();
+    } else if (ref.current?.webkitRequestFullscreen) {
+      ref.current.webkitRequestFullscreen();
+    } else if (ref.current?.msRequestFullscreen) {
+      ref.current.msRequestFullscreen();
+    }
+  };
+
+  return (
+    <div ref={ref} className="relative w-full h-[500px] rounded-2xl overflow-hidden">
+      {/* ปุ่ม Fullscreen */}
+      <button
+        onClick={handleFullscreen}
+        className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-xs px-2 py-1 rounded border border-white/20"
+      >
+        Fullscreen
+      </button>
+    </div>
+  );
 }
