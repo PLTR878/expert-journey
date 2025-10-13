@@ -55,13 +55,13 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // 🔍 Filter by search
+  // Filter by search
   const filterData = (data) =>
     data.filter((d) =>
       (d.symbol || "").toLowerCase().includes(search.toLowerCase())
     );
 
-  // ✅ ตารางสวยงาม
+  // Render Table (No EMA)
   const renderTable = (title, color, data) => {
     const filtered = filterData(data);
     return (
@@ -78,15 +78,14 @@ export default function Home() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-sm border-collapse text-center">
               <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
                 <tr>
-                  <th className="p-2 text-left">Symbol</th>
-                  <th className="p-2 text-right">Score</th>
-                  <th className="p-2 text-right">Price</th>
-                  <th className="p-2 text-right">RSI</th>
-                  <th className="p-2 text-right">EMA</th>
-                  <th className="p-2 text-center">AI Signal</th>
+                  <th className="p-3">Symbol</th>
+                  <th className="p-3">Score</th>
+                  <th className="p-3">Price</th>
+                  <th className="p-3">RSI</th>
+                  <th className="p-3">AI Signal</th>
                 </tr>
               </thead>
               <tbody>
@@ -95,35 +94,29 @@ export default function Home() {
                     key={r.symbol}
                     className="border-b border-white/5 hover:bg-white/5 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-200"
                   >
-                    <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400 transition">
+                    <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400 transition">
                       <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
                     </td>
-                    <td className="p-2 text-right text-gray-200 font-mono">
+                    <td className="p-3 font-mono text-gray-200">
                       {r.score ? r.score.toFixed(3) : "-"}
                     </td>
-                    <td className="p-2 text-right text-emerald-400 font-semibold font-mono">
+                    <td className="p-3 font-mono text-emerald-400 font-semibold">
                       {r.lastClose?.toFixed?.(2) ?? "-"}
                     </td>
-                    <td className="p-2 text-right text-gray-200 font-mono">
+                    <td
+                      className={`p-3 font-mono font-semibold ${
+                        r.rsi > 70
+                          ? "text-red-400"
+                          : r.rsi > 60
+                          ? "text-green-400"
+                          : r.rsi < 40
+                          ? "text-yellow-400"
+                          : "text-gray-200"
+                      }`}
+                    >
                       {r.rsi?.toFixed?.(1) ?? "-"}
                     </td>
-
-                    {/* ✅ EMA vertical */}
-                    <td className="p-2 text-right font-mono text-gray-300 leading-tight">
-                      <div className="flex flex-col items-end space-y-[2px]">
-                        <span className="text-blue-300">
-                          20: {r.e20?.toFixed?.(2) ?? "-"}
-                        </span>
-                        <span className="text-amber-300">
-                          50: {r.e50?.toFixed?.(2) ?? "-"}
-                        </span>
-                        <span className="text-purple-300">
-                          200: {r.e200?.toFixed?.(2) ?? "-"}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="p-2 text-center">
+                    <td className="p-3">
                       <span
                         className={`font-bold ${
                           r.signal === "Buy"
@@ -135,10 +128,9 @@ export default function Home() {
                       >
                         {r.signal || "-"}
                       </span>
-                      <br />
-                      <small className="text-gray-400 font-mono">
+                      <div className="text-[11px] text-gray-400 font-mono">
                         {r.conf ? (r.conf * 100).toFixed(0) + "%" : "-"}
-                      </small>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -150,7 +142,7 @@ export default function Home() {
     );
   };
 
-  // ✅ UI
+  // UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white font-inter">
       {/* ===== Header ===== */}
@@ -187,7 +179,7 @@ export default function Home() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="🔍 Search Symbol (เช่น NVDA, AAPL, TSLA...)"
-          className="w-full sm:w-1/2 px-4 py-2 rounded-xl bg-[#141b2d] border border-white/10 focus:border-emerald-400/40 outline-none transition text-gray-200 placeholder-gray-500"
+          className="w-full sm:w-1/2 px-4 py-2 rounded-xl bg-[#141b2d] border border-white/10 focus:border-emerald-400/40 outline-none transition text-gray-200 placeholder-gray-500 text-center"
         />
       </div>
 
@@ -201,4 +193,4 @@ export default function Home() {
       </div>
     </main>
   );
-                              }
+}
