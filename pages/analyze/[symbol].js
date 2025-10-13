@@ -138,18 +138,9 @@ export default function Analyze() {
               <div className="grid grid-cols-2 gap-4">
                 <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
                 <Info label="RSI (14)" value={fmt(ind.rsi, 1)} />
-                <Info
-                  label="EMA 20"
-                  value={fmt(ind.ema20)}
-                />
-                <Info
-                  label="EMA 50"
-                  value={fmt(ind.ema50)}
-                />
-                <Info
-                  label="EMA 200"
-                  value={fmt(ind.ema200)}
-                />
+                <Info label="EMA 20" value={fmt(ind.ema20)} />
+                <Info label="EMA 50" value={fmt(ind.ema50)} />
+                <Info label="EMA 200" value={fmt(ind.ema200)} />
                 <Info label="MACD Line" value={fmt(ind.macd?.line)} />
                 <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
                 <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
@@ -193,9 +184,8 @@ export default function Analyze() {
   );
 }
 
-/* ✅ กล่อง Info (มืออาชีพสุด) */
+/* ✅ กล่อง Info — เวอร์ชันมืออาชีพ (จัดกลาง + แสงเงา) */
 function Info({ label, value, className = '' }) {
-  const numeric = typeof value === 'string' && value.match(/[\d.]/);
   const color =
     value?.includes('%')
       ? value.includes('-')
@@ -206,16 +196,18 @@ function Info({ label, value, className = '' }) {
   return (
     <div
       className={`rounded-xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220] 
-      p-4 shadow-[inset_0_2px_6px_rgba(255,255,255,0.03)] hover:border-emerald-400/30 transition-all duration-300 ${className}`}
+      p-4 flex flex-col items-center justify-center text-center
+      shadow-[inset_0_2px_6px_rgba(255,255,255,0.03)] hover:border-emerald-400/30 
+      transition-all duration-300 ${className}`}
     >
-      <div className="text-[11px] text-gray-400 tracking-wide mb-1">{label}</div>
+      <div className="text-[11px] text-gray-400 tracking-wide mb-2">{label}</div>
       <div
         className={`text-[17px] sm:text-[18px] font-bold font-[monospace] tracking-wide leading-tight ${color} 
         drop-shadow-[0_0_6px_rgba(16,185,129,0.25)] bg-gradient-to-b from-white/90 to-gray-300/40 bg-clip-text text-transparent
-        transition-all duration-300 hover:scale-[1.03] hover:opacity-90`}
+        transition-all duration-300 hover:scale-[1.05] hover:opacity-90`}
       >
         {value}
       </div>
     </div>
   );
-          }
+    }
