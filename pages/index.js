@@ -5,6 +5,7 @@ export default function Home() {
   const [dataMedium, setDataMedium] = useState([]);
   const [dataLong, setDataLong] = useState([]);
   const [symbolList, setSymbolList] = useState([]);
+  const [favoritePrices, setFavoritePrices] = useState({}); // ✅ เก็บราคาของหุ้นโปรด
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [theme, setTheme] = useState("dark");
@@ -65,7 +66,6 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูล screener ครั้งแรก
   useEffect(() => {
     loadAll();
   }, []);
@@ -73,31 +73,26 @@ export default function Home() {
   // ✅ ค้นหา symbol จาก Yahoo ทุกครั้งที่พิมพ์
   useEffect(() => {
     const delay = setTimeout(() => {
-      if (search.trim()) {
-        loadSymbols(search);
-      } else {
-        setSymbolList([]);
-      }
+      if (search.trim()) loadSymbols(search);
+      else setSymbolList([]);
     }, 600);
     return () => clearTimeout(delay);
   }, [search]);
 
-  // ✅ โหลด Favorites จาก localStorage เมื่อเปิดเว็บ
+  // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
-  // ✅ บันทึก Favorites ลง localStorage ทุกครั้งที่มีการเปลี่ยน
+  // ✅ บันทึก Favorites ลง localStorage
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ✅ ฟังก์ชันรวมผลลัพธ์ทั้งหมด
+  // ✅ รวมผลลัพธ์ทั้งหมด
   const filterDataAll = (dataShort, dataMedium, dataLong, search) => {
-    if (!search.trim()) {
-      return { short: dataShort, medium: dataMedium, long: dataLong, extra: [] };
-    }
+    if (!search.trim()) return { short: dataShort, medium: dataMedium, long: dataLong, extra: [] };
 
     const q = search.trim().toLowerCase();
     const match = (arr) => arr.filter((d) => (d.symbol || "").toLowerCase().includes(q));
@@ -122,14 +117,13 @@ export default function Home() {
       if (prev.includes(symbol)) {
         return prev.filter((s) => s !== symbol);
       } else {
-        // ✅ เพิ่ม symbol แล้วโหลดราคา
-        fetchYahooPrice(symbol);
+        fetchYahooPrice(symbol); // ✅ โหลดราคาเมื่อเพิ่ม
         return [...prev, symbol];
       }
     });
   };
 
-  // ✅ ฟังก์ชันโหลดราคาจริงจาก Yahoo API
+  // ✅ ดึงราคาจริงจาก Yahoo API แล้วเก็บลง favoritePrices
   async function fetchYahooPrice(symbol) {
     try {
       const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
@@ -140,21 +134,25 @@ export default function Home() {
       const price = meta.regularMarketPrice || meta.previousClose || 0;
       const changePercent = meta.regularMarketChangePercent || 0;
 
-      // อัปเดตราคาลงใน symbolList หรือ favoriteData ทันที
-      setSymbolList((prev) =>
-        prev.map((s) =>
-          s.symbol === symbol ? { ...s, lastClose: price, changePercent } : s
-        )
-      );
+      setFavoritePrices((prev) => ({
+        ...prev,
+        [symbol]: { price, changePercent },
+      }));
     } catch (err) {
       console.error("fetchYahooPrice error:", err);
     }
   }
 
+  // ✅ โหลดราคาของ Favorites อัตโนมัติเมื่อเปิดหน้า
+  useEffect(() => {
+    favorites.forEach((symbol) => fetchYahooPrice(symbol));
+  }, [favorites]);
+
   const clearFavorites = () => {
     if (confirm("ต้องการล้างรายการโปรดทั้งหมดหรือไม่?")) {
       setFavorites([]);
       localStorage.removeItem("favorites");
+      setFavoritePrices({});
     }
   };
 
@@ -166,10 +164,7 @@ export default function Home() {
         <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
           <h2 className={`text-lg sm:text-xl font-semibold ${color}`}>{title}</h2>
           {title.includes("Favorites") && (
-            <button
-              onClick={clearFavorites}
-              className="text-sm text-red-400 hover:text-red-300 underline"
-            >
+            <button onClick={clearFavorites} className="text-sm text-red-400 hover:text-red-300 underline">
               ล้างทั้งหมด
             </button>
           )}
@@ -189,22 +184,28 @@ export default function Home() {
             <tbody>
               {data.map((r) => {
                 const isFav = favorites.includes(r.symbol);
+                const priceObj = favoritePrices[r.symbol];
                 return (
-                  <tr
-                    key={r.symbol}
-                    className="border-b border-white/5 hover:bg-white/5 transition-all"
-                  >
-                    <td
-                      onClick={() => toggleFavorite(r.symbol)}
-                      className="cursor-pointer text-[16px] text-yellow-400 pl-5"
-                    >
+                  <tr key={r.symbol} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                    <td onClick={() => toggleFavorite(r.symbol)} className="cursor-pointer text-[16px] text-yellow-400 pl-5">
                       {isFav ? "★" : "☆"}
                     </td>
                     <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
                       <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
                     </td>
-                    <td className="p-3 font-mono font-semibold text-gray-300">
-                      {r.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
+                    <td
+                      className={`p-3 font-mono font-semibold ${
+                        priceObj?.changePercent > 0
+                          ? "text-green-400"
+                          : priceObj?.changePercent < 0
+                          ? "text-red-400"
+                          : "text-gray-300"
+                      }`}
+                    >
+                      {priceObj?.price ? `$${priceObj.price.toFixed(2)}` : r.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
+                      {priceObj?.changePercent && (
+                        <div className="text-xs">{priceObj.changePercent.toFixed(2)}%</div>
+                      )}
                     </td>
                     <td className="p-3 text-gray-400">{r.rsi ? r.rsi.toFixed(1) : "-"}</td>
                     <td className="p-3 text-gray-400">{r.signal || "-"}</td>
@@ -218,12 +219,10 @@ export default function Home() {
     );
   };
 
-  // ✅ กรองข้อมูล
   const { short, medium, long, extra } = filterDataAll(dataShort, dataMedium, dataLong, search);
   const noResult =
     !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
 
-  // ✅ รวมข้อมูลที่ตรงกับ Favorites
   const favoriteData = favorites
     .map((symbol) => {
       const found =
@@ -238,7 +237,6 @@ export default function Home() {
   // ✅ UI หลัก
   return (
     <main className="min-h-screen bg-[#0b1220] text-white font-inter">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur-md border-b border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between px-4 py-3 gap-3">
           <b className="text-[20px] sm:text-[22px] font-bold text-emerald-400">
@@ -248,6 +246,7 @@ export default function Home() {
             <button
               onClick={() => {
                 loadAll();
+                favorites.forEach((s) => fetchYahooPrice(s)); // ✅ refresh ราคาด้วย
                 if (search.trim()) loadSymbols(search);
               }}
               className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 font-semibold transition"
@@ -298,4 +297,4 @@ export default function Home() {
       </div>
     </main>
   );
-        }
+            }
