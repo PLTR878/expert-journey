@@ -36,12 +36,12 @@ export default async function handler(req, res) {
         data?.quotes
           ?.filter((x) => x.symbol && !x.symbol.startsWith("^"))
           ?.map((x) => ({
-            symbol: x.symbol,
+            symbol: (x.symbol || "").toUpperCase().trim(),
             name: x.shortname || x.longname || "",
           })) || [];
     }
 
-    // ถ้า Yahoo ไม่ส่งข้อมูลเลย — ใช้ fallback “trending”
+    // ✅ ถ้าไม่มีข้อมูลจาก search — ใช้ fallback "trending"
     if (!symbols.length) {
       const trendRes = await fetch(
         "https://query1.finance.yahoo.com/v1/finance/trending/US?count=100",
@@ -55,11 +55,16 @@ export default async function handler(req, res) {
       const trendData = await trendRes.json();
       const quotes =
         trendData?.finance?.result?.[0]?.quotes?.map((q) => ({
-          symbol: q.symbol,
+          symbol: (q.symbol || "").toUpperCase().trim(),
           name: q.shortName || q.longName || "",
         })) || [];
       symbols = quotes;
     }
+
+    // ✅ กรองเฉพาะหุ้นจริง (ไม่เอา Option, ETF code แปลก ๆ)
+    symbols = symbols.filter(
+      (x) => x.symbol && /^[A-Z]{1,6}$/.test(x.symbol)
+    );
 
     res.setHeader(
       "Cache-Control",
