@@ -61,7 +61,7 @@ export default function Home() {
       (d.symbol || "").toLowerCase().includes(search.toLowerCase())
     );
 
-  // Render Table (No EMA)
+  // Render Table (No SCORE)
   const renderTable = (title, color, data) => {
     const filtered = filterData(data);
     return (
@@ -82,7 +82,6 @@ export default function Home() {
               <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
                 <tr>
                   <th className="p-3">Symbol</th>
-                  <th className="p-3">Score</th>
                   <th className="p-3">Price</th>
                   <th className="p-3">RSI</th>
                   <th className="p-3">AI Signal</th>
@@ -96,9 +95,6 @@ export default function Home() {
                   >
                     <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400 transition">
                       <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
-                    </td>
-                    <td className="p-3 font-mono text-gray-200">
-                      {r.score ? r.score.toFixed(3) : "-"}
                     </td>
                     <td className="p-3 font-mono text-emerald-400 font-semibold">
                       {r.lastClose?.toFixed?.(2) ?? "-"}
@@ -193,4 +189,4 @@ export default function Home() {
       </div>
     </main>
   );
-}
+          }
