@@ -16,9 +16,9 @@ function computeSignal({ lastClose, ema20, ema50, rsi, macd }) {
   if (macd.line > macd.signal) score += 1;
   if (rsi > 50) score += 1;
 
-  if (score >= 4) return { action: 'Buy', confidence: score / 5, reason: 'แนวโน้มขาขึ้นชัดเจน (Bullish Momentum)' };
+  if (score >= 4) return { action: 'Buy', confidence: score / 5, reason: 'แนวโน้มขาขึ้น (Bullish Momentum)' };
   if (score <= 1) return { action: 'Sell', confidence: (2 - score) / 2, reason: 'แรงขายกดดัน (Bearish Pressure)' };
-  return { action: 'Hold', confidence: 0.5, reason: 'สัญญาณเป็นกลาง (Neutral / ผสม)' };
+  return { action: 'Hold', confidence: 0.5, reason: 'สัญญาณเป็นกลาง (Neutral)' };
 }
 
 export default function Analyze() {
@@ -59,11 +59,25 @@ export default function Analyze() {
       return [{ time: t, position: 'belowBar', color: '#22c55e', shape: 'arrowUp', text: `BUY ${symbol}` }];
     if (sig.action === 'Sell')
       return [{ time: t, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `SELL ${symbol}` }];
-    return [{ time: t, position: 'inBar', color: '#64748b', shape: 'circle', text: `HOLD ${symbol}` }];
+    return [{ time: t, position: 'inBar', color: '#facc15', shape: 'circle', text: `HOLD ${symbol}` }];
   }, [JSON.stringify(ind), hist?.length]);
 
   const sig = computeSignal(ind || {});
   const price = ind?.lastClose || hist?.at(-1)?.c || 0;
+
+  const actionLabel =
+    sig.action === 'Buy'
+      ? 'ซื้อ (Buy)'
+      : sig.action === 'Sell'
+      ? 'ขาย (Sell)'
+      : 'ถือ (Hold)';
+
+  const colorAction =
+    sig.action === 'Buy'
+      ? 'text-green-400'
+      : sig.action === 'Sell'
+      ? 'text-red-400'
+      : 'text-yellow-300';
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
@@ -104,48 +118,43 @@ export default function Analyze() {
           {/* AI Signal */}
           <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[18px] font-semibold tracking-wide text-white/90">สัญญาณจากระบบ AI</h2>
-              <span
-                className={
-                  'text-base font-bold ' +
-                  (sig.action === 'Buy'
-                    ? 'text-green-400'
-                    : sig.action === 'Sell'
-                    ? 'text-red-400'
-                    : 'text-yellow-300')
-                }
-              >
-                {sig.action === 'Buy'
-                  ? 'สัญญาณซื้อ'
-                  : sig.action === 'Sell'
-                  ? 'สัญญาณขาย'
-                  : 'ถือครอง'}
-              </span>
+              <h2 className="text-[18px] font-semibold tracking-wide text-white/90">AI Trade Signal</h2>
+              <span className={`text-base font-bold ${colorAction}`}>{actionLabel}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Info label="🎯 ราคาเป้าหมาย (คาดการณ์)" value={`$${fmt(price * 1.08, 2)}`} />
-              <Info label="🤖 ความเชื่อมั่นของ AI" value={`${fmt(sig.confidence * 100, 0)}%`} />
-              <Info label="📋 เหตุผลจากระบบ" value={sig.reason} className="col-span-2" />
+              <Info label="🎯 Target Price" value={`$${fmt(price * 1.08, 2)}`} />
+              <Info label="🤖 AI Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
+              <Info label="📋 System Reason" value={sig.reason} className="col-span-2" />
             </div>
           </section>
 
           {/* Indicators */}
           <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
-            <h2 className="text-[18px] font-semibold tracking-wide text-white/90 mb-3">ภาพรวมทางเทคนิค</h2>
+            <h2 className="text-[18px] font-semibold tracking-wide text-white/90 mb-3">Technical Overview</h2>
             {!ind ? (
-              <div className="text-sm text-gray-400">กำลังโหลดข้อมูล...</div>
+              <div className="text-sm text-gray-400">Loading data...</div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
-                <Info label="ราคาปิดล่าสุด" value={`$${fmt(ind.lastClose)}`} />
-                <Info label="RSI (14 วัน)" value={fmt(ind.rsi, 1)} />
-                <Info label="EMA (20/50/200)" value={`${fmt(ind.ema20)} / ${fmt(ind.ema50)} / ${fmt(ind.ema200)}`} />
+                <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
+                <Info label="RSI (14)" value={fmt(ind.rsi, 1)} />
                 <Info
-                  label="MACD (หลัก/สัญญาณ/ฮิสโตแกรม)"
-                  value={`${fmt(ind.macd?.line)} / ${fmt(ind.macd?.signal)} / ${fmt(ind.macd?.hist)}`}
+                  label="EMA 20"
+                  value={fmt(ind.ema20)}
                 />
+                <Info
+                  label="EMA 50"
+                  value={fmt(ind.ema50)}
+                />
+                <Info
+                  label="EMA 200"
+                  value={fmt(ind.ema200)}
+                />
+                <Info label="MACD Line" value={fmt(ind.macd?.line)} />
+                <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
+                <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
                 <Info label="ATR (14)" value={fmt(ind.atr, 3)} />
-                <Info label="สถานะข้อมูล" value={loading ? 'กำลังอัปเดต...' : 'เรียลไทม์'} />
+                <Info label="Status" value={loading ? 'Updating…' : 'Realtime'} />
               </div>
             )}
           </section>
@@ -154,15 +163,15 @@ export default function Analyze() {
         {/* ===== MARKET NEWS ===== */}
         <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[18px] font-semibold tracking-wide text-white/90">ข่าวสารตลาดล่าสุด</h2>
+            <h2 className="text-[18px] font-semibold tracking-wide text-white/90">Market News</h2>
             <button
               onClick={() => location.reload()}
               className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition"
             >
-              🔄 อัปเดตข่าว
+              🔄 Refresh
             </button>
           </div>
-          {!news?.length && <div className="text-sm text-gray-400">ยังไม่มีข่าวใหม่ในขณะนี้</div>}
+          {!news?.length && <div className="text-sm text-gray-400">No recent news.</div>}
           <ul className="mt-3 space-y-2">
             {news?.slice(0, 12).map((n, i) => (
               <li
@@ -184,7 +193,7 @@ export default function Analyze() {
   );
 }
 
-/* ✅ ปรับ Info ให้ดูมืออาชีพ (Fintech Style) */
+/* ✅ กล่อง Info (มืออาชีพสุด) */
 function Info({ label, value, className = '' }) {
   const numeric = typeof value === 'string' && value.match(/[\d.]/);
   const color =
@@ -196,16 +205,17 @@ function Info({ label, value, className = '' }) {
 
   return (
     <div
-      className={`rounded-xl bg-gradient-to-b from-[#0f1528] to-[#0b1220] border border-white/10 p-3 flex flex-col justify-center hover:border-emerald-400/20 transition-all duration-300 ${className}`}
+      className={`rounded-xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220] 
+      p-4 shadow-[inset_0_2px_6px_rgba(255,255,255,0.03)] hover:border-emerald-400/30 transition-all duration-300 ${className}`}
     >
       <div className="text-[11px] text-gray-400 tracking-wide mb-1">{label}</div>
       <div
-        className={`text-[16px] font-bold leading-tight font-[monospace] ${color} ${
-          numeric ? 'tracking-wider' : ''
-        }`}
+        className={`text-[17px] sm:text-[18px] font-bold font-[monospace] tracking-wide leading-tight ${color} 
+        drop-shadow-[0_0_6px_rgba(16,185,129,0.25)] bg-gradient-to-b from-white/90 to-gray-300/40 bg-clip-text text-transparent
+        transition-all duration-300 hover:scale-[1.03] hover:opacity-90`}
       >
         {value}
       </div>
     </div>
   );
-  }
+          }
