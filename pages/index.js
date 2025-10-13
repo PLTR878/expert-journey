@@ -4,7 +4,7 @@ export default function Home() {
   const [dataShort, setDataShort] = useState([]);
   const [dataMedium, setDataMedium] = useState([]);
   const [dataLong, setDataLong] = useState([]);
-  const [symbolList, setSymbolList] = useState([]); // ✅ เพิ่มไว้เก็บ symbols ทั้งหมด
+  const [symbolList, setSymbolList] = useState([]); // ✅ เพิ่มเก็บหุ้นจาก Yahoo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [theme, setTheme] = useState("dark");
@@ -16,7 +16,7 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  // โหลดข้อมูลหลัก (screener)
+  // โหลดข้อมูลจาก screener
   async function loadAll() {
     setLoading(true);
     setError("");
@@ -50,7 +50,7 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลด symbol list จาก Yahoo API
+  // ✅ โหลด symbol จาก Yahoo API
   async function loadSymbols() {
     try {
       const res = await fetch("/api/symbols");
@@ -63,30 +63,43 @@ export default function Home() {
 
   useEffect(() => {
     loadAll();
-    loadSymbols(); // ✅ โหลด symbols ตอนเปิดเว็บ
+    loadSymbols(); // ✅ โหลด symbol list
   }, []);
 
-  // ✅ รวมข้อมูลทั้งหมดไว้ค้นหา
-  const allSymbols = [
-    ...dataShort,
-    ...dataMedium,
-    ...dataLong,
-    ...symbolList.map((s) => ({
-      symbol: s.symbol,
-      lastClose: null,
-      rsi: null,
-      signal: "-",
-    })),
-  ];
+  // ✅ ฟังก์ชันค้นหารวมทุกกลุ่ม + symbol จาก Yahoo
+  const filterDataAll = (dataShort, dataMedium, dataLong, search) => {
+    if (!search.trim()) {
+      return {
+        short: dataShort,
+        medium: dataMedium,
+        long: dataLong,
+        extra: [],
+      };
+    }
 
-  // ✅ ฟังก์ชันค้นหาครอบคลุมทุก dataset
-  const filterDataAll = (all, search) => {
-    if (!search.trim()) return all;
     const q = search.trim().toLowerCase();
-    return all.filter((d) => (d.symbol || "").toLowerCase().includes(q));
-  };
+    const match = (arr) =>
+      arr.filter((d) => (d.symbol || "").toLowerCase().includes(q));
 
-  const filtered = filterDataAll(allSymbols, search);
+    // ✅ Yahoo symbols
+    const extra = symbolList
+      .filter((s) => (s.symbol || "").toLowerCase().includes(q))
+      .slice(0, 10)
+      .map((s) => ({
+        symbol: s.symbol,
+        name: s.name || "",
+        lastClose: null,
+        rsi: null,
+        signal: "-",
+      }));
+
+    return {
+      short: match(dataShort),
+      medium: match(dataMedium),
+      long: match(dataLong),
+      extra,
+    };
+  };
 
   // Favorite toggle
   const toggleFavorite = (symbol) => {
@@ -97,7 +110,75 @@ export default function Home() {
     );
   };
 
-  // ✅ UI แสดงผล
+  // ตารางหุ้น
+  const renderTable = (title, color, data) => {
+    if (data.length === 0) return null;
+    return (
+      <div className="my-8 rounded-2xl border border-white/10 bg-[#101827]/80 p-5 shadow-lg hover:shadow-[0_0_15px_rgba(0,255,180,0.2)] transition">
+        <h2
+          className={`text-lg sm:text-xl font-semibold mb-4 border-b border-white/10 pb-2 ${color}`}
+        >
+          {title}
+        </h2>
+
+        <div className="overflow-x-auto rounded-xl">
+          <table className="w-full text-sm border-collapse text-center">
+            <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
+              <tr>
+                <th className="p-3 text-left pl-5">⭐</th>
+                <th className="p-3">Symbol</th>
+                <th className="p-3">Price</th>
+                <th className="p-3">RSI</th>
+                <th className="p-3">AI Signal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((r) => {
+                const isFav = favorites.includes(r.symbol);
+                return (
+                  <tr
+                    key={r.symbol}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all"
+                  >
+                    <td
+                      onClick={() => toggleFavorite(r.symbol)}
+                      className="cursor-pointer text-[16px] text-yellow-400 pl-5"
+                    >
+                      {isFav ? "★" : "☆"}
+                    </td>
+                    <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
+                      <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                    </td>
+                    <td className="p-3 font-mono text-gray-300">
+                      {r.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
+                    </td>
+                    <td className="p-3 text-gray-400">
+                      {r.rsi ? r.rsi.toFixed(1) : "-"}
+                    </td>
+                    <td className="p-3 text-gray-400">{r.signal || "-"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // ✅ เรียกใช้ฟังก์ชันค้นหาใหม่
+  const { short, medium, long, extra } = filterDataAll(
+    dataShort,
+    dataMedium,
+    dataLong,
+    search
+  );
+
+  // ✅ ถ้าไม่มีผลลัพธ์เลย
+  const noResult =
+    !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
+
+  // UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white font-inter">
       {/* Header */}
@@ -139,63 +220,23 @@ export default function Home() {
         />
       </div>
 
-      {/* Results */}
+      {/* Tables */}
       <div className="max-w-6xl mx-auto px-4 pb-10">
         {error && <div className="text-center text-red-400 mb-4">{error}</div>}
 
-        {filtered.length === 0 && search.trim() !== "" ? (
+        {noResult ? (
           <div className="text-center text-yellow-400 mt-8 text-sm">
             ⚠️ ไม่พบหุ้นที่ตรงกับคำค้น "<b>{search}</b>"
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/10 bg-[#101827]/80 p-5 shadow-lg">
-            <h2 className="text-lg font-semibold mb-3 text-emerald-400 border-b border-white/10 pb-2">
-              🔍 ผลการค้นหา
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse text-center">
-                <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
-                  <tr>
-                    <th className="p-3 text-left pl-5">⭐</th>
-                    <th className="p-3">Symbol</th>
-                    <th className="p-3">Price</th>
-                    <th className="p-3">RSI</th>
-                    <th className="p-3">AI Signal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r) => {
-                    const isFav = favorites.includes(r.symbol);
-                    return (
-                      <tr
-                        key={r.symbol}
-                        className="border-b border-white/5 hover:bg-white/5 transition-all"
-                      >
-                        <td
-                          onClick={() => toggleFavorite(r.symbol)}
-                          className="cursor-pointer text-[16px] text-yellow-400 pl-5"
-                        >
-                          {isFav ? "★" : "☆"}
-                        </td>
-                        <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
-                          <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
-                        </td>
-                        <td className="p-3 font-mono text-gray-300">
-                          {r.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
-                        </td>
-                        <td className="p-3 text-gray-400">
-                          {r.rsi ? r.rsi.toFixed(1) : "-"}
-                        </td>
-                        <td className="p-3 text-gray-400">{r.signal || "-"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <>
+            {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", short)}
+            {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", medium)}
+            {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", long)}
+            {renderTable("🧠 Yahoo Trending Results", "text-emerald-400", extra)}
+          </>
         )}
       </div>
     </main>
   );
-                }
+    }
