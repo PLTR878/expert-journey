@@ -1,49 +1,56 @@
 // pages/api/symbols.js
+export const config = {
+  runtime: 'nodejs', // ✅ ป้องกัน edge runtime bug ของ fetch abort
+};
+
 export default async function handler(req, res) {
-  // 1) method guard
+  // ✅ จำกัดให้รับเฉพาะ GET
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const url =
-    'https://query1.finance.yahoo.com/v1/finance/trending/US?count=1000';
-
-  // 2) timeout ป้องกัน request แขวน
+  const url = 'https://query1.finance.yahoo.com/v1/finance/trending/US?count=1000';
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000); // 8s
+  const timer = setTimeout(() => controller.abort(), 8000); // ⏱️ timeout 8 วินาที
 
   try {
+    console.log('🔍 Fetching trending symbols from Yahoo...');
+
     const response = await fetch(url, {
-      // ระบุ UA บางครั้งช่วยลด 403
-      headers: { 'User-Agent': 'visionary-screener/1.0 (+vercel)' },
+      headers: {
+        'User-Agent': 'visionary-screener/1.0 (+vercel)',
+        Accept: 'application/json',
+      },
       signal: controller.signal,
     });
 
-    // 3) เช็ค response.ok
+    // ✅ เช็ค response จาก Yahoo
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      return res
-        .status(502)
-        .json({ error: 'Upstream error', status: response.status, body: text });
+      console.warn('⚠️ Yahoo returned non-OK response', response.status);
+      return res.status(502).json({
+        error: 'Upstream error from Yahoo',
+        status: response.status,
+        body: text.slice(0, 300), // ป้องกัน payload ยาว
+      });
     }
 
-    // 4) parse JSON อย่างปลอดภัย
+    // ✅ parse JSON อย่างปลอดภัย
     const data = await response.json().catch(() => ({}));
-
     const quotes =
-      data?.finance?.result?.[0]?.quotes && Array.isArray(data.finance.result[0].quotes)
+      Array.isArray(data?.finance?.result?.[0]?.quotes) && data.finance.result[0].quotes.length > 0
         ? data.finance.result[0].quotes
         : [];
 
-    // 5) map + กรองว่าง + dedupe + sort
+    // ✅ map + กรอง + ลบซ้ำ + เรียงลำดับ
     const seen = new Set();
     const symbols = quotes
       .map((q) => ({
         symbol: (q?.symbol || '').toUpperCase().trim(),
         name: q?.shortName || q?.longName || '',
       }))
-      .filter((x) => x.symbol) // ตัดรายการว่าง
+      .filter((x) => x.symbol)
       .filter((x) => {
         if (seen.has(x.symbol)) return false;
         seen.add(x.symbol);
@@ -51,8 +58,9 @@ export default async function handler(req, res) {
       })
       .sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-    // 6) cache ผ่าน Vercel (CDN) เพื่อลดการยิง Yahoo
-    //    s-maxage = 15 นาที, stale-while-revalidate = 1 วัน
+    console.log(`✅ Loaded ${symbols.length} trending symbols from Yahoo.`);
+
+    // ✅ Cache-Control
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=900, stale-while-revalidate=86400'
@@ -61,11 +69,12 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ symbols });
   } catch (err) {
-    // แยกกรณี timeout ให้ชัด
     if (err?.name === 'AbortError') {
-      return res.status(504).json({ error: 'Upstream timeout' });
+      console.error('⏱️ Yahoo API timeout');
+      return res.status(504).json({ error: 'Upstream timeout (Yahoo took too long)' });
     }
-    console.error('Error fetching symbols:', err);
+
+    console.error('❌ Error fetching symbols:', err);
     return res.status(500).json({ error: 'Failed to load symbols' });
   } finally {
     clearTimeout(timer);
