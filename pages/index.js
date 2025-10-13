@@ -4,8 +4,7 @@ export default function Home() {
   const [dataShort, setDataShort] = useState([]);
   const [dataMedium, setDataMedium] = useState([]);
   const [dataLong, setDataLong] = useState([]);
-  const [symbolList, setSymbolList] = useState([]);
-  const [favoriteData, setFavoriteData] = useState({}); // ✅ เก็บข้อมูลราคาหุ้นโปรดจริง
+  const [priceMap, setPriceMap] = useState({}); // ✅ เก็บราคาจริงของหุ้นทุกตัว
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [theme, setTheme] = useState("dark");
@@ -17,7 +16,7 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  // ✅ โหลดข้อมูล Screener
+  // ✅ โหลดข้อมูลจาก screener
   async function loadAll() {
     setLoading(true);
     setError("");
@@ -44,6 +43,14 @@ export default function Home() {
       setDataShort(shortData);
       setDataMedium(mediumData);
       setDataLong(longData);
+
+      // ✅ ดึงราคาจาก Yahoo ของหุ้นทุกตัวใน 3 ตาราง
+      const allSymbols = [
+        ...shortData.map((d) => d.symbol),
+        ...mediumData.map((d) => d.symbol),
+        ...longData.map((d) => d.symbol),
+      ];
+      fetchPricesForAll(allSymbols);
     } catch {
       setError("โหลดข้อมูลไม่สำเร็จ");
     } finally {
@@ -51,34 +58,37 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลด Symbol จาก Yahoo ตามคำค้น
-  async function loadSymbols(q = "") {
+  // ✅ ดึงราคาจาก Yahoo ทีละตัว
+  async function fetchYahooPrice(symbol) {
     try {
-      if (!q.trim()) {
-        setSymbolList([]);
-        return;
-      }
-      const res = await fetch(`/api/symbols?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
       const data = await res.json();
-      if (Array.isArray(data.symbols)) setSymbolList(data.symbols);
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta) return;
+      const price = meta.regularMarketPrice || meta.previousClose || 0;
+      const changePercent = meta.regularMarketChangePercent || 0;
+
+      setPriceMap((prev) => ({
+        ...prev,
+        [symbol]: { price, changePercent },
+      }));
     } catch (err) {
-      console.error("loadSymbols error:", err);
+      console.error("fetchYahooPrice error:", symbol, err);
     }
   }
 
-  // ✅ โหลด Screener ครั้งแรก
+  // ✅ ดึงราคาของหุ้นทั้งหมด
+  async function fetchPricesForAll(symbols = []) {
+    const unique = [...new Set(symbols.filter(Boolean))];
+    unique.forEach((sym, i) => {
+      setTimeout(() => fetchYahooPrice(sym), i * 250); // ✅ หน่วงเวลาเล็กน้อยป้องกัน rate-limit
+    });
+  }
+
+  // ✅ โหลดครั้งแรก
   useEffect(() => {
     loadAll();
   }, []);
-
-  // ✅ ค้นหา Symbol จาก Yahoo ทุกครั้งที่พิมพ์
-  useEffect(() => {
-    const delay = setTimeout(() => {
-      if (search.trim()) loadSymbols(search);
-      else setSymbolList([]);
-    }, 600);
-    return () => clearTimeout(delay);
-  }, [search]);
 
   // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
@@ -91,50 +101,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ✅ โหลดราคาจาก Yahoo (อัปเดตเข้ากลาง favoriteData)
-  async function fetchYahooPrice(symbol) {
-    try {
-      const res = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`
-      );
-      const data = await res.json();
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (!meta) return;
-
-      const price = meta.regularMarketPrice || meta.previousClose || 0;
-      const change = meta.regularMarketChangePercent || 0;
-
-      setFavoriteData((prev) => ({
-        ...prev,
-        [symbol]: { symbol, price, change },
-      }));
-    } catch (err) {
-      console.error("fetchYahooPrice error:", err);
-    }
-  }
-
-  // ✅ โหลดราคาของ Favorites อัตโนมัติเมื่อเพิ่ม
-  useEffect(() => {
-    favorites.forEach((symbol) => fetchYahooPrice(symbol));
-  }, [favorites]);
-
-  // ✅ ดึงข้อมูล Screener ทั้งหมด + refresh ราคาหุ้นโปรด
-  const handleRefresh = () => {
-    loadAll();
-    favorites.forEach((symbol) => fetchYahooPrice(symbol));
-    if (search.trim()) loadSymbols(search);
-  };
-
-  // ✅ ล้าง Favorites
-  const clearFavorites = () => {
-    if (confirm("ต้องการล้างรายการโปรดทั้งหมดหรือไม่?")) {
-      setFavorites([]);
-      localStorage.removeItem("favorites");
-      setFavoriteData({});
-    }
-  };
-
-  // ✅ สลับสถานะ Favorite
+  // ✅ สลับ Favorite
   const toggleFavorite = (symbol) => {
     setFavorites((prev) =>
       prev.includes(symbol)
@@ -143,35 +110,19 @@ export default function Home() {
     );
   };
 
-  // ✅ รวมผลลัพธ์ทั้งหมด
-  const filterDataAll = (dataShort, dataMedium, dataLong, search) => {
-    if (!search.trim())
-      return { short: dataShort, medium: dataMedium, long: dataLong, extra: [] };
-
-    const q = search.trim().toLowerCase();
-    const match = (arr) =>
-      arr.filter((d) => (d.symbol || "").toLowerCase().includes(q));
-
-    const extra = symbolList
-      .filter((s) => (s.symbol || "").toLowerCase().includes(q))
-      .slice(0, 10)
-      .map((s) => ({
-        symbol: s.symbol,
-        name: s.name || "",
-        lastClose: null,
-        rsi: null,
-        signal: "-",
-      }));
-
-    return { short: match(dataShort), medium: match(dataMedium), long: match(dataLong), extra };
+  // ✅ ล้าง Favorites
+  const clearFavorites = () => {
+    if (confirm("ต้องการล้างรายการโปรดทั้งหมดหรือไม่?")) {
+      setFavorites([]);
+      localStorage.removeItem("favorites");
+    }
   };
 
   // ✅ ตารางหุ้น
   const renderTable = (title, color, data, isFav = false) => {
-    if (!data.length) return null;
-
+    if (!data?.length) return null;
     return (
-      <div className="my-8 rounded-2xl border border-white/10 bg-[#101827]/80 p-5 shadow-lg">
+      <div className="my-8 rounded-2xl border border-white/10 bg-[#101827]/80 p-5 shadow-lg hover:shadow-[0_0_15px_rgba(0,255,180,0.2)] transition">
         <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
           <h2 className={`text-lg sm:text-xl font-semibold ${color}`}>{title}</h2>
           {isFav && (
@@ -196,9 +147,8 @@ export default function Home() {
             </thead>
             <tbody>
               {data.map((r) => {
-                const isInFav = favorites.includes(r.symbol);
-                const info = favoriteData[r.symbol];
-
+                const isFav = favorites.includes(r.symbol);
+                const p = priceMap[r.symbol];
                 return (
                   <tr
                     key={r.symbol}
@@ -208,26 +158,26 @@ export default function Home() {
                       onClick={() => toggleFavorite(r.symbol)}
                       className="cursor-pointer text-[16px] text-yellow-400 pl-5"
                     >
-                      {isInFav ? "★" : "☆"}
+                      {isFav ? "★" : "☆"}
                     </td>
                     <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
-                      <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                      {r.symbol}
                     </td>
                     <td
-                      className={`p-3 font-mono font-semibold ${
-                        info
-                          ? info.change > 0
+                      className={`p-3 font-mono ${
+                        p
+                          ? p.changePercent > 0
                             ? "text-green-400"
-                            : info.change < 0
+                            : p.changePercent < 0
                             ? "text-red-400"
                             : "text-gray-300"
-                          : "text-gray-300"
+                          : "text-gray-400"
                       }`}
                     >
-                      {info ? `$${info.price.toFixed(2)}` : "-"}
+                      {p ? `$${p.price.toFixed(2)}` : "-"}
                     </td>
-                    <td className="p-3 font-mono text-gray-400">
-                      {info ? `${info.change.toFixed(2)}%` : "-"}
+                    <td className="p-3 text-gray-400">
+                      {p ? `${p.changePercent.toFixed(2)}%` : "-"}
                     </td>
                   </tr>
                 );
@@ -239,18 +189,8 @@ export default function Home() {
     );
   };
 
-  // ✅ ฟิลเตอร์ข้อมูลทั้งหมด
-  const { short, medium, long, extra } = filterDataAll(
-    dataShort,
-    dataMedium,
-    dataLong,
-    search
-  );
-  const noResult =
-    !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
-
-  // ✅ แสดงเฉพาะหุ้นใน Favorites
-  const favRows = favorites.map((s) => ({ symbol: s }));
+  // ✅ รวมข้อมูล Favorites จริง
+  const favoriteData = favorites.map((s) => ({ symbol: s }));
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white font-inter">
@@ -262,7 +202,7 @@ export default function Home() {
           </b>
           <div className="flex items-center gap-3">
             <button
-              onClick={handleRefresh}
+              onClick={loadAll}
               className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 font-semibold transition"
             >
               {loading ? "Loading..." : "🔁 Refresh"}
@@ -279,36 +219,15 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Search */}
-      <div className="max-w-6xl mx-auto px-4 py-4">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍 Search Symbol (เช่น NVDA, AAPL, AEHR, BBAI...)"
-          className="w-full sm:w-1/2 px-4 py-2 rounded-xl bg-[#141b2d] border border-white/10 focus:border-emerald-400/40 outline-none transition text-gray-200 placeholder-gray-500 text-center"
-        />
-      </div>
-
       {/* Tables */}
       <div className="max-w-6xl mx-auto px-4 pb-10">
         {error && <div className="text-center text-red-400 mb-4">{error}</div>}
 
-        {noResult ? (
-          <div className="text-center text-yellow-400 mt-8 text-sm">
-            ⚠️ ไม่พบหุ้นที่ตรงกับคำค้น "<b>{search}</b>"
-          </div>
-        ) : (
-          <>
-            {favRows.length > 0 &&
-              renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favRows, true)}
-            {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", short)}
-            {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", medium)}
-            {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", long)}
-            {renderTable("🧠 Yahoo Trending Results", "text-emerald-400", extra)}
-          </>
-        )}
+        {renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favoriteData, true)}
+        {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
+        {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
+        {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", dataLong)}
       </div>
     </main>
   );
-}
+  }
