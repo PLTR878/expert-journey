@@ -82,6 +82,17 @@ export default function Home() {
     return () => clearTimeout(delay);
   }, [search]);
 
+  // ✅ โหลด Favorites จาก localStorage เมื่อเปิดเว็บ
+  useEffect(() => {
+    const saved = localStorage.getItem("favorites");
+    if (saved) setFavorites(JSON.parse(saved));
+  }, []);
+
+  // ✅ บันทึก Favorites ลง localStorage ทุกครั้งที่มีการเปลี่ยน
+  useEffect(() => {
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
   // ✅ ฟังก์ชันรวมผลลัพธ์ทั้งหมด
   const filterDataAll = (dataShort, dataMedium, dataLong, search) => {
     if (!search.trim()) {
@@ -115,6 +126,7 @@ export default function Home() {
   const clearFavorites = () => {
     if (confirm("ต้องการล้างรายการโปรดทั้งหมดหรือไม่?")) {
       setFavorites([]);
+      localStorage.removeItem("favorites");
     }
   };
 
@@ -150,7 +162,10 @@ export default function Home() {
               {data.map((r) => {
                 const isFav = favorites.includes(r.symbol);
                 return (
-                  <tr key={r.symbol} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                  <tr
+                    key={r.symbol}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all"
+                  >
                     <td
                       onClick={() => toggleFavorite(r.symbol)}
                       className="cursor-pointer text-[16px] text-yellow-400 pl-5"
@@ -163,9 +178,7 @@ export default function Home() {
                     <td className="p-3 font-mono text-gray-300">
                       {r.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
                     </td>
-                    <td className="p-3 text-gray-400">
-                      {r.rsi ? r.rsi.toFixed(1) : "-"}
-                    </td>
+                    <td className="p-3 text-gray-400">{r.rsi ? r.rsi.toFixed(1) : "-"}</td>
                     <td className="p-3 text-gray-400">{r.signal || "-"}</td>
                   </tr>
                 );
@@ -257,4 +270,4 @@ export default function Home() {
       </div>
     </main>
   );
-          }
+                                                                  }
