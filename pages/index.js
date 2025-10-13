@@ -7,6 +7,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [theme, setTheme] = useState("dark");
+  const [search, setSearch] = useState("");
 
   // Theme
   useEffect(() => {
@@ -54,88 +55,102 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // 🔹 Table Component (ปรับ UI มืออาชีพ)
-  const renderTable = (title, color, data) => (
-    <div className="my-8 rounded-2xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220] p-5 shadow-[0_0_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] transition">
-      <h2
-        className={`text-lg sm:text-xl font-semibold mb-4 border-b border-white/10 pb-2 ${color}`}
-      >
-        {title}
-      </h2>
+  // 🔍 Filter by search
+  const filterData = (data) =>
+    data.filter((d) =>
+      (d.symbol || "").toLowerCase().includes(search.toLowerCase())
+    );
 
-      {data.length === 0 ? (
-        <div className="text-gray-400 text-sm mb-6 text-center">
-          ⚠️ ไม่มีข้อมูล หรือ API ไม่ส่งผลลัพธ์
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-lg">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
-              <tr>
-                <th className="p-2 text-left">Symbol</th>
-                <th className="p-2 text-right">Score</th>
-                <th className="p-2 text-right">Price</th>
-                <th className="p-2 text-right">RSI</th>
-                <th className="p-2 text-right">EMA</th>
-                <th className="p-2 text-center">AI Signal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((r) => (
-                <tr
-                  key={r.symbol}
-                  className="border-b border-white/5 hover:bg-white/5 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-200"
-                >
-                  <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400 transition">
-                    <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
-                  </td>
-                  <td className="p-2 text-right text-gray-200">
-                    {r.score ? r.score.toFixed(3) : "-"}
-                  </td>
-                  <td className="p-2 text-right text-emerald-400 font-semibold">
-                    {r.lastClose?.toFixed?.(2) ?? "-"}
-                  </td>
-                  <td className="p-2 text-right text-gray-200">
-                    {r.rsi?.toFixed?.(1) ?? "-"}
-                  </td>
+  // ✅ ตารางสวยงาม
+  const renderTable = (title, color, data) => {
+    const filtered = filterData(data);
+    return (
+      <div className="my-8 rounded-2xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220] p-5 shadow-[0_0_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] transition">
+        <h2
+          className={`text-lg sm:text-xl font-semibold mb-4 border-b border-white/10 pb-2 ${color}`}
+        >
+          {title}
+        </h2>
 
-                  {/* ✅ แสดง EMA 3 บรรทัดแนวตั้ง */}
-                  <td className="p-2 text-right font-mono text-gray-300 leading-tight">
-                    <div className="flex flex-col items-end space-y-[2px]">
-                      <span className="text-blue-300">20: {r.e20?.toFixed?.(2) ?? "-"}</span>
-                      <span className="text-amber-300">50: {r.e50?.toFixed?.(2) ?? "-"}</span>
-                      <span className="text-purple-300">200: {r.e200?.toFixed?.(2) ?? "-"}</span>
-                    </div>
-                  </td>
-
-                  {/* ✅ AI Signal */}
-                  <td className="p-2 text-center">
-                    <span
-                      className={`font-bold ${
-                        r.signal === "Buy"
-                          ? "text-green-400"
-                          : r.signal === "Sell"
-                          ? "text-red-400"
-                          : "text-yellow-300"
-                      }`}
-                    >
-                      {r.signal || "-"}
-                    </span>
-                    <br />
-                    <small className="text-gray-400">
-                      {r.conf ? (r.conf * 100).toFixed(0) + "%" : "-"}
-                    </small>
-                  </td>
+        {filtered.length === 0 ? (
+          <div className="text-gray-400 text-sm mb-6 text-center">
+            ⚠️ ไม่พบหุ้นที่ตรงกับคำค้น "{search || "-"}"
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg">
+            <table className="w-full text-sm border-collapse">
+              <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
+                <tr>
+                  <th className="p-2 text-left">Symbol</th>
+                  <th className="p-2 text-right">Score</th>
+                  <th className="p-2 text-right">Price</th>
+                  <th className="p-2 text-right">RSI</th>
+                  <th className="p-2 text-right">EMA</th>
+                  <th className="p-2 text-center">AI Signal</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+              </thead>
+              <tbody>
+                {filtered.map((r) => (
+                  <tr
+                    key={r.symbol}
+                    className="border-b border-white/5 hover:bg-white/5 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-200"
+                  >
+                    <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400 transition">
+                      <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                    </td>
+                    <td className="p-2 text-right text-gray-200 font-mono">
+                      {r.score ? r.score.toFixed(3) : "-"}
+                    </td>
+                    <td className="p-2 text-right text-emerald-400 font-semibold font-mono">
+                      {r.lastClose?.toFixed?.(2) ?? "-"}
+                    </td>
+                    <td className="p-2 text-right text-gray-200 font-mono">
+                      {r.rsi?.toFixed?.(1) ?? "-"}
+                    </td>
 
-  // 🔹 UI
+                    {/* ✅ EMA vertical */}
+                    <td className="p-2 text-right font-mono text-gray-300 leading-tight">
+                      <div className="flex flex-col items-end space-y-[2px]">
+                        <span className="text-blue-300">
+                          20: {r.e20?.toFixed?.(2) ?? "-"}
+                        </span>
+                        <span className="text-amber-300">
+                          50: {r.e50?.toFixed?.(2) ?? "-"}
+                        </span>
+                        <span className="text-purple-300">
+                          200: {r.e200?.toFixed?.(2) ?? "-"}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="p-2 text-center">
+                      <span
+                        className={`font-bold ${
+                          r.signal === "Buy"
+                            ? "text-green-400"
+                            : r.signal === "Sell"
+                            ? "text-red-400"
+                            : "text-yellow-300"
+                        }`}
+                      >
+                        {r.signal || "-"}
+                      </span>
+                      <br />
+                      <small className="text-gray-400 font-mono">
+                        {r.conf ? (r.conf * 100).toFixed(0) + "%" : "-"}
+                      </small>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ✅ UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white font-inter">
       {/* ===== Header ===== */}
@@ -165,8 +180,19 @@ export default function Home() {
         </div>
       </header>
 
+      {/* ===== Search Bar ===== */}
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 Search Symbol (เช่น NVDA, AAPL, TSLA...)"
+          className="w-full sm:w-1/2 px-4 py-2 rounded-xl bg-[#141b2d] border border-white/10 focus:border-emerald-400/40 outline-none transition text-gray-200 placeholder-gray-500"
+        />
+      </div>
+
       {/* ===== Body ===== */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-2">
         {error && <div className="text-center text-red-400 mb-4">{error}</div>}
 
         {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
@@ -175,4 +201,4 @@ export default function Home() {
       </div>
     </main>
   );
-        }
+                              }
