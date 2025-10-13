@@ -27,7 +27,6 @@ export default function Home() {
           body: JSON.stringify({ horizon }),
         });
         const j = await res.json();
-        console.log("✅ Screener", horizon, j);
         return j?.results || [];
       } catch (err) {
         console.error("❌ Error:", err);
@@ -55,104 +54,125 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // Table Component
+  // 🔹 Table Component (ปรับ UI มืออาชีพ)
   const renderTable = (title, color, data) => (
-    <div className="my-6">
-      <h2 className={`text-xl font-bold mb-3 ${color}`}>{title}</h2>
+    <div className="my-8 rounded-2xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220] p-5 shadow-[0_0_15px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] transition">
+      <h2
+        className={`text-lg sm:text-xl font-semibold mb-4 border-b border-white/10 pb-2 ${color}`}
+      >
+        {title}
+      </h2>
+
       {data.length === 0 ? (
-        <div className="text-gray-400 text-sm mb-6">
+        <div className="text-gray-400 text-sm mb-6 text-center">
           ⚠️ ไม่มีข้อมูล หรือ API ไม่ส่งผลลัพธ์
         </div>
       ) : (
-        <table className="w-full text-sm border-collapse mb-6">
-          <thead className="bg-[#162034] text-gray-300">
-            <tr>
-              <th className="p-2 text-left">สัญลักษณ์</th>
-              <th className="p-2 text-right">คะแนน</th>
-              <th className="p-2 text-right">ราคา</th>
-              <th className="p-2 text-right">RSI</th>
-              <th className="p-2 text-center">EMA20/50/200</th>
-              <th className="p-2 text-center">AI Signal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((r) => (
-              <tr
-                key={r.symbol}
-                className="border-b border-gray-700 hover:bg-[#1c2538]/70 transition"
-              >
-                <td className="p-2 font-semibold text-blue-400">
-                  <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
-                </td>
-                <td className="p-2 text-right">
-                  {r.score ? r.score.toFixed(3) : "-"}
-                </td>
-                <td className="p-2 text-right">
-                  {r.lastClose?.toFixed?.(2) ?? "-"}
-                </td>
-                <td className="p-2 text-right">{r.rsi?.toFixed?.(1) ?? "-"}</td>
-                <td className="p-2 text-center">
-                  {[
-                    r.e20?.toFixed?.(2) ?? "-",
-                    r.e50?.toFixed?.(2) ?? "-",
-                    r.e200?.toFixed?.(2) ?? "-",
-                  ].join(" / ")}
-                </td>
-                <td className="p-2 text-center">
-                  <span
-                    className={
-                      r.signal === "Buy"
-                        ? "text-green-400 font-bold"
-                        : r.signal === "Sell"
-                        ? "text-red-400 font-bold"
-                        : "text-yellow-300 font-semibold"
-                    }
-                  >
-                    {r.signal || "-"}
-                  </span>
-                  <br />
-                  <small className="text-gray-400">
-                    {r.conf ? (r.conf * 100).toFixed(0) + "%" : "-"}
-                  </small>
-                </td>
+        <div className="overflow-x-auto rounded-lg">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
+              <tr>
+                <th className="p-2 text-left">Symbol</th>
+                <th className="p-2 text-right">Score</th>
+                <th className="p-2 text-right">Price</th>
+                <th className="p-2 text-right">RSI</th>
+                <th className="p-2 text-right">EMA</th>
+                <th className="p-2 text-center">AI Signal</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.map((r) => (
+                <tr
+                  key={r.symbol}
+                  className="border-b border-white/5 hover:bg-white/5 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-200"
+                >
+                  <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400 transition">
+                    <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                  </td>
+                  <td className="p-2 text-right text-gray-200">
+                    {r.score ? r.score.toFixed(3) : "-"}
+                  </td>
+                  <td className="p-2 text-right text-emerald-400 font-semibold">
+                    {r.lastClose?.toFixed?.(2) ?? "-"}
+                  </td>
+                  <td className="p-2 text-right text-gray-200">
+                    {r.rsi?.toFixed?.(1) ?? "-"}
+                  </td>
+
+                  {/* ✅ แสดง EMA 3 บรรทัดแนวตั้ง */}
+                  <td className="p-2 text-right font-mono text-gray-300 leading-tight">
+                    <div className="flex flex-col items-end space-y-[2px]">
+                      <span className="text-blue-300">20: {r.e20?.toFixed?.(2) ?? "-"}</span>
+                      <span className="text-amber-300">50: {r.e50?.toFixed?.(2) ?? "-"}</span>
+                      <span className="text-purple-300">200: {r.e200?.toFixed?.(2) ?? "-"}</span>
+                    </div>
+                  </td>
+
+                  {/* ✅ AI Signal */}
+                  <td className="p-2 text-center">
+                    <span
+                      className={`font-bold ${
+                        r.signal === "Buy"
+                          ? "text-green-400"
+                          : r.signal === "Sell"
+                          ? "text-red-400"
+                          : "text-yellow-300"
+                      }`}
+                    >
+                      {r.signal || "-"}
+                    </span>
+                    <br />
+                    <small className="text-gray-400">
+                      {r.conf ? (r.conf * 100).toFixed(0) + "%" : "-"}
+                    </small>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 
-  // UI
+  // 🔹 UI
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white">
-      <header className="sticky top-0 bg-[#101829]/90 backdrop-blur-md border-b border-gray-700 z-50">
-        <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
-          <b className="text-xl font-semibold">🌍 Visionary Stock Screener</b>
-          <button
-            onClick={loadAll}
-            className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold"
-          >
-            {loading ? "กำลังโหลด..." : "รีเฟรชทั้งหมด"}
-          </button>
-          <select
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-            className="px-2 py-1 rounded bg-[#1c2538] text-white"
-          >
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-          </select>
+    <main className="min-h-screen bg-[#0b1220] text-white font-inter">
+      {/* ===== Header ===== */}
+      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur-lg border-b border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between px-4 py-3 gap-3">
+          <b className="text-[20px] sm:text-[22px] font-bold text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]">
+            🌎 Visionary Stock Screener
+          </b>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadAll}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 font-semibold transition"
+            >
+              {loading ? "Loading..." : "🔁 Refresh All"}
+            </button>
+
+            <select
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+              className="px-3 py-1.5 rounded-lg bg-[#141b2d] border border-white/10 text-white text-sm"
+            >
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
         </div>
       </header>
 
-      <div className="px-4 py-5">
-        {error && <div className="text-center text-red-400">{error}</div>}
+      {/* ===== Body ===== */}
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {error && <div className="text-center text-red-400 mb-4">{error}</div>}
 
         {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
         {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
-        {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-blue-400", dataLong)}
+        {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", dataLong)}
       </div>
     </main>
   );
-                  }
+        }
