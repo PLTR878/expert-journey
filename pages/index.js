@@ -62,10 +62,7 @@ export default function Home() {
       const data = await res.json();
       if (Array.isArray(data.symbols)) {
         setSymbolList(data.symbols);
-        // 🆕 โหลดราคาทันทีทุก symbol ที่ค้นเจอ
-        data.symbols.forEach((s) => {
-          fetchYahooPrice(s.symbol);
-        });
+        data.symbols.forEach((s) => fetchYahooPrice(s.symbol));
       }
     } catch (err) {
       console.error("loadSymbols error:", err);
@@ -108,26 +105,53 @@ export default function Home() {
     });
   };
 
-  // ✅ ดึงราคาจริงจาก Yahoo API แล้วเก็บลง favoritePrices (เวอร์ชันใหม่)
+  // ✅ ดึงราคาจริงจาก Yahoo API แล้วเก็บลง favoritePrices (เวอร์ชัน 3 ครอบคลุมสุด)
   async function fetchYahooPrice(symbol, forceUpdate = false) {
     try {
-      // 🔹 พยายามใช้ chart API ก่อน
-      let res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
-      let data = await res.json();
-      let meta = data?.chart?.result?.[0]?.meta;
+      let price = null;
+      let changePercent = null;
 
-      let price = meta?.regularMarketPrice || meta?.previousClose || null;
-      let changePercent = meta?.regularMarketChangePercent || null;
+      // 1️⃣ พยายามใช้ chart API ก่อน
+      try {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
+        const data = await res.json();
+        const meta = data?.chart?.result?.[0]?.meta;
+        if (meta) {
+          price = meta.regularMarketPrice || meta.previousClose || null;
+          changePercent = meta.regularMarketChangePercent || null;
+        }
+      } catch {
+        console.warn(`chart API fail: ${symbol}`);
+      }
 
-      // 🔹 ถ้าไม่มีราคา ลอง fallback ไป quoteSummary
+      // 2️⃣ ถ้ายังไม่มีราคา ลอง fallback ไป quoteSummary
       if (!price) {
-        const alt = await fetch(
-          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`
-        );
-        const altData = await alt.json();
-        const p = altData?.quoteSummary?.result?.[0]?.price;
-        price = p?.regularMarketPrice?.raw || p?.previousClose?.raw || 0;
-        changePercent = p?.regularMarketChangePercent?.raw || 0;
+        try {
+          const alt = await fetch(
+            `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`
+          );
+          const altData = await alt.json();
+          const p = altData?.quoteSummary?.result?.[0]?.price;
+          price = p?.regularMarketPrice?.raw || p?.previousClose?.raw || null;
+          changePercent = p?.regularMarketChangePercent?.raw || null;
+        } catch {
+          console.warn(`quoteSummary fail: ${symbol}`);
+        }
+      }
+
+      // 3️⃣ ถ้ายังไม่มีอีก ลองใช้ quote?symbols= (แน่นอนสุด)
+      if (!price) {
+        try {
+          const qres = await fetch(
+            `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`
+          );
+          const qdata = await qres.json();
+          const q = qdata?.quoteResponse?.result?.[0];
+          price = q?.regularMarketPrice || q?.previousClose || 0;
+          changePercent = q?.regularMarketChangePercent || 0;
+        } catch {
+          console.warn(`quote?symbols fail: ${symbol}`);
+        }
       }
 
       if (!price) {
@@ -140,7 +164,6 @@ export default function Home() {
         [symbol]: { price, changePercent },
       }));
 
-      // 🧠 อัปเดต UI หลังโหลดราคา
       if (forceUpdate) {
         setTimeout(() => setFavorites((prev) => [...prev]), 150);
       }
@@ -152,6 +175,16 @@ export default function Home() {
   // ✅ โหลดราคาของ Favorites ทุกครั้งที่เปิดหน้า
   useEffect(() => {
     favorites.forEach((symbol) => fetchYahooPrice(symbol));
+  }, [favorites]);
+
+  // ✅ Auto Refresh ราคาทุก 60 วินาที
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (favorites.length > 0) {
+        favorites.forEach((s) => fetchYahooPrice(s));
+      }
+    }, 60000); // 60 วินาที
+    return () => clearInterval(interval);
   }, [favorites]);
 
   // ✅ ล้างรายการโปรด
