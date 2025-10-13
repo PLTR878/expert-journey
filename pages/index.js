@@ -116,12 +116,40 @@ export default function Home() {
     return { short: match(dataShort), medium: match(dataMedium), long: match(dataLong), extra };
   };
 
-  // ⭐ จัดการ Favorites
-  const toggleFavorite = (symbol) => {
-    setFavorites((prev) =>
-      prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]
-    );
+  // ⭐ จัดการ Favorites พร้อมดึงราคาจริงจาก Yahoo
+  const toggleFavorite = async (symbol) => {
+    setFavorites((prev) => {
+      if (prev.includes(symbol)) {
+        return prev.filter((s) => s !== symbol);
+      } else {
+        // ✅ เพิ่ม symbol แล้วโหลดราคา
+        fetchYahooPrice(symbol);
+        return [...prev, symbol];
+      }
+    });
   };
+
+  // ✅ ฟังก์ชันโหลดราคาจริงจาก Yahoo API
+  async function fetchYahooPrice(symbol) {
+    try {
+      const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta) return;
+
+      const price = meta.regularMarketPrice || meta.previousClose || 0;
+      const changePercent = meta.regularMarketChangePercent || 0;
+
+      // อัปเดตราคาลงใน symbolList หรือ favoriteData ทันที
+      setSymbolList((prev) =>
+        prev.map((s) =>
+          s.symbol === symbol ? { ...s, lastClose: price, changePercent } : s
+        )
+      );
+    } catch (err) {
+      console.error("fetchYahooPrice error:", err);
+    }
+  }
 
   const clearFavorites = () => {
     if (confirm("ต้องการล้างรายการโปรดทั้งหมดหรือไม่?")) {
@@ -175,7 +203,7 @@ export default function Home() {
                     <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
                       <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
                     </td>
-                    <td className="p-3 font-mono text-gray-300">
+                    <td className="p-3 font-mono font-semibold text-gray-300">
                       {r.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
                     </td>
                     <td className="p-3 text-gray-400">{r.rsi ? r.rsi.toFixed(1) : "-"}</td>
@@ -270,4 +298,4 @@ export default function Home() {
       </div>
     </main>
   );
-                                                                  }
+        }
