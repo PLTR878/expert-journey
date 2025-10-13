@@ -126,11 +126,7 @@ export default function Analyze() {
             <div className="grid grid-cols-2 gap-4">
               <Info label="🎯 ราคาเป้าหมาย (คาดการณ์)" value={`$${fmt(price * 1.08, 2)}`} />
               <Info label="🤖 ความเชื่อมั่นของ AI" value={`${fmt(sig.confidence * 100, 0)}%`} />
-              <Info
-                label="📋 เหตุผลจากระบบ"
-                value={sig.reason}
-                className="col-span-2"
-              />
+              <Info label="📋 เหตุผลจากระบบ" value={sig.reason} className="col-span-2" />
             </div>
           </section>
 
@@ -188,11 +184,28 @@ export default function Analyze() {
   );
 }
 
+/* ✅ ปรับ Info ให้ดูมืออาชีพ (Fintech Style) */
 function Info({ label, value, className = '' }) {
+  const numeric = typeof value === 'string' && value.match(/[\d.]/);
+  const color =
+    value?.includes('%')
+      ? value.includes('-')
+        ? 'text-red-400'
+        : 'text-emerald-400'
+      : 'text-gray-100';
+
   return (
-    <div className={`rounded-xl bg-black/15 border border-white/10 p-3 flex flex-col justify-center ${className}`}>
+    <div
+      className={`rounded-xl bg-gradient-to-b from-[#0f1528] to-[#0b1220] border border-white/10 p-3 flex flex-col justify-center hover:border-emerald-400/20 transition-all duration-300 ${className}`}
+    >
       <div className="text-[11px] text-gray-400 tracking-wide mb-1">{label}</div>
-      <div className="text-[15px] font-semibold text-gray-100 leading-tight">{value}</div>
+      <div
+        className={`text-[16px] font-bold leading-tight font-[monospace] ${color} ${
+          numeric ? 'tracking-wider' : ''
+        }`}
+      >
+        {value}
+      </div>
     </div>
   );
-                }
+  }
