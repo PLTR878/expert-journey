@@ -62,8 +62,7 @@ export default function Home() {
       const data = await res.json();
       if (Array.isArray(data.symbols)) {
         setSymbolList(data.symbols);
-
-        // 🆕 โหลดราคาจริงให้ทุก symbol ที่ค้นเจอ
+        // 🆕 โหลดราคาทันทีทุก symbol ที่ค้นเจอ
         data.symbols.forEach((s) => {
           fetchYahooPrice(s.symbol);
         });
@@ -103,30 +102,45 @@ export default function Home() {
       if (prev.includes(symbol)) {
         return prev.filter((s) => s !== symbol);
       } else {
-        // ✅ โหลดราคาทันทีหลังเพิ่ม และ refresh UI
         fetchYahooPrice(symbol, true);
         return [...prev, symbol];
       }
     });
   };
 
-  // ✅ ดึงราคาจริงจาก Yahoo API แล้วเก็บลง favoritePrices
+  // ✅ ดึงราคาจริงจาก Yahoo API แล้วเก็บลง favoritePrices (เวอร์ชันใหม่)
   async function fetchYahooPrice(symbol, forceUpdate = false) {
     try {
-      const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
-      const data = await res.json();
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (!meta) return;
+      // 🔹 พยายามใช้ chart API ก่อน
+      let res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
+      let data = await res.json();
+      let meta = data?.chart?.result?.[0]?.meta;
 
-      const price = meta.regularMarketPrice || meta.previousClose || 0;
-      const changePercent = meta.regularMarketChangePercent || 0;
+      let price = meta?.regularMarketPrice || meta?.previousClose || null;
+      let changePercent = meta?.regularMarketChangePercent || null;
+
+      // 🔹 ถ้าไม่มีราคา ลอง fallback ไป quoteSummary
+      if (!price) {
+        const alt = await fetch(
+          `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`
+        );
+        const altData = await alt.json();
+        const p = altData?.quoteSummary?.result?.[0]?.price;
+        price = p?.regularMarketPrice?.raw || p?.previousClose?.raw || 0;
+        changePercent = p?.regularMarketChangePercent?.raw || 0;
+      }
+
+      if (!price) {
+        console.warn(`⚠️ ไม่พบราคา ${symbol}`);
+        return;
+      }
 
       setFavoritePrices((prev) => ({
         ...prev,
         [symbol]: { price, changePercent },
       }));
 
-      // 🧠 Refresh UI ทันทีหลังโหลดราคาเสร็จ
+      // 🧠 อัปเดต UI หลังโหลดราคา
       if (forceUpdate) {
         setTimeout(() => setFavorites((prev) => [...prev]), 150);
       }
@@ -178,7 +192,10 @@ export default function Home() {
         <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
           <h2 className={`text-lg sm:text-xl font-semibold ${color}`}>{title}</h2>
           {title.includes("Favorites") && (
-            <button onClick={clearFavorites} className="text-sm text-red-400 hover:text-red-300 underline">
+            <button
+              onClick={clearFavorites}
+              className="text-sm text-red-400 hover:text-red-300 underline"
+            >
               ล้างทั้งหมด
             </button>
           )}
@@ -200,8 +217,14 @@ export default function Home() {
                 const isFav = favorites.includes(r.symbol);
                 const priceObj = favoritePrices[r.symbol];
                 return (
-                  <tr key={r.symbol} className="border-b border-white/5 hover:bg-white/5 transition-all">
-                    <td onClick={() => toggleFavorite(r.symbol)} className="cursor-pointer text-[16px] text-yellow-400 pl-5">
+                  <tr
+                    key={r.symbol}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all"
+                  >
+                    <td
+                      onClick={() => toggleFavorite(r.symbol)}
+                      className="cursor-pointer text-[16px] text-yellow-400 pl-5"
+                    >
                       {isFav ? "★" : "☆"}
                     </td>
                     <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
@@ -237,8 +260,14 @@ export default function Home() {
     );
   };
 
-  const { short, medium, long, extra } = filterDataAll(dataShort, dataMedium, dataLong, search);
-  const noResult = !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
+  const { short, medium, long, extra } = filterDataAll(
+    dataShort,
+    dataMedium,
+    dataLong,
+    search
+  );
+  const noResult =
+    !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
 
   const favoriteData = favorites
     .map((symbol) => {
@@ -304,7 +333,11 @@ export default function Home() {
         ) : (
           <>
             {favoriteData.length > 0 &&
-              renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favoriteData)}
+              renderTable(
+                "⭐ My Favorites — หุ้นที่คุณติดดาวไว้",
+                "text-yellow-300",
+                favoriteData
+              )}
             {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", short)}
             {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", medium)}
             {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", long)}
@@ -314,4 +347,4 @@ export default function Home() {
       </div>
     </main>
   );
-    }
+          }
