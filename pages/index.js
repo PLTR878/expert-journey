@@ -16,7 +16,7 @@ export default function Home() {
   const [progress, setProgress] = useState(0);
   const [eta, setEta] = useState(0);
 
-  // โหลด favorites
+  // โหลดรายการโปรดจาก localStorage
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -32,6 +32,7 @@ export default function Home() {
     setProgress(0);
     setEta(0);
     const startTime = Date.now();
+
     try {
       const fetcher = async (url, body) =>
         fetch(url, {
@@ -49,7 +50,7 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // ✅ โหลด AI Picks ทั้งตลาด พร้อม progress + ETA
+      // ✅ โหลด AI Picks พร้อม Progress + ETA
       const loadAIPicksAll = async () => {
         const pageSize = 100;
         const maxPages = 50;
@@ -63,9 +64,9 @@ export default function Home() {
           const chunk = r?.results || [];
           acc = acc.concat(chunk);
 
-          // ✅ อัปเดตความคืบหน้า + เวลาที่เหลือ
           const done = ((i + 1) / maxPages) * 100;
           setProgress(done);
+
           const elapsed = (Date.now() - startTime) / 1000;
           const estimatedTotal = (elapsed / (i + 1)) * maxPages;
           const remaining = Math.max(estimatedTotal - elapsed, 0);
@@ -73,7 +74,7 @@ export default function Home() {
 
           if (chunk.length < pageSize) break;
           off += pageSize;
-          await new Promise((res) => setTimeout(res, 150)); // กัน rate-limit
+          await new Promise((res) => setTimeout(res, 150));
         }
 
         setProgress(100);
@@ -100,7 +101,7 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // ดึงราคา RSI / AI
+  // ดึงราคา RSI และสัญญาณ AI
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -214,7 +215,7 @@ export default function Home() {
     ...favoritePrices[s],
   }));
 
-  // โหลดข่าว
+  // ข่าว
   async function loadNews() {
     try {
       const res = await fetch("/api/news");
@@ -278,7 +279,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ✅ Progress Bar */}
+        {/* Progress Bar */}
         {progress > 0 && (
           <>
             <div className="w-full bg-[#1a2335] h-2">
@@ -300,7 +301,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* เนื้อหา */}
+      {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-4">
         {/* Favorites */}
         {activeTab === "favorites" && (
@@ -456,4 +457,12 @@ export default function Home() {
         </button>
         <button
           onClick={() => setActiveTab("menu")}
-          className={`py-
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
+          }`}
+        >
+          <span className="text-[18px]">☰</span>
+          Menu
+        </button>
+      </nav>
+    </main>
