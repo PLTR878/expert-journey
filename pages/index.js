@@ -24,7 +24,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลหุ้นทั้งหมด
+  // โหลดข้อมูลทั้งหมด
   async function loadAll() {
     setLoading(true);
     try {
@@ -44,19 +44,21 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // ✅ โหลด AI Picks ทั้งตลาด (สแกนอัตโนมัติ)
+      // ✅ โหลด AI Picks ทั้งตลาด (สแกน NASDAQ + NYSE)
       const loadAIPicksAll = async () => {
         const pageSize = 80;
         let off = 0;
         let acc = [];
-        for (let i = 0; i < 2; i++) { // โหลด 2 ชุด = 160 หุ้น
+        // โหลดมากขึ้น (25 หน้า ≈ 2000 หุ้น)
+        for (let i = 0; i < 25; i++) {
           const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}`).then(res => res.json());
           acc = acc.concat(r.results || []);
-          if (r.results.length < pageSize) break;
+          if (!r.results || r.results.length < pageSize) break;
           off += pageSize;
         }
         return acc;
       };
+
       const ai = await loadAIPicksAll();
 
       setDataShort(short);
@@ -75,7 +77,7 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // ดึงราคา RSI และสัญญาณ AI
+  // ดึงราคาหุ้น + RSI + สัญญาณ AI
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -100,7 +102,7 @@ export default function Home() {
 
   // ล้างรายการโปรด
   const clearFavorites = () => {
-    if (confirm("Clear all favorites?")) {
+    if (confirm("❌ ล้างรายการโปรดทั้งหมด?")) {
       setFavorites([]);
       localStorage.removeItem("favorites");
       setFavoritePrices({});
@@ -126,7 +128,7 @@ export default function Home() {
               <th className="p-2">Symbol</th>
               <th className="p-2">Price</th>
               <th className="p-2">RSI</th>
-              <th className="p-2">AI</th>
+              <th className="p-2">AI Signal</th>
             </tr>
           </thead>
         )}
@@ -255,9 +257,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* เนื้อหาแต่ละแท็บ */}
+      {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
         {activeTab === "favorites" && (
           <>
             {favoriteData.length > 0 ? (
@@ -283,34 +284,13 @@ export default function Home() {
           </>
         )}
 
-        {/* Market */}
         {activeTab === "market" && (
           <div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-green-400 text-lg font-semibold mb-2">
-                ⚡ Fast Movers
-              </h2>
-              <Table rows={dataShort.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-yellow-400 text-lg font-semibold mb-2">
-                🌱 Emerging Trends
-              </h2>
-              <Table rows={dataMedium.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-sky-400 text-lg font-semibold mb-2">
-                🚀 Future Leaders
-              </h2>
-              <Table rows={dataLong.slice(0, 6)} compact />
-            </div>
-
-            {/* ✅ AI Picks Section */}
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
               <h2 className="text-emerald-400 text-lg font-semibold mb-2">
-                🤖 AI Picks — Smart Buy Signals
+                🤖 AI Picks — Smart Buy & Sell Signals
               </h2>
-              <Table rows={aiPicks.slice(0, 8)} compact />
+              <Table rows={aiPicks.slice(0, 30)} compact />
             </div>
 
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
@@ -322,7 +302,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* News */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
             <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
@@ -375,7 +354,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Menu */}
         {activeTab === "menu" && (
           <div className="text-center text-gray-400 py-10">
             ⚙️ Settings / About / Version 1.0.0
@@ -424,4 +402,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+          }
