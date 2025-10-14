@@ -8,12 +8,13 @@ export default function Home() {
   const [dataLong, setDataLong] = useState([]);
   const [hidden, setHidden] = useState([]);
   const [aiPicks, setAiPicks] = useState([]);
-  const [newsFeed, setNewsFeed] = useState([]); // ✅ ข่าวใหม่
+  const [newsFeed, setNewsFeed] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("favorites");
+  const [searchSymbol, setSearchSymbol] = useState("");
 
-  // ✅ โหลดรายการโปรด
+  // โหลดรายการโปรด
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -22,7 +23,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ✅ โหลดข้อมูลทุกหมวด
+  // โหลดข้อมูลทุกหมวด
   async function loadAll() {
     setLoading(true);
     try {
@@ -57,7 +58,7 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // ✅ ดึงราคา RSI AI Signal
+  // ดึงราคา RSI AI Signal
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -78,7 +79,6 @@ export default function Home() {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
-  // ✅ ล้างรายการโปรด
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -87,14 +87,12 @@ export default function Home() {
     }
   };
 
-  // ✅ toggle Favorite
   const toggleFavorite = (sym) => {
     setFavorites((prev) =>
       prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym]
     );
   };
 
-  // ✅ ตารางหุ้น
   const Table = ({ rows, compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -158,7 +156,6 @@ export default function Home() {
     ...favoritePrices[s],
   }));
 
-  // ✅ โหลดข่าวจาก API
   async function loadNews() {
     try {
       const res = await fetch("/api/news");
@@ -173,24 +170,43 @@ export default function Home() {
     if (activeTab === "news") loadNews();
   }, [activeTab]);
 
-  // ✅ UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* Header */}
+      {/* ✅ Header พร้อม Search */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-          <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener
-          </b>
-          <button
-            onClick={loadAll}
-            className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold"
-          >
-            {loading ? "Loading..." : "🔁 Refresh"}
-          </button>
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="flex justify-between items-center w-full sm:w-auto">
+            <b className="text-emerald-400 text-lg sm:text-xl">
+              🌍 Visionary Stock Screener
+            </b>
+            <button
+              onClick={loadAll}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold sm:ml-4"
+            >
+              {loading ? "Loading..." : "🔁 Refresh"}
+            </button>
+          </div>
+
+          {/* 🔍 Search bar */}
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
+              value={searchSymbol}
+              onChange={(e) => setSearchSymbol(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchSymbol.trim() !== "") {
+                  const sym = searchSymbol.trim().toUpperCase();
+                  window.location.href = `/analyze/${sym}`;
+                }
+              }}
+              className="w-full bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-400 placeholder-gray-500"
+            />
+          </div>
         </div>
       </header>
 
+      {/* ✅ เนื้อหาแต่ละแท็บ */}
       <div className="max-w-6xl mx-auto px-4 py-4">
         {/* ⭐ Favorites */}
         {activeTab === "favorites" && (
@@ -256,7 +272,9 @@ export default function Home() {
             </h2>
 
             {newsFeed.length === 0 ? (
-              <div className="text-center text-gray-400 py-4">Loading news...</div>
+              <div className="text-center text-gray-400 py-4">
+                Loading news...
+              </div>
             ) : (
               <div className="grid gap-4">
                 {newsFeed.map((n, i) => (
@@ -268,7 +286,9 @@ export default function Home() {
                     className="block bg-[#141b2d]/70 border border-white/10 rounded-2xl p-4 hover:bg-[#1d2941]/80 transition"
                   >
                     <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="text-sky-400 font-semibold">{n.symbol}</span>
+                      <span className="text-sky-400 font-semibold">
+                        {n.symbol}
+                      </span>
                       <span className="text-gray-400 text-xs">{n.time}</span>
                     </div>
                     <h2 className="text-emerald-300 font-semibold text-base mb-1">
@@ -347,4 +367,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                }
+              }
