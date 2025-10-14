@@ -14,7 +14,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("favorites");
   const [searchSymbol, setSearchSymbol] = useState("");
 
-  // โหลดรายการโปรดจาก localStorage
+  // โหลดรายการโปรด
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -24,7 +24,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลหุ้นทั้งหมด
+  // โหลดข้อมูลทั้งหมด
   async function loadAll() {
     setLoading(true);
     try {
@@ -120,7 +120,6 @@ export default function Home() {
               </td>
             </tr>
           )}
-
           {rows.map((r, i) => {
             const sym = r.symbol || r.ticker || r.Symbol || "";
             if (!sym) return null;
@@ -187,7 +186,7 @@ export default function Home() {
     if (activeTab === "news") loadNews();
   }, [activeTab]);
 
-  // ✅ ฟังก์ชันดึงสรุปข่าวฟรี
+  // สรุปข่าว
   async function summarize(url) {
     try {
       const res = await fetch(`/api/summary?url=${encodeURIComponent(url)}`);
@@ -200,7 +199,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* Header พร้อม Search */}
+      {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <div className="flex justify-between items-center w-full sm:w-auto">
@@ -209,7 +208,7 @@ export default function Home() {
             </b>
             <button
               onClick={loadAll}
-              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold sm:ml-4"
+              className="bg-[#1b2a3d] hover:bg-[#22344e] border border-white/10 px-4 py-1.5 rounded-lg text-gray-200 text-sm font-semibold sm:ml-4"
             >
               {loading ? "Loading..." : "🔁 Refresh"}
             </button>
@@ -238,128 +237,76 @@ export default function Home() {
         </div>
       </header>
 
-      {/* เนื้อหาแต่ละแท็บ */}
-      <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
-        {activeTab === "favorites" && (
-          <>
-            {favoriteData.length > 0 ? (
-              <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-yellow-300 text-lg font-semibold">
-                    ⭐ My Favorites
-                  </h2>
-                  <button
-                    onClick={clearFavorites}
-                    className="text-sm text-red-400 hover:text-red-300 underline"
-                  >
-                    Clear All
-                  </button>
-                </div>
-                <Table rows={favoriteData} />
-              </div>
-            ) : (
-              <div className="text-center text-gray-400 py-6">
-                ⭐ No favorites yet — tap “☆” or search a symbol.
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Market */}
-        {activeTab === "market" && (
-          <div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-green-400 text-lg font-semibold mb-2">
-                ⚡ Fast Movers
-              </h2>
-              <Table rows={dataShort.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-yellow-400 text-lg font-semibold mb-2">
-                🌱 Emerging Trends
-              </h2>
-              <Table rows={dataMedium.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-sky-400 text-lg font-semibold mb-2">
-                🚀 Future Leaders
-              </h2>
-              <Table rows={dataLong.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-cyan-300 text-lg font-semibold mb-2">
-                💎 Hidden Gems
-              </h2>
-              <Table rows={hidden.slice(0, 6)} compact />
-            </div>
-          </div>
-        )}
-
-        {/* News + ปุ่มสรุปข่าว */}
-        {activeTab === "news" && (
-          <div className="px-3 py-5">
-            <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
+      {/* News */}
+      {activeTab === "news" && (
+        <div className="px-4 py-6">
+          <div className="text-center mb-5">
+            <h2 className="text-purple-300 text-xl font-semibold">
               🧠 AI Market News — Early Signals
             </h2>
-            {newsFeed.length === 0 ? (
-              <div className="text-center text-gray-400 py-4">
-                Loading news...
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {newsFeed.map((n, i) => (
-                  <div
-                    key={i}
-                    className="block bg-[#141b2d]/70 border border-white/10 rounded-2xl p-4 hover:bg-[#1d2941]/80 transition"
-                  >
-                    <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="text-sky-400 font-semibold">
-                        {n.symbol}
-                      </span>
-                      <span className="text-gray-400 text-xs">{n.time}</span>
-                    </div>
-                    <h2 className="text-emerald-300 font-semibold text-base mb-1">
-                      {n.title}
-                    </h2>
-                    <div className="flex justify-between items-center text-xs mb-2">
-                      <span className="text-gray-400">{n.publisher}</span>
-                      <span
-                        className={`font-bold ${
-                          n.sentiment === "Positive"
-                            ? "text-green-400"
-                            : n.sentiment === "Negative"
-                            ? "text-red-400"
-                            : "text-yellow-300"
-                        }`}
-                      >
-                        {n.sentiment}
-                      </span>
-                    </div>
+            <p className="text-gray-400 text-sm mt-1">
+              Real-time curated market updates
+            </p>
+          </div>
 
-                    {/* ปุ่มสรุปข่าว */}
+          {newsFeed.length === 0 ? (
+            <div className="text-center text-gray-500 py-6 italic">
+              Loading market insights...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {newsFeed.map((n, i) => (
+                <div
+                  key={i}
+                  className="p-4 rounded-xl bg-[#101827]/80 border border-white/10 hover:bg-[#141d2e]/80 transition-all"
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sky-400 text-sm font-semibold">
+                      {n.symbol}
+                    </span>
+                    <span className="text-gray-500 text-xs">{n.time}</span>
+                  </div>
+
+                  <a
+                    href={n.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-base text-emerald-300 font-medium leading-snug hover:text-emerald-200 transition"
+                  >
+                    {n.title}
+                  </a>
+
+                  <div className="flex justify-between items-center text-xs mt-2 mb-3">
+                    <span className="text-gray-400">{n.publisher}</span>
+                    <span
+                      className={`font-semibold ${
+                        n.sentiment === "Positive"
+                          ? "text-green-400"
+                          : n.sentiment === "Negative"
+                          ? "text-red-400"
+                          : "text-yellow-300"
+                      }`}
+                    >
+                      {n.sentiment}
+                    </span>
+                  </div>
+
+                  <div className="text-right">
                     <button
                       onClick={() => summarize(n.url)}
-                      className="mt-2 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/20 px-3 py-1 rounded-lg text-emerald-300 transition"
+                      className="text-xs px-3 py-1 border border-emerald-500/30 rounded-md text-emerald-300 hover:bg-emerald-500/10 transition"
                     >
                       🧾 Summary
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Menu */}
-        {activeTab === "menu" && (
-          <div className="text-center text-gray-400 py-10">
-            ⚙️ Settings / About / Version 1.0.0
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Navigation */}
+      {/* Footer Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
@@ -400,4 +347,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                     }
+                    }
