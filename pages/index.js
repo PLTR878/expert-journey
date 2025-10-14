@@ -97,7 +97,6 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูลทั้งหมดครั้งแรก
   useEffect(() => {
     loadAll();
   }, []);
@@ -158,7 +157,8 @@ export default function Home() {
 
   // ✅ รวมผลลัพธ์ทั้งหมด
   const filterDataAll = (dataShort, dataMedium, dataLong, search) => {
-    if (!search.trim()) return { short: dataShort, medium: dataMedium, long: dataLong, extra: [] };
+    if (!search.trim())
+      return { short: dataShort, medium: dataMedium, long: dataLong, extra: [] };
 
     const q = search.trim().toLowerCase();
     const match = (arr) => arr.filter((d) => (d.symbol || "").toLowerCase().includes(q));
@@ -177,7 +177,7 @@ export default function Home() {
     return { short: match(dataShort), medium: match(dataMedium), long: match(dataLong), extra };
   };
 
-  // ✅ ตารางหุ้น
+  // ✅ ตารางหุ้น (ไม่มี % และแสดง RSI/Signal)
   const renderTable = (title, color, data) => {
     if (!data.length) return null;
     return (
@@ -209,8 +209,17 @@ export default function Home() {
               {data.map((r) => {
                 const isFav = favorites.includes(r.symbol);
                 const priceObj = favoritePrices[r.symbol];
+                const priceText = priceObj?.price
+                  ? `$${priceObj.price.toFixed(2)}`
+                  : r.lastClose
+                  ? `$${r.lastClose.toFixed(2)}`
+                  : "-";
+
                 return (
-                  <tr key={r.symbol} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                  <tr
+                    key={r.symbol}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all"
+                  >
                     <td
                       onClick={() => toggleFavorite(r.symbol)}
                       className="cursor-pointer text-[16px] text-yellow-400 pl-5"
@@ -229,17 +238,14 @@ export default function Home() {
                           : "text-gray-300"
                       }`}
                     >
-                      {priceObj?.price
-                        ? `$${priceObj.price.toFixed(2)}`
-                        : r.lastClose
-                        ? `$${r.lastClose.toFixed(2)}`
-                        : "-"}
-                      {priceObj && (
-                        <div className="text-xs">{priceObj.changePercent.toFixed(2)}%</div>
-                      )}
+                      {priceText}
                     </td>
-                    <td className="p-3 text-gray-400">{r.rsi ? r.rsi.toFixed(1) : "-"}</td>
-                    <td className="p-3 text-gray-400">{r.signal || "-"}</td>
+                    <td className="p-3 text-gray-400">
+                      {r.rsi ? r.rsi.toFixed(1) : "-"}
+                    </td>
+                    <td className="p-3 text-gray-400">
+                      {r.signal || "-"}
+                    </td>
                   </tr>
                 );
               })}
@@ -250,7 +256,12 @@ export default function Home() {
     );
   };
 
-  const { short, medium, long, extra } = filterDataAll(dataShort, dataMedium, dataLong, search);
+  const { short, medium, long, extra } = filterDataAll(
+    dataShort,
+    dataMedium,
+    dataLong,
+    search
+  );
   const noResult =
     !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
 
@@ -327,4 +338,4 @@ export default function Home() {
       </div>
     </main>
   );
-      }
+}
