@@ -51,7 +51,7 @@ export default function Home() {
     }
   }
 
-  // ✅ ดึงราคาผ่าน API ของเราเอง (แก้ปัญหา CORS + refresh ทันที)
+  // ✅ ดึงราคาผ่าน API ของเราเอง (แก้ CORS)
   async function fetchYahooPrice(symbol, forceUpdate = false) {
     try {
       const res = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -59,7 +59,6 @@ export default function Home() {
         console.warn(`⚠️ API /price error for ${symbol}`);
         return;
       }
-
       const data = await res.json();
       const price = Number(data.price) || 0;
       const changePercent =
@@ -70,16 +69,13 @@ export default function Home() {
         [symbol]: { price, changePercent },
       }));
 
-      // ✅ force update UI (Favorites)
       if (forceUpdate) setTimeout(() => setFavorites((prev) => [...prev]), 150);
-
-      console.log(`✅ ${symbol}: $${price} (${changePercent}%)`);
     } catch (err) {
       console.error(`❌ fetchYahooPrice(${symbol}) error:`, err);
     }
   }
 
-  // ✅ โหลด Symbol จาก Yahoo ตามคำค้น และดึงราคาทันที
+  // ✅ โหลด Symbol จาก Yahoo
   async function loadSymbols(q = "") {
     try {
       if (!q.trim()) {
@@ -101,7 +97,7 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // ✅ ค้นหาทุกครั้งที่พิมพ์
+  // ✅ Search Realtime
   useEffect(() => {
     const delay = setTimeout(() => {
       if (search.trim()) loadSymbols(search);
@@ -110,18 +106,17 @@ export default function Home() {
     return () => clearTimeout(delay);
   }, [search]);
 
-  // ✅ โหลด Favorites จาก localStorage
+  // ✅ โหลด / บันทึก Favorites
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
-  // ✅ บันทึก Favorites ลง localStorage
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ⭐ Toggle Favorites + ดึงราคาทันที
+  // ✅ เพิ่ม/ลบ Favorites
   const toggleFavorite = async (symbol) => {
     setFavorites((prev) => {
       if (prev.includes(symbol)) {
@@ -133,12 +128,12 @@ export default function Home() {
     });
   };
 
-  // ✅ โหลดราคาของ Favorites ทุกครั้งที่เปิดหน้า
+  // ✅ โหลดราคาทุกครั้งเมื่อเปิดหน้า
   useEffect(() => {
     favorites.forEach((symbol) => fetchYahooPrice(symbol));
   }, [favorites]);
 
-  // ✅ Auto Refresh ราคาทุก 60 วินาที
+  // ✅ Auto Refresh 60 วิ
   useEffect(() => {
     const interval = setInterval(() => {
       if (favorites.length > 0) favorites.forEach((s) => fetchYahooPrice(s));
@@ -146,7 +141,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [favorites]);
 
-  // ✅ ล้างรายการโปรด
+  // ✅ ล้าง Favorites
   const clearFavorites = () => {
     if (confirm("ต้องการล้างรายการโปรดทั้งหมดหรือไม่?")) {
       setFavorites([]);
@@ -161,7 +156,8 @@ export default function Home() {
       return { short: dataShort, medium: dataMedium, long: dataLong, extra: [] };
 
     const q = search.trim().toLowerCase();
-    const match = (arr) => arr.filter((d) => (d.symbol || "").toLowerCase().includes(q));
+    const match = (arr) =>
+      arr.filter((d) => (d.symbol || "").toLowerCase().includes(q));
 
     const extra = symbolList
       .filter((s) => (s.symbol || "").toLowerCase().includes(q))
@@ -174,10 +170,15 @@ export default function Home() {
         signal: "-",
       }));
 
-    return { short: match(dataShort), medium: match(dataMedium), long: match(dataLong), extra };
+    return {
+      short: match(dataShort),
+      medium: match(dataMedium),
+      long: match(dataLong),
+      extra,
+    };
   };
 
-  // ✅ ตารางหุ้น (ไม่มี % และแสดง RSI/Signal)
+  // ✅ ตารางหุ้น
   const renderTable = (title, color, data) => {
     if (!data.length) return null;
     return (
@@ -229,15 +230,7 @@ export default function Home() {
                     <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
                       <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
                     </td>
-                    <td
-                      className={`p-3 font-mono font-semibold ${
-                        priceObj?.changePercent > 0
-                          ? "text-green-400"
-                          : priceObj?.changePercent < 0
-                          ? "text-red-400"
-                          : "text-gray-300"
-                      }`}
-                    >
+                    <td className="p-3 font-mono font-semibold text-gray-300">
                       {priceText}
                     </td>
                     <td className="p-3 text-gray-400">
@@ -256,6 +249,7 @@ export default function Home() {
     );
   };
 
+  // ✅ ดึงข้อมูล RSI/Signal เข้ามาใน Favorites ด้วย
   const { short, medium, long, extra } = filterDataAll(
     dataShort,
     dataMedium,
@@ -272,11 +266,19 @@ export default function Home() {
         dataMedium.find((x) => x.symbol === symbol) ||
         dataLong.find((x) => x.symbol === symbol) ||
         symbolList.find((x) => x.symbol === symbol);
-      return found ? found : { symbol, name: "" };
+      if (found) {
+        return {
+          symbol: found.symbol,
+          rsi: found.rsi ?? "-",
+          signal: found.signal ?? "-",
+          lastClose: found.lastClose ?? 0,
+        };
+      }
+      return { symbol, rsi: "-", signal: "-", lastClose: 0 };
     })
     .filter(Boolean);
 
-  // ✅ UI หลัก
+  // ✅ UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white font-inter">
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur-md border-b border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
@@ -328,7 +330,11 @@ export default function Home() {
         ) : (
           <>
             {favoriteData.length > 0 &&
-              renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favoriteData)}
+              renderTable(
+                "⭐ My Favorites — หุ้นที่คุณติดดาวไว้",
+                "text-yellow-300",
+                favoriteData
+              )}
             {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
             {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
             {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", dataLong)}
@@ -338,4 +344,4 @@ export default function Home() {
       </div>
     </main>
   );
-}
+            }
