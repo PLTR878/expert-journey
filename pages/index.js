@@ -13,7 +13,9 @@ export default function Home() {
   const [error,setError]=useState("");
   const [search,setSearch]=useState("");
   const [favorites,setFavorites]=useState([]);
+  const [openSection, setOpenSection] = useState("Fast Movers");
 
+  // โหลดข้อมูลทั้งหมด
   async function loadAll(){
     setLoading(true); setError("");
     try{
@@ -46,7 +48,7 @@ export default function Home() {
   }
   useEffect(()=>{ favorites.forEach(fetchYahooPrice); },[favorites]);
 
-  // Search → เลื่อนขึ้นบน + ดึง symbol จาก Yahoo
+  // Search → ดึง symbol จาก Yahoo
   useEffect(()=>{
     const t=setTimeout(async()=>{
       if(!search.trim()){ setSymbolList([]); return; }
@@ -58,18 +60,32 @@ export default function Home() {
 
   const toggleFavorite=(sym)=>setFavorites(p=>p.includes(sym)?p.filter(x=>x!==sym):[...p,sym]);
 
-  // -------- UI helpers --------
-  const Section = ({title, children}) => (
-    <section className="max-w-6xl mx-auto px-4 my-6">
-      <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      <div className="rounded-2xl bg-[#101827]/70 p-0 shadow-sm">{children}</div>
+  // UI Components
+  const Section = ({title, color, children}) => (
+    <section className="max-w-6xl mx-auto px-4 my-4">
+      <div
+        className={`rounded-2xl shadow-md border border-white/5 transition-all duration-300 ${
+          openSection === title ? "bg-[#121c31]/90" : "bg-[#0d1423]/70"
+        }`}
+      >
+        <div
+          onClick={()=>setOpenSection(openSection===title?null:title)}
+          className="flex justify-between items-center px-5 py-3 cursor-pointer hover:bg-white/5 transition-all"
+        >
+          <h2 className={`text-lg sm:text-xl font-semibold ${color}`}>{title}</h2>
+          <span className="text-gray-400 text-sm">
+            {openSection===title ? "▲ ซ่อน" : "▼ แสดง"}
+          </span>
+        </div>
+        {openSection===title && <div className="p-2 sm:p-4">{children}</div>}
+      </div>
     </section>
   );
 
   const Table = ({rows}) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
-        <thead className="sticky top-0 bg-[#0e1524] text-gray-400 uppercase text-[12px]">
+        <thead className="bg-[#0e1524] text-gray-400 uppercase text-[12px]">
           <tr>
             <th className="p-3 text-left pl-4">⭐</th>
             <th className="p-3">Symbol</th>
@@ -89,7 +105,7 @@ export default function Home() {
             return (
               <tr key={r.symbol} className="hover:bg-white/5 transition">
                 <td onClick={()=>toggleFavorite(r.symbol)} className="cursor-pointer pl-4 text-yellow-400">{isFav?"★":"☆"}</td>
-                <td className="p-3 font-semibold text-sky-400"><a href={`/analyze/${r.symbol}`}>{r.symbol}</a></td>
+                <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400 transition"><a href={`/analyze/${r.symbol}`}>{r.symbol}</a></td>
                 <td className="p-3 font-mono">{priceText}</td>
                 <td className="p-3 text-gray-300">{typeof r.rsi==="number"?r.rsi.toFixed(1):"-"}</td>
                 <td className={`p-3 font-semibold ${color}`}>{sig}</td>
@@ -102,17 +118,23 @@ export default function Home() {
   );
 
   const mapSymbols = arr => arr.map(x=>({ symbol:x.symbol, lastClose:x.lastClose, rsi:x.rsi, signal:x.signal }));
-
   const searchRows = symbolList.slice(0,10).map(s=>({
     symbol:s.symbol, lastClose:favorites[s.symbol]?.price||null, rsi:"-", signal:"-"
   }));
 
+  // --- UI ---
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white">
-      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/5">
+    <main className="min-h-screen bg-[#0b1220] text-white font-inter">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10 shadow-lg">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <b className="text-emerald-400 text-[20px]">🌍 Visionary Stock Screener</b>
-          <button onClick={loadAll} className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 font-semibold">{loading?"Loading...":"🔁 Refresh"}</button>
+          <b className="text-emerald-400 text-[20px] font-bold">🌍 Visionary Stock Screener</b>
+          <button
+            onClick={loadAll}
+            className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 font-semibold transition"
+          >
+            {loading ? "Loading..." : "🔁 Refresh"}
+          </button>
         </div>
       </header>
 
@@ -121,18 +143,21 @@ export default function Home() {
         <input
           value={search} onChange={e=>setSearch(e.target.value)}
           placeholder="🔍 Search Symbol (เช่น NVDA, IREN, BTDR…)"
-          className="w-full sm:w-1/2 px-4 py-2 rounded-xl bg-[#141b2d] border border-white/10 outline-none text-center"
+          className="w-full sm:w-1/2 px-4 py-2 rounded-xl bg-[#141b2d] border border-white/10 focus:border-emerald-400/40 outline-none text-center"
         />
       </div>
 
-      {/* ข่าวต้นน้ำบนสุด */}
-      <Section title="🧠 Early News Signals — ข่าวเพิ่งออก (ฟรี)">
+      {/* ข่าว */}
+      <Section title="🧠 Early News Signals — ข่าวเพิ่งออก (ฟรี)" color="text-pink-400">
         <div className="divide-y divide-white/5">
           {newsTop.map(n=>(
-            <a key={n.link} href={n.link} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 hover:bg-white/5">
+            <a key={n.link} href={n.link} target="_blank" rel="noreferrer"
+               className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition">
               <span className="px-2 py-0.5 rounded text-xs bg-white/10">{n.symbol}</span>
               <span className="flex-1 text-sm">{n.title}</span>
-              <span className={`text-xs ${n.sentiment>0?"text-green-400":n.sentiment<0?"text-red-400":"text-yellow-400"}`}>
+              <span className={`text-xs ${
+                n.sentiment>0?"text-green-400":n.sentiment<0?"text-red-400":"text-yellow-400"
+              }`}>
                 {n.sentiment>0?"Bullish":n.sentiment<0?"Bearish":"Neutral"}
               </span>
               <span className="text-xs text-gray-400 w-20 text-right">{Math.round(n.freshnessMin)}m</span>
@@ -142,23 +167,33 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* ผลค้นหาไว้บนสุด */}
+      {/* ผลค้นหา */}
       {search.trim() && searchRows.length>0 && (
-        <Section title="🔎 Results">
+        <Section title="🔎 ผลค้นหา" color="text-emerald-400">
           <Table rows={searchRows} />
         </Section>
       )}
 
-      {/* 5 หมวดหลัก */}
-      <Section title="⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด"><Table rows={mapSymbols(dataShort)} /></Section>
-      <Section title="🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่"><Table rows={mapSymbols(dataMedium)} /></Section>
-      <Section title="🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต"><Table rows={mapSymbols(dataLong)} /></Section>
-      <Section title="💎 Hidden Gems — ต้นน้ำที่ตลาดยังไม่เห็น"><Table rows={mapSymbols(hidden)} /></Section>
-      <Section title="🧪 AI Picks — สัญญาณรวมจาก Ensemble + ข่าว"><Table rows={mapSymbols(aiPicks)} /></Section>
+      {/* หมวดหลัก */}
+      <Section title="⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด" color="text-green-400">
+        <Table rows={mapSymbols(dataShort)} />
+      </Section>
+      <Section title="🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่" color="text-yellow-400">
+        <Table rows={mapSymbols(dataMedium)} />
+      </Section>
+      <Section title="🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต" color="text-sky-400">
+        <Table rows={mapSymbols(dataLong)} />
+      </Section>
+      <Section title="💎 Hidden Gems — ต้นน้ำที่ตลาดยังไม่เห็น" color="text-cyan-300">
+        <Table rows={mapSymbols(hidden)} />
+      </Section>
+      <Section title="🧪 AI Picks — สัญญาณรวมจาก Ensemble + ข่าว" color="text-purple-300">
+        <Table rows={mapSymbols(aiPicks)} />
+      </Section>
 
       {/* Favorites */}
       {favorites.length>0 && (
-        <Section title="⭐ My Favorites — หุ้นที่คุณติดดาวไว้">
+        <Section title="⭐ My Favorites — หุ้นที่คุณติดดาวไว้" color="text-yellow-300">
           <Table rows={favorites.map(s=>({symbol:s, lastClose:favoritePrices[s]?.price||null, rsi:"-", signal:"-" }))} />
         </Section>
       )}
@@ -166,4 +201,4 @@ export default function Home() {
       {error && <div className="max-w-6xl mx-auto px-4 pb-6 text-red-400">{error}</div>}
     </main>
   );
-    }
+             }
