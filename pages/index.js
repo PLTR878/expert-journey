@@ -51,6 +51,34 @@ export default function Home() {
     }
   }
 
+  // ✅ ดึงราคาผ่าน API ของเราเอง (แก้ปัญหา CORS + refresh ทันที)
+  async function fetchYahooPrice(symbol, forceUpdate = false) {
+    try {
+      const res = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
+      if (!res.ok) {
+        console.warn(`⚠️ API /price error for ${symbol}`);
+        return;
+      }
+
+      const data = await res.json();
+      const price = Number(data.price) || 0;
+      const changePercent =
+        typeof data.changePercent === "number" ? data.changePercent : 0;
+
+      setFavoritePrices((prev) => ({
+        ...prev,
+        [symbol]: { price, changePercent },
+      }));
+
+      // ✅ force update UI (Favorites)
+      if (forceUpdate) setTimeout(() => setFavorites((prev) => [...prev]), 150);
+
+      console.log(`✅ ${symbol}: $${price} (${changePercent}%)`);
+    } catch (err) {
+      console.error(`❌ fetchYahooPrice(${symbol}) error:`, err);
+    }
+  }
+
   // ✅ โหลด Symbol จาก Yahoo ตามคำค้น และดึงราคาทันที
   async function loadSymbols(q = "") {
     try {
@@ -69,11 +97,12 @@ export default function Home() {
     }
   }
 
+  // ✅ โหลดข้อมูลทั้งหมดครั้งแรก
   useEffect(() => {
     loadAll();
   }, []);
 
-  // ✅ ค้นหา symbol จาก Yahoo ทุกครั้งที่พิมพ์
+  // ✅ ค้นหาทุกครั้งที่พิมพ์
   useEffect(() => {
     const delay = setTimeout(() => {
       if (search.trim()) loadSymbols(search);
@@ -93,7 +122,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ⭐ จัดการ Favorites พร้อมดึงราคาจริงจาก Yahoo
+  // ⭐ Toggle Favorites + ดึงราคาทันที
   const toggleFavorite = async (symbol) => {
     setFavorites((prev) => {
       if (prev.includes(symbol)) {
@@ -105,73 +134,6 @@ export default function Home() {
     });
   };
 
-  // ✅ ดึงราคาจริงจาก Yahoo API แล้วเก็บลง favoritePrices (เวอร์ชัน 3 ครอบคลุมสุด)
-  async function fetchYahooPrice(symbol, forceUpdate = false) {
-    try {
-      let price = null;
-      let changePercent = null;
-
-      // 1️⃣ พยายามใช้ chart API ก่อน
-      try {
-        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
-        const data = await res.json();
-        const meta = data?.chart?.result?.[0]?.meta;
-        if (meta) {
-          price = meta.regularMarketPrice || meta.previousClose || null;
-          changePercent = meta.regularMarketChangePercent || null;
-        }
-      } catch {
-        console.warn(`chart API fail: ${symbol}`);
-      }
-
-      // 2️⃣ ถ้ายังไม่มีราคา ลอง fallback ไป quoteSummary
-      if (!price) {
-        try {
-          const alt = await fetch(
-            `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`
-          );
-          const altData = await alt.json();
-          const p = altData?.quoteSummary?.result?.[0]?.price;
-          price = p?.regularMarketPrice?.raw || p?.previousClose?.raw || null;
-          changePercent = p?.regularMarketChangePercent?.raw || null;
-        } catch {
-          console.warn(`quoteSummary fail: ${symbol}`);
-        }
-      }
-
-      // 3️⃣ ถ้ายังไม่มีอีก ลองใช้ quote?symbols= (แน่นอนสุด)
-      if (!price) {
-        try {
-          const qres = await fetch(
-            `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`
-          );
-          const qdata = await qres.json();
-          const q = qdata?.quoteResponse?.result?.[0];
-          price = q?.regularMarketPrice || q?.previousClose || 0;
-          changePercent = q?.regularMarketChangePercent || 0;
-        } catch {
-          console.warn(`quote?symbols fail: ${symbol}`);
-        }
-      }
-
-      if (!price) {
-        console.warn(`⚠️ ไม่พบราคา ${symbol}`);
-        return;
-      }
-
-      setFavoritePrices((prev) => ({
-        ...prev,
-        [symbol]: { price, changePercent },
-      }));
-
-      if (forceUpdate) {
-        setTimeout(() => setFavorites((prev) => [...prev]), 150);
-      }
-    } catch (err) {
-      console.error("fetchYahooPrice error:", err);
-    }
-  }
-
   // ✅ โหลดราคาของ Favorites ทุกครั้งที่เปิดหน้า
   useEffect(() => {
     favorites.forEach((symbol) => fetchYahooPrice(symbol));
@@ -180,10 +142,8 @@ export default function Home() {
   // ✅ Auto Refresh ราคาทุก 60 วินาที
   useEffect(() => {
     const interval = setInterval(() => {
-      if (favorites.length > 0) {
-        favorites.forEach((s) => fetchYahooPrice(s));
-      }
-    }, 60000); // 60 วินาที
+      if (favorites.length > 0) favorites.forEach((s) => fetchYahooPrice(s));
+    }, 60000);
     return () => clearInterval(interval);
   }, [favorites]);
 
@@ -250,10 +210,7 @@ export default function Home() {
                 const isFav = favorites.includes(r.symbol);
                 const priceObj = favoritePrices[r.symbol];
                 return (
-                  <tr
-                    key={r.symbol}
-                    className="border-b border-white/5 hover:bg-white/5 transition-all"
-                  >
+                  <tr key={r.symbol} className="border-b border-white/5 hover:bg-white/5 transition-all">
                     <td
                       onClick={() => toggleFavorite(r.symbol)}
                       className="cursor-pointer text-[16px] text-yellow-400 pl-5"
@@ -277,7 +234,7 @@ export default function Home() {
                         : r.lastClose
                         ? `$${r.lastClose.toFixed(2)}`
                         : "-"}
-                      {priceObj?.changePercent && (
+                      {priceObj && (
                         <div className="text-xs">{priceObj.changePercent.toFixed(2)}%</div>
                       )}
                     </td>
@@ -293,12 +250,7 @@ export default function Home() {
     );
   };
 
-  const { short, medium, long, extra } = filterDataAll(
-    dataShort,
-    dataMedium,
-    dataLong,
-    search
-  );
+  const { short, medium, long, extra } = filterDataAll(dataShort, dataMedium, dataLong, search);
   const noResult =
     !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
 
@@ -358,7 +310,6 @@ export default function Home() {
       {/* Tables */}
       <div className="max-w-6xl mx-auto px-4 pb-10">
         {error && <div className="text-center text-red-400 mb-4">{error}</div>}
-
         {noResult ? (
           <div className="text-center text-yellow-400 mt-8 text-sm">
             ⚠️ ไม่พบหุ้นที่ตรงกับคำค้น "<b>{search}</b>"
@@ -366,18 +317,14 @@ export default function Home() {
         ) : (
           <>
             {favoriteData.length > 0 &&
-              renderTable(
-                "⭐ My Favorites — หุ้นที่คุณติดดาวไว้",
-                "text-yellow-300",
-                favoriteData
-              )}
-            {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", short)}
-            {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", medium)}
-            {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", long)}
+              renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favoriteData)}
+            {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
+            {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
+            {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", dataLong)}
             {renderTable("🧠 Yahoo Trending Results", "text-emerald-400", extra)}
           </>
         )}
       </div>
     </main>
   );
-          }
+      }
