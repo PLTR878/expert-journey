@@ -14,7 +14,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("favorites");
   const [searchSymbol, setSearchSymbol] = useState("");
 
-  // โหลดรายการโปรด
+  // โหลดรายการโปรดจาก localStorage
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -24,7 +24,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลทั้งหมด
+  // โหลดข้อมูลหุ้นทั้งหมด
   async function loadAll() {
     setLoading(true);
     try {
@@ -80,7 +80,6 @@ export default function Home() {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
-  // ล้างรายการโปรด
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -89,7 +88,6 @@ export default function Home() {
     }
   };
 
-  // toggle favorite
   const toggleFavorite = (sym) => {
     if (!sym) return;
     setFavorites((prev) =>
@@ -97,7 +95,6 @@ export default function Home() {
     );
   };
 
-  // ตารางหุ้น
   const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -138,13 +135,10 @@ export default function Home() {
                 : sig === "Sell"
                 ? "text-red-400"
                 : "text-yellow-400";
-
             return (
               <tr
                 key={`${sym}-${i}`}
-                className={`border-b border-white/5 hover:bg-white/5 transition ${
-                  compact ? "text-[13px]" : ""
-                }`}
+                className="border-b border-white/5 hover:bg-white/5 transition"
               >
                 <td
                   onClick={() => toggleFavorite(sym)}
@@ -171,7 +165,6 @@ export default function Home() {
     ...favoritePrices[s],
   }));
 
-  // โหลดข่าว
   async function loadNews() {
     try {
       const res = await fetch("/api/news");
@@ -186,7 +179,6 @@ export default function Home() {
     if (activeTab === "news") loadNews();
   }, [activeTab]);
 
-  // สรุปข่าว
   async function summarize(url) {
     try {
       const res = await fetch(`/api/summary?url=${encodeURIComponent(url)}`);
@@ -208,13 +200,12 @@ export default function Home() {
             </b>
             <button
               onClick={loadAll}
-              className="bg-[#1b2a3d] hover:bg-[#22344e] border border-white/10 px-4 py-1.5 rounded-lg text-gray-200 text-sm font-semibold sm:ml-4"
+              className="bg-[#1c2636] hover:bg-[#223144] border border-white/10 px-4 py-1.5 rounded-lg text-gray-200 text-sm font-semibold sm:ml-4"
             >
               {loading ? "Loading..." : "🔁 Refresh"}
             </button>
           </div>
 
-          {/* Search bar */}
           <div className="relative w-full sm:w-64">
             <input
               type="text"
@@ -237,46 +228,38 @@ export default function Home() {
         </div>
       </header>
 
-      {/* News */}
+      {/* เนื้อหาแท็บ News */}
       {activeTab === "news" && (
-        <div className="px-4 py-6">
-          <div className="text-center mb-5">
-            <h2 className="text-purple-300 text-xl font-semibold">
-              🧠 AI Market News — Early Signals
-            </h2>
-            <p className="text-gray-400 text-sm mt-1">
-              Real-time curated market updates
-            </p>
-          </div>
-
+        <div className="px-4 py-5">
+          <h2 className="text-purple-300 text-lg font-semibold text-center mb-4">
+            🧠 AI Market News — Early Signals
+          </h2>
           {newsFeed.length === 0 ? (
-            <div className="text-center text-gray-500 py-6 italic">
-              Loading market insights...
+            <div className="text-center text-gray-400 py-6">
+              Loading news...
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-4">
               {newsFeed.map((n, i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-xl bg-[#101827]/80 border border-white/10 hover:bg-[#141d2e]/80 transition-all"
+                  className="bg-[#141b2d]/80 border border-white/10 rounded-xl p-4 hover:bg-[#1b2536]/80 transition"
                 >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sky-400 text-sm font-semibold">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-sky-400 font-semibold">
                       {n.symbol}
                     </span>
-                    <span className="text-gray-500 text-xs">{n.time}</span>
+                    <span className="text-gray-500">{n.time}</span>
                   </div>
-
                   <a
                     href={n.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block text-base text-emerald-300 font-medium leading-snug hover:text-emerald-200 transition"
+                    className="block text-emerald-300 font-medium leading-snug hover:text-emerald-200"
                   >
                     {n.title}
                   </a>
-
-                  <div className="flex justify-between items-center text-xs mt-2 mb-3">
+                  <div className="flex justify-between text-[12px] mt-2 mb-3">
                     <span className="text-gray-400">{n.publisher}</span>
                     <span
                       className={`font-semibold ${
@@ -290,7 +273,6 @@ export default function Home() {
                       {n.sentiment}
                     </span>
                   </div>
-
                   <div className="text-right">
                     <button
                       onClick={() => summarize(n.url)}
@@ -306,45 +288,26 @@ export default function Home() {
         </div>
       )}
 
-      {/* Footer Navigation */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
-        <button
-          onClick={() => setActiveTab("favorites")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "favorites" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
-        >
-          <span className="text-[18px]">💙</span>
-          Favorites
-        </button>
-        <button
-          onClick={() => setActiveTab("market")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "market" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
-        >
-          <span className="text-[18px]">🌐</span>
-          Market
-        </button>
-        <button
-          onClick={() => setActiveTab("news")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "news" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
-        >
-          <span className="text-[18px]">🧠</span>
-          News
-        </button>
-        <button
-          onClick={() => setActiveTab("menu")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
-        >
-          <span className="text-[18px]">☰</span>
-          Menu
-        </button>
+        {[
+          ["💙", "favorites", "Favorites"],
+          ["🌐", "market", "Market"],
+          ["🧠", "news", "News"],
+          ["☰", "menu", "Menu"],
+        ].map(([icon, tab, label]) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`py-2 flex flex-col items-center ${
+              activeTab === tab ? "text-blue-400" : "hover:text-blue-300"
+            }`}
+          >
+            <span className="text-[18px]">{icon}</span>
+            {label}
+          </button>
+        ))}
       </nav>
     </main>
   );
-                    }
+              }
