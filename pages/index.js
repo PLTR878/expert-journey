@@ -100,11 +100,15 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // ✅ Search Realtime
+  // ✅ Search Realtime + Scroll ขึ้นบนอัตโนมัติ
   useEffect(() => {
     const delay = setTimeout(() => {
-      if (search.trim()) loadSymbols(search);
-      else setSymbolList([]);
+      if (search.trim()) {
+        loadSymbols(search);
+        window.scrollTo({ top: 0, behavior: "smooth" }); // 🔁 เลื่อนขึ้นบนอัตโนมัติ
+      } else {
+        setSymbolList([]);
+      }
     }, 600);
     return () => clearTimeout(delay);
   }, [search]);
@@ -326,12 +330,18 @@ export default function Home() {
           </div>
         ) : (
           <>
+            {/* 🧠 แสดงผลค้นหาไว้บนสุด */}
+            {search.trim() && extra.length > 0 &&
+              renderTable("🧠 Yahoo Search Results — ผลค้นหาจาก Yahoo", "text-emerald-400", extra)}
+
+            {/* ⭐ Favorites */}
             {favoriteData.length > 0 &&
               renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favoriteData)}
+
+            {/* ตารางหลัก */}
             {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
             {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
             {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", dataLong)}
-            {renderTable("🧠 Yahoo Trending Results", "text-emerald-400", extra)}
           </>
         )}
       </div>
