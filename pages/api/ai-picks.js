@@ -1,5 +1,5 @@
 // /pages/api/ai-picks.js
-// ✅ AI Scanner — Full NASDAQ + NYSE (Optimized + Stable + Fast)
+// ✅ AI Scanner — Full NASDAQ + NYSE (Optimized + Cached + Fast + Stable)
 
 const STQS = [
   "https://stooq.com/t/s/us_nasdaq.csv",
@@ -8,10 +8,16 @@ const STQS = [
 
 const CACHE_TTL_MS = 1000 * 60 * 30; // 30 นาที
 if (!globalThis.__AI_CACHE__)
-  globalThis.__AI_CACHE__ = { tickers: null, tickersAt: 0, chart: new Map() };
+  globalThis.__AI_CACHE__ = {
+    tickers: null,
+    tickersAt: 0,
+    chart: new Map(),
+    aiResults: null,
+    aiAt: 0,
+  };
 const C = globalThis.__AI_CACHE__;
 
-// 🧩 CSV → สัญลักษณ์หุ้น
+// 🧩 แปลง CSV → รายชื่อหุ้น
 function csvToTickers(csv) {
   const lines = csv.trim().split(/\r?\n/);
   lines.shift();
@@ -23,7 +29,7 @@ function csvToTickers(csv) {
   return list;
 }
 
-// 🧩 โหลดรายชื่อหุ้นทั้งหมด (NASDAQ + NYSE)
+// 🧩 โหลด universe (NASDAQ + NYSE)
 async function fetchUniverse() {
   const now = Date.now();
   if (C.tickers && now - C.tickersAt < CACHE_TTL_MS) return C.tickers;
@@ -31,12 +37,8 @@ async function fetchUniverse() {
   const csvs = await Promise.allSettled(
     STQS.map((u) => fetch(u).then((r) => r.text()))
   );
-
-  const valid = csvs
-    .filter((x) => x.status === "fulfilled")
-    .map((x) => x.value);
-  const tickers = Array.from(new Set(valid.flatMap(csvToTickers))).slice(0, 2000); // จำกัด 2000 ตัวเพื่อความเร็ว
-
+  const valid = csvs.filter((x) => x.status === "fulfilled").map((x) => x.value);
+  const tickers = Array.from(new Set(valid.flatMap(csvToTickers))).slice(0, 50); // ⚡ จำกัด 50 ตัว (เร็วสุด)
   C.tickers = tickers;
   C.tickersAt = now;
   return tickers;
@@ -49,15 +51,16 @@ async function fetchChart(sym) {
 
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=6mo&interval=1d`;
     const r = await fetch(url);
-    if (!r.ok) throw new Error("Bad response");
+    if (!r.ok) throw new Error("Yahoo API Error");
     const j = await r.json();
     const d = j?.chart?.result?.[0];
-    if (!d?.indicators?.quote?.[0]) throw new Error("No data");
+    const q = d?.indicators?.quote?.[0];
+    if (!q?.close) throw new Error("No chart data");
 
-    const closes = d.indicators.quote[0].close?.filter(Boolean) || [];
-    const vols = d.indicators.quote[0].volume?.filter(Boolean) || [];
-
+    const closes = q.close.filter(Boolean);
+    const vols = q.volume.filter(Boolean);
     const data = { closes, vols };
+
     C.chart.set(sym, data);
     return data;
   } catch {
@@ -76,18 +79,20 @@ function ema(arr, p) {
 
 function rsi(c, p = 14) {
   if (c.length < p + 1) return null;
-  let g = 0, l = 0;
+  let g = 0,
+    l = 0;
   for (let i = 1; i <= p; i++) {
     const d = c[i] - c[i - 1];
     if (d > 0) g += d;
     else l -= d;
   }
-  g /= p; l /= p;
+  g /= p;
+  l /= p;
   const rs = l === 0 ? 0 : g / l;
   return 100 - 100 / (1 + rs);
 }
 
-// 🧮 วิเคราะห์แนวโน้ม + คะแนน AI
+// 🧮 คำนวณคะแนนและสัญญาณ
 function compute({ closes }) {
   if (!closes.length) return null;
 
@@ -96,9 +101,6 @@ function compute({ closes }) {
   const ema50 = ema(closes, 50);
   const theRsi = rsi(closes);
   if (!theRsi) return null;
-
-  const hi = Math.max(...closes.slice(-100));
-  const lo = Math.min(...closes.slice(-100));
 
   const score =
     50 +
@@ -110,23 +112,22 @@ function compute({ closes }) {
   if (score > 65) sig = "Buy";
   if (score < 40) sig = "Sell";
 
-  return { last, ema20, ema50, rsi: theRsi, hi, lo, score, signal: sig };
+  return { last, ema20, ema50, rsi: theRsi, score, signal: sig };
 }
 
-// ⚡ โหลดข้อมูลหลายตัวพร้อมกัน (แบบ async queue)
+// ⚙️ ประมวลผลหลายตัวพร้อมกัน (async)
 async function analyzeBatch(symbols) {
   const results = [];
-  const maxParallel = 8;
+  const maxParallel = 6;
   const queue = [...symbols];
 
   const workers = Array.from({ length: maxParallel }, async () => {
     while (queue.length) {
       const sym = queue.pop();
-      if (!sym) continue;
       try {
         const chart = await fetchChart(sym);
         const sig = compute(chart);
-        if (sig && sig.signal) results.push({ symbol: sym, ...sig });
+        if (sig) results.push({ symbol: sym, ...sig });
       } catch {}
     }
   });
@@ -135,10 +136,20 @@ async function analyzeBatch(symbols) {
   return results;
 }
 
-// 🧠 API Handler
+// 🚀 Handler หลัก
 export default async function handler(req, res) {
   try {
-    const { limit = "80", offset = "0" } = req.query;
+    // ✅ ดึงจาก cache ถ้ามี (ลดโหลด Yahoo)
+    const now = Date.now();
+    if (C.aiResults && now - C.aiAt < CACHE_TTL_MS) {
+      return res.status(200).json({
+        count: C.aiResults.length,
+        results: C.aiResults,
+        cached: true,
+      });
+    }
+
+    const { limit = "30", offset = "0" } = req.query;
     const L = parseInt(limit);
     const O = parseInt(offset);
 
@@ -148,8 +159,13 @@ export default async function handler(req, res) {
     const results = await analyzeBatch(batch);
     results.sort((a, b) => b.score - a.score);
 
+    // 🧠 เก็บ cache 30 นาที
+    C.aiResults = results;
+    C.aiAt = now;
+
     res.status(200).json({ count: results.length, results });
   } catch (e) {
+    console.error("AI Picks Error:", e);
     res.status(500).json({ error: e.message || "Internal Server Error" });
   }
 }
