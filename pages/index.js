@@ -11,6 +11,7 @@ export default function Home() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("favorites"); // ✅ เพิ่มระบบแท็บ
 
   // โหลดรายการโปรด
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function Home() {
       setHidden(hiddenData);
       setAiPicks(ai);
     } catch {
-      setError("โหลดข้อมูลไม่สำเร็จ");
+      setError("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -78,7 +79,7 @@ export default function Home() {
 
   // ล้างรายการโปรด
   const clearFavorites = () => {
-    if (confirm("ต้องการล้างรายการโปรดทั้งหมดหรือไม่?")) {
+    if (confirm("Clear all favorites?")) {
       setFavorites([]);
       localStorage.removeItem("favorites");
       setFavoritePrices({});
@@ -92,23 +93,21 @@ export default function Home() {
     );
   };
 
-  // ตารางหุ้นย่อ / เต็ม
+  // ตารางหุ้น
   const Table = ({ rows, compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
-        <thead
-          className={`${
-            compact ? "hidden" : ""
-          } bg-white/5 text-gray-400 uppercase text-[11px]`}
-        >
-          <tr>
-            <th className="p-2 text-left pl-4">⭐</th>
-            <th className="p-2">Symbol</th>
-            <th className="p-2">Price</th>
-            <th className="p-2">RSI</th>
-            <th className="p-2">AI</th>
-          </tr>
-        </thead>
+        {!compact && (
+          <thead className="bg-white/5 text-gray-400 uppercase text-[11px]">
+            <tr>
+              <th className="p-2 text-left pl-4">⭐</th>
+              <th className="p-2">Symbol</th>
+              <th className="p-2">Price</th>
+              <th className="p-2">RSI</th>
+              <th className="p-2">AI</th>
+            </tr>
+          </thead>
+        )}
         <tbody>
           {rows.map((r) => {
             const isFav = favorites.includes(r.symbol);
@@ -159,7 +158,7 @@ export default function Home() {
   }));
 
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white">
+    <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
@@ -176,97 +175,119 @@ export default function Home() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* รายการโปรด */}
-        {favoriteData.length > 0 ? (
-          <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-yellow-300 text-lg font-semibold">
-                ⭐ My Favorites — หุ้นที่คุณติดดาวไว้
+        {/* Favorites */}
+        {activeTab === "favorites" && (
+          <>
+            {favoriteData.length > 0 ? (
+              <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-yellow-300 text-lg font-semibold">
+                    ⭐ My Favorites
+                  </h2>
+                  <button
+                    onClick={clearFavorites}
+                    className="text-sm text-red-400 hover:text-red-300 underline"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <Table rows={favoriteData} />
+              </div>
+            ) : (
+              <div className="text-center text-gray-400 py-6">
+                ⭐ No favorites yet — tap “☆” to add your stocks.
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Market */}
+        {activeTab === "market" && (
+          <div>
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-green-400 text-lg font-semibold mb-2">
+                ⚡ Fast Movers
               </h2>
-              <button
-                onClick={clearFavorites}
-                className="text-sm text-red-400 hover:text-red-300 underline"
-              >
-                ล้างทั้งหมด
-              </button>
+              <Table rows={dataShort.slice(0, 6)} compact />
             </div>
-            <Table rows={favoriteData} />
-          </div>
-        ) : (
-          <div className="text-center text-gray-400 py-6">
-            ⭐ ยังไม่มีรายการโปรด — แตะ “☆” ที่หุ้นใดก็ได้เพื่อเพิ่มเข้ารายการนี้
-          </div>
-        )}
-
-        {/* Hidden Gems */}
-        {hidden.length > 0 && (
-          <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
-            <h2 className="text-cyan-300 text-lg font-semibold mb-3">
-              💎 Hidden Gems — ต้นน้ำตลาดยังไม่เห็น
-            </h2>
-            <Table rows={hidden.slice(0, 5)} compact />
-          </div>
-        )}
-
-        {/* AI Picks Widget */}
-        {aiPicks.length > 0 && (
-          <div
-            onClick={() => setShowAiModal(true)}
-            className="bg-[#141b2d]/80 rounded-2xl p-4 mb-6 cursor-pointer hover:bg-[#19253a] transition"
-          >
-            <h2 className="text-purple-300 text-lg font-semibold mb-1">
-              🧠 AI Picks — คลิกเพื่อดูทั้งหมด
-            </h2>
-            <p className="text-gray-400 text-sm">
-              หุ้นที่ AI จัดอันดับว่ามีโอกาสขาขึ้นมากที่สุดวันนี้ 🚀
-            </p>
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-yellow-400 text-lg font-semibold mb-2">
+                🌱 Emerging Trends
+              </h2>
+              <Table rows={dataMedium.slice(0, 6)} compact />
+            </div>
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-sky-400 text-lg font-semibold mb-2">
+                🚀 Future Leaders
+              </h2>
+              <Table rows={dataLong.slice(0, 6)} compact />
+            </div>
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-cyan-300 text-lg font-semibold mb-2">
+                💎 Hidden Gems
+              </h2>
+              <Table rows={hidden.slice(0, 6)} compact />
+            </div>
           </div>
         )}
 
-        {/* หมวดอื่น (ย่อ) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="bg-[#101827]/70 rounded-2xl p-4 shadow">
-            <h2 className="text-green-400 text-lg font-semibold mb-2">
-              ⚡ Fast Movers
-            </h2>
-            <Table rows={dataShort.slice(0, 4)} compact />
+        {/* News */}
+        {activeTab === "news" && (
+          <div className="text-center text-gray-400 py-10">
+            🧠 News section coming soon — will show AI early signals.
           </div>
+        )}
 
-          <div className="bg-[#101827]/70 rounded-2xl p-4 shadow">
-            <h2 className="text-yellow-400 text-lg font-semibold mb-2">
-              🌱 Emerging Trends
-            </h2>
-            <Table rows={dataMedium.slice(0, 4)} compact />
+        {/* Menu */}
+        {activeTab === "menu" && (
+          <div className="text-center text-gray-400 py-10">
+            ⚙️ Settings / About / Version 1.0.0
           </div>
-
-          <div className="bg-[#101827]/70 rounded-2xl p-4 shadow md:col-span-2">
-            <h2 className="text-sky-400 text-lg font-semibold mb-2">
-              🚀 Future Leaders
-            </h2>
-            <Table rows={dataLong.slice(0, 4)} compact />
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Modal แสดง AI Picks เต็มจอ */}
-      {showAiModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4">
-          <div className="bg-[#101827] max-w-5xl w-full rounded-2xl p-4 overflow-y-auto max-h-[90vh] shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-purple-300 text-xl font-semibold">
-                🧠 AI Picks — สัญญาณจาก AI เต็มรูปแบบ
-              </h2>
-              <button
-                onClick={() => setShowAiModal(false)}
-                className="text-gray-400 hover:text-white text-lg"
-              >
-                ✕
-              </button>
-            </div>
-            <Table rows={aiPicks} />
-          </div>
-        </div>
-      )}
+      {/* ✅ Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
+        <button
+          onClick={() => setActiveTab("favorites")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "favorites" ? "text-blue-400" : "hover:text-blue-300"
+          }`}
+        >
+          <span className="text-[18px]">💙</span>
+          Favorites
+        </button>
+
+        <button
+          onClick={() => setActiveTab("market")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "market" ? "text-blue-400" : "hover:text-blue-300"
+          }`}
+        >
+          <span className="text-[18px]">🌐</span>
+          Market
+        </button>
+
+        <button
+          onClick={() => setActiveTab("news")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "news" ? "text-blue-400" : "hover:text-blue-300"
+          }`}
+        >
+          <span className="text-[18px]">🧠</span>
+          News
+        </button>
+
+        <button
+          onClick={() => setActiveTab("menu")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
+          }`}
+        >
+          <span className="text-[18px]">☰</span>
+          Menu
+        </button>
+      </nav>
     </main>
   );
-                    }
+              }
