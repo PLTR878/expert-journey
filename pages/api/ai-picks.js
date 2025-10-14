@@ -7,13 +7,14 @@ const STQS = [
 ];
 
 const CACHE_TTL_MS = 1000 * 60 * 30; // cache 30 นาที
+
+// ✅ ปรับระบบ cache แบบใหม่ (แยกรายหน้า)
 if (!globalThis.__AI_CACHE__)
   globalThis.__AI_CACHE__ = {
     tickers: null,
     tickersAt: 0,
     chart: new Map(),
-    aiResults: null,
-    aiAt: 0,
+    aiPages: new Map(), // ✅ cache รายหน้า (offset:limit)
   };
 const C = globalThis.__AI_CACHE__;
 
@@ -159,37 +160,46 @@ async function analyzeBatch(symbols) {
   return results;
 }
 
-// 🚀 Handler หลัก
+// 🚀 Handler หลัก (รองรับหลายหน้า + cache แยก)
 export default async function handler(req, res) {
   try {
-    const now = Date.now();
-    if (C.aiResults && now - C.aiAt < CACHE_TTL_MS) {
-      return res.status(200).json({
-        count: C.aiResults.length,
-        results: C.aiResults,
-        cached: true,
-      });
-    }
-
-    const { limit = "100", offset = "0" } = req.query;
+    const { limit = "100", offset = "0", nocache } = req.query;
     const L = parseInt(limit);
     const O = parseInt(offset);
+    const key = `${O}:${L}`;
+    const now = Date.now();
+
+    // ✅ ใช้ cache รายหน้า
+    if (!nocache) {
+      const hit = C.aiPages.get(key);
+      if (hit && now - hit.at < CACHE_TTL_MS) {
+        return res.status(200).json({
+          count: hit.results.length,
+          results: hit.results,
+          cached: true,
+          page: { offset: O, limit: L },
+        });
+      }
+    }
 
     const universe = await fetchUniverse();
     const batch = universe.slice(O, O + L);
 
     const results = await analyzeBatch(batch);
 
-    // ✅ เรียงจากคะแนนมาก → น้อย และกรองเฉพาะ Buy / Sell
     const sorted = results
       .sort((a, b) => b.score - a.score)
       .filter((x) => x.signal === "Buy" || x.signal === "Sell");
 
-    // 🧠 เก็บ cache 30 นาที
-    C.aiResults = sorted;
-    C.aiAt = now;
+    // ✅ เก็บ cache รายหน้า
+    C.aiPages.set(key, { at: now, results: sorted });
 
-    res.status(200).json({ count: sorted.length, results: sorted });
+    res.status(200).json({
+      count: sorted.length,
+      results: sorted,
+      cached: false,
+      page: { offset: O, limit: L },
+    });
   } catch (e) {
     console.error("AI Picks Error:", e);
     res.status(500).json({ error: e.message || "Internal Server Error" });
