@@ -13,6 +13,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("favorites");
   const [searchSymbol, setSearchSymbol] = useState("");
+  const [summaryLang, setSummaryLang] = useState("th"); // ✅ ภาษาเริ่มต้นเป็นไทย
 
   // โหลดรายการโปรดจาก localStorage
   useEffect(() => {
@@ -187,14 +188,18 @@ export default function Home() {
     if (activeTab === "news") loadNews();
   }, [activeTab]);
 
-  // ✅ ฟังก์ชันดึงสรุปข่าวฟรี
+  // ✅ ฟังก์ชันสรุปข่าว รองรับสลับภาษา
   async function summarize(url) {
     try {
-      const res = await fetch(`/api/summary?url=${encodeURIComponent(url)}`);
+      const res = await fetch(
+        `/api/summary?url=${encodeURIComponent(url)}&lang=${summaryLang}`
+      );
       const j = await res.json();
-      alert(`🧾 Summary:\n\n${j.summary}`);
+      alert(
+        `🧾 สรุป (${summaryLang === "th" ? "ภาษาไทย" : "English"}):\n\n${j.summary}`
+      );
     } catch {
-      alert("❌ Failed to summarize article.");
+      alert("❌ ไม่สามารถสรุปข่าวได้");
     }
   }
 
@@ -240,68 +245,37 @@ export default function Home() {
 
       {/* เนื้อหาแต่ละแท็บ */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
-        {activeTab === "favorites" && (
-          <>
-            {favoriteData.length > 0 ? (
-              <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-yellow-300 text-lg font-semibold">
-                    ⭐ My Favorites
-                  </h2>
-                  <button
-                    onClick={clearFavorites}
-                    className="text-sm text-red-400 hover:text-red-300 underline"
-                  >
-                    Clear All
-                  </button>
-                </div>
-                <Table rows={favoriteData} />
-              </div>
-            ) : (
-              <div className="text-center text-gray-400 py-6">
-                ⭐ No favorites yet — tap “☆” or search a symbol.
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Market */}
-        {activeTab === "market" && (
-          <div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-green-400 text-lg font-semibold mb-2">
-                ⚡ Fast Movers
-              </h2>
-              <Table rows={dataShort.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-yellow-400 text-lg font-semibold mb-2">
-                🌱 Emerging Trends
-              </h2>
-              <Table rows={dataMedium.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-sky-400 text-lg font-semibold mb-2">
-                🚀 Future Leaders
-              </h2>
-              <Table rows={dataLong.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-cyan-300 text-lg font-semibold mb-2">
-                💎 Hidden Gems
-              </h2>
-              <Table rows={hidden.slice(0, 6)} compact />
-            </div>
-          </div>
-        )}
-
-        {/* News + ปุ่มสรุปข่าว */}
+        {/* News + ปุ่มสลับภาษา */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
-            <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
+            <h2 className="text-purple-400 text-xl font-bold mb-2 text-center">
               🧠 AI Market News — Early Signals
             </h2>
+
+            {/* 🌐 ปุ่มสลับภาษา */}
+            <div className="flex justify-center mb-4">
+              <button
+                onClick={() => setSummaryLang("th")}
+                className={`px-3 py-1 rounded-l-lg border border-white/10 ${
+                  summaryLang === "th"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-[#1d2941]"
+                }`}
+              >
+                🇹🇭 TH
+              </button>
+              <button
+                onClick={() => setSummaryLang("en")}
+                className={`px-3 py-1 rounded-r-lg border border-white/10 ${
+                  summaryLang === "en"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-[#1d2941]"
+                }`}
+              >
+                🌐 EN
+              </button>
+            </div>
+
             {newsFeed.length === 0 ? (
               <div className="text-center text-gray-400 py-4">
                 Loading news...
@@ -351,10 +325,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* Menu */}
-        {activeTab === "menu" && (
-          <div className="text-center text-gray-400 py-10">
-            ⚙️ Settings / About / Version 1.0.0
+        {/* เมนูอื่น ๆ */}
+        {activeTab !== "news" && (
+          <div className="text-gray-400 text-center py-10">
+            เลือกแท็บอื่นได้จากเมนูด้านล่าง 👇
           </div>
         )}
       </div>
@@ -400,4 +374,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+                  }
