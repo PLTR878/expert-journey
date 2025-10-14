@@ -3,26 +3,34 @@ export default async function handler(req, res) {
     const { url, lang = "th" } = req.query;
     if (!url) return res.status(400).json({ error: "Missing URL" });
 
-    // ✅ ใช้ AllOrigins Proxy แทน (ฟรี + ไม่ติด CORS)
+    // ✅ ใช้ proxy ฟรี (AllOrigins) เพื่อเลี่ยง CORS Block
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
-    if (!response.ok) {
+    if (!response.ok)
       return res.status(response.status).json({ error: `Failed to fetch source: ${response.status}` });
-    }
 
     const html = await response.text();
 
-    const text = html
-      .replace(/<script[^>]*>.*?<\/script>/gis, "")
-      .replace(/<style[^>]*>.*?<\/style>/gis, "")
-      .replace(/<meta[^>]*>/gi, "")
-      .replace(/<!--.*?-->/g, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    // ✅ ดึงเฉพาะข้อความใน <p> (บทความจริง)
+    const matches = html.match(/<p[^>]*>(.*?)<\/p>/gis);
+    let text = matches
+      ? matches
+          .map((m) =>
+            m
+              .replace(/<[^>]+>/g, "")
+              .replace(/\s+/g, " ")
+              .trim()
+          )
+          .join(" ")
+      : "";
 
-    const summary = text.split(/[.!?]\s+/).slice(0, 3).join(". ");
+    // 🔹 ล้างคำไม่จำเป็น
+    text = text.replace(/(Cookies|subscribe|advert|policy|privacy)/gi, "").trim();
 
+    // 🔹 สรุปย่อ 3–4 ประโยคแรก
+    const sentences = text.split(/[.!?]\s+/).slice(0, 4).join(". ");
+
+    // 🔹 แปลไทยพื้นฐาน
     const translate = (t) =>
       t
         .replace(/Apple/gi, "แอปเปิล")
@@ -37,9 +45,12 @@ export default async function handler(req, res) {
         .replace(/AI/gi, "เอไอ")
         .replace(/technology/gi, "เทคโนโลยี");
 
-    res.status(200).json({
-      summary: lang === "th" ? translate(summary) : summary || "No summary available.",
-    });
+    const summary =
+      lang === "th"
+        ? translate(sentences)
+        : sentences || "No summary available.";
+
+    res.status(200).json({ summary });
   } catch (err) {
     console.error("Summary Error:", err);
     res.status(500).json({ error: "Failed to summarize article" });
