@@ -14,16 +14,17 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("favorites");
   const [searchSymbol, setSearchSymbol] = useState("");
 
-  // โหลดรายการโปรด
+  // โหลดรายการโปรดจาก localStorage
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
+
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลทุกหมวด
+  // โหลดข้อมูลหุ้นทั้งหมด
   async function loadAll() {
     setLoading(true);
     try {
@@ -58,7 +59,7 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // ดึงราคา RSI AI Signal
+  // ดึงราคา RSI และสัญญาณ AI
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -79,6 +80,7 @@ export default function Home() {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
+  // ล้างรายการโปรด
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -87,13 +89,16 @@ export default function Home() {
     }
   };
 
+  // toggle favorite
   const toggleFavorite = (sym) => {
+    if (!sym) return;
     setFavorites((prev) =>
       prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym]
     );
   };
 
-  const Table = ({ rows, compact }) => (
+  // ✅ ตารางหุ้น (เวอร์ชันแก้แล้ว)
+  const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
         {!compact && (
@@ -108,9 +113,19 @@ export default function Home() {
           </thead>
         )}
         <tbody>
-          {rows.map((r) => {
-            const isFav = favorites.includes(r.symbol);
-            const f = favoritePrices[r.symbol];
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan="5" className="p-3 text-gray-500">
+                No data available.
+              </td>
+            </tr>
+          )}
+
+          {rows.map((r, i) => {
+            const sym = r.symbol || r.ticker || r.Symbol || "";
+            if (!sym) return null;
+            const isFav = favorites.includes(sym);
+            const f = favoritePrices[sym];
             const priceText = f?.price
               ? `$${f.price.toFixed(2)}`
               : r.lastClose
@@ -124,21 +139,22 @@ export default function Home() {
                 : sig === "Sell"
                 ? "text-red-400"
                 : "text-yellow-400";
+
             return (
               <tr
-                key={r.symbol}
+                key={`${sym}-${i}`}
                 className={`border-b border-white/5 hover:bg-white/5 transition ${
                   compact ? "text-[13px]" : ""
                 }`}
               >
                 <td
-                  onClick={() => toggleFavorite(r.symbol)}
-                  className="cursor-pointer text-yellow-400 pl-4"
+                  onClick={() => toggleFavorite(sym)}
+                  className="cursor-pointer text-yellow-400 pl-4 select-none"
                 >
                   {isFav ? "★" : "☆"}
                 </td>
                 <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
-                  <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                  <a href={`/analyze/${sym}`}>{sym}</a>
                 </td>
                 <td className="p-2 font-mono">{priceText}</td>
                 <td className="p-2 text-gray-300">{rsi}</td>
@@ -156,6 +172,7 @@ export default function Home() {
     ...favoritePrices[s],
   }));
 
+  // โหลดข่าว
   async function loadNews() {
     try {
       const res = await fetch("/api/news");
@@ -170,9 +187,10 @@ export default function Home() {
     if (activeTab === "news") loadNews();
   }, [activeTab]);
 
+  // ✅ ส่วนแสดงผล
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* ✅ Header พร้อม Search */}
+      {/* Header พร้อม Search */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <div className="flex justify-between items-center w-full sm:w-auto">
@@ -197,7 +215,11 @@ export default function Home() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && searchSymbol.trim() !== "") {
                   const sym = searchSymbol.trim().toUpperCase();
-                  window.location.href = `/analyze/${sym}`;
+                  if (!favorites.includes(sym)) {
+                    setFavorites((prev) => [...prev, sym]); // ✅ เพิ่ม Favorite จากช่อง Search
+                    fetchYahooPrice(sym);
+                  }
+                  setSearchSymbol("");
                 }
               }}
               className="w-full bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-400 placeholder-gray-500"
@@ -206,9 +228,9 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ✅ เนื้อหาแต่ละแท็บ */}
+      {/* เนื้อหาแต่ละแท็บ */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* ⭐ Favorites */}
+        {/* Favorites */}
         {activeTab === "favorites" && (
           <>
             {favoriteData.length > 0 ? (
@@ -228,13 +250,13 @@ export default function Home() {
               </div>
             ) : (
               <div className="text-center text-gray-400 py-6">
-                ⭐ No favorites yet — tap “☆” to add your stocks.
+                ⭐ No favorites yet — tap “☆” or search a symbol.
               </div>
             )}
           </>
         )}
 
-        {/* 🌐 Market */}
+        {/* Market */}
         {activeTab === "market" && (
           <div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
@@ -264,13 +286,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* 🧠 News */}
+        {/* News */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
             <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
               🧠 AI Market News — Early Signals
             </h2>
-
             {newsFeed.length === 0 ? (
               <div className="text-center text-gray-400 py-4">
                 Loading news...
@@ -315,7 +336,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* ☰ Menu */}
+        {/* Menu */}
         {activeTab === "menu" && (
           <div className="text-center text-gray-400 py-10">
             ⚙️ Settings / About / Version 1.0.0
@@ -323,7 +344,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* ✅ Bottom Navigation */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
@@ -334,7 +355,6 @@ export default function Home() {
           <span className="text-[18px]">💙</span>
           Favorites
         </button>
-
         <button
           onClick={() => setActiveTab("market")}
           className={`py-2 flex flex-col items-center ${
@@ -344,7 +364,6 @@ export default function Home() {
           <span className="text-[18px]">🌐</span>
           Market
         </button>
-
         <button
           onClick={() => setActiveTab("news")}
           className={`py-2 flex flex-col items-center ${
@@ -354,7 +373,6 @@ export default function Home() {
           <span className="text-[18px]">🧠</span>
           News
         </button>
-
         <button
           onClick={() => setActiveTab("menu")}
           className={`py-2 flex flex-col items-center ${
@@ -367,4 +385,4 @@ export default function Home() {
       </nav>
     </main>
   );
-              }
+                    }
