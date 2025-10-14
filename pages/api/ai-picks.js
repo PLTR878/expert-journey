@@ -1,5 +1,5 @@
 // /pages/api/ai-picks.js
-// ✅ AI Scanner — Full NASDAQ + NYSE (All Stocks, Optimized + Cached + Stable)
+// ✅ AI Scanner — Full NASDAQ + NYSE (All Stocks, Optimized + Cached + Smart Filter)
 
 const STQS = [
   "https://stooq.com/t/s/us_nasdaq.csv",
@@ -38,9 +38,11 @@ async function fetchUniverse() {
     const csvs = await Promise.allSettled(
       STQS.map((u) => fetch(u).then((r) => r.text()))
     );
+
     const valid = csvs
       .filter((x) => x.status === "fulfilled")
       .map((x) => x.value);
+
     let tickers = Array.from(new Set(valid.flatMap(csvToTickers)));
 
     // ✅ จำกัดสูงสุด 7000 ตัวเพื่อป้องกัน overload
@@ -69,9 +71,11 @@ async function fetchUniverse() {
 async function fetchChart(sym) {
   try {
     if (C.chart.has(sym)) return C.chart.get(sym);
+
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=6mo&interval=1d`;
     const r = await fetch(url);
     if (!r.ok) throw new Error("Yahoo API Error");
+
     const j = await r.json();
     const d = j?.chart?.result?.[0];
     const q = d?.indicators?.quote?.[0];
@@ -79,6 +83,7 @@ async function fetchChart(sym) {
 
     const closes = q.close.filter(Boolean);
     const vols = q.volume?.filter(Boolean) || [];
+
     if (!closes.length) throw new Error("No closes");
 
     const data = { closes, vols };
@@ -133,7 +138,7 @@ function compute({ closes }) {
   return { last, ema20, ema50, rsi: theRsi, score, signal: sig };
 }
 
-// ⚙️ ประมวลผลพร้อมกัน (async queue)
+// ⚙️ วิเคราะห์หุ้นแบบขนาน
 async function analyzeBatch(symbols) {
   const results = [];
   const maxParallel = 8;
@@ -174,15 +179,19 @@ export default async function handler(req, res) {
     const batch = universe.slice(O, O + L);
 
     const results = await analyzeBatch(batch);
-    results.sort((a, b) => b.score - a.score);
 
-    // 🧠 cache 30 นาที
-    C.aiResults = results;
+    // ✅ เรียงจากคะแนนมาก → น้อย และกรองเฉพาะ Buy / Sell
+    const sorted = results
+      .sort((a, b) => b.score - a.score)
+      .filter((x) => x.signal === "Buy" || x.signal === "Sell");
+
+    // 🧠 เก็บ cache 30 นาที
+    C.aiResults = sorted;
     C.aiAt = now;
 
-    res.status(200).json({ count: results.length, results });
+    res.status(200).json({ count: sorted.length, results: sorted });
   } catch (e) {
     console.error("AI Picks Error:", e);
     res.status(500).json({ error: e.message || "Internal Server Error" });
   }
-      }
+}
