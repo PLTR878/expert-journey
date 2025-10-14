@@ -51,7 +51,7 @@ export default function Home() {
     }
   }
 
-  // ✅ ดึงราคาผ่าน API ของเราเอง (แก้ CORS)
+  // ✅ ดึงราคาผ่าน API ของเราเอง + RSI + AI Signal
   async function fetchYahooPrice(symbol, forceUpdate = false) {
     try {
       const res = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -60,13 +60,16 @@ export default function Home() {
         return;
       }
       const data = await res.json();
+
       const price = Number(data.price) || 0;
       const changePercent =
         typeof data.changePercent === "number" ? data.changePercent : 0;
+      const rsi = data.rsi ?? null;
+      const signal = data.signal ?? "-";
 
       setFavoritePrices((prev) => ({
         ...prev,
-        [symbol]: { price, changePercent },
+        [symbol]: { price, changePercent, rsi, signal },
       }));
 
       if (forceUpdate) setTimeout(() => setFavorites((prev) => [...prev]), 150);
@@ -166,8 +169,8 @@ export default function Home() {
         symbol: s.symbol,
         name: s.name || "",
         lastClose: favoritePrices[s.symbol]?.price || null,
-        rsi: null,
-        signal: "-",
+        rsi: favoritePrices[s.symbol]?.rsi ?? "-",
+        signal: favoritePrices[s.symbol]?.signal ?? "-",
       }));
 
     return {
@@ -178,7 +181,7 @@ export default function Home() {
     };
   };
 
-  // ✅ ตารางหุ้น (แก้ให้ไม่พัง RSI)
+  // ✅ ตารางหุ้น (พร้อมสี Signal)
   const renderTable = (title, color, data) => {
     if (!data.length) return null;
     return (
@@ -209,12 +212,20 @@ export default function Home() {
             <tbody>
               {data.map((r) => {
                 const isFav = favorites.includes(r.symbol);
-                const priceObj = favoritePrices[r.symbol];
-                const priceText = priceObj?.price
-                  ? `$${priceObj.price.toFixed(2)}`
+                const p = favoritePrices[r.symbol];
+                const priceText = p?.price
+                  ? `$${p.price.toFixed(2)}`
                   : r.lastClose
                   ? `$${r.lastClose.toFixed(2)}`
                   : "-";
+
+                const signal = p?.signal || r.signal || "-";
+                const signalColor =
+                  signal === "Buy"
+                    ? "text-green-400"
+                    : signal === "Sell"
+                    ? "text-red-400"
+                    : "text-yellow-400";
 
                 return (
                   <tr
@@ -234,9 +245,9 @@ export default function Home() {
                       {priceText}
                     </td>
                     <td className="p-3 text-gray-400">
-                      {typeof r.rsi === "number" ? r.rsi.toFixed(1) : r.rsi || "-"}
+                      {p?.rsi ? p.rsi.toFixed(1) : r.rsi ?? "-"}
                     </td>
-                    <td className="p-3 text-gray-400">{r.signal || "-"}</td>
+                    <td className={`p-3 font-semibold ${signalColor}`}>{signal}</td>
                   </tr>
                 );
               })}
@@ -247,7 +258,7 @@ export default function Home() {
     );
   };
 
-  // ✅ ดึงข้อมูล RSI/Signal เข้ามาใน Favorites ด้วย
+  // ✅ รวมข้อมูลทุกตาราง
   const { short, medium, long, extra } = filterDataAll(
     dataShort,
     dataMedium,
@@ -258,22 +269,10 @@ export default function Home() {
     !short.length && !medium.length && !long.length && !extra.length && search.trim() !== "";
 
   const favoriteData = favorites
-    .map((symbol) => {
-      const found =
-        dataShort.find((x) => x.symbol === symbol) ||
-        dataMedium.find((x) => x.symbol === symbol) ||
-        dataLong.find((x) => x.symbol === symbol) ||
-        symbolList.find((x) => x.symbol === symbol);
-      if (found) {
-        return {
-          symbol: found.symbol,
-          rsi: found.rsi ?? "-",
-          signal: found.signal ?? "-",
-          lastClose: found.lastClose ?? 0,
-        };
-      }
-      return { symbol, rsi: "-", signal: "-", lastClose: 0 };
-    })
+    .map((symbol) => ({
+      symbol,
+      ...favoritePrices[symbol],
+    }))
     .filter(Boolean);
 
   // ✅ UI
@@ -328,11 +327,7 @@ export default function Home() {
         ) : (
           <>
             {favoriteData.length > 0 &&
-              renderTable(
-                "⭐ My Favorites — หุ้นที่คุณติดดาวไว้",
-                "text-yellow-300",
-                favoriteData
-              )}
+              renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favoriteData)}
             {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
             {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
             {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", dataLong)}
@@ -342,4 +337,4 @@ export default function Home() {
       </div>
     </main>
   );
-            }
+      }
