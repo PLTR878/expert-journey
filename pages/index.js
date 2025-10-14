@@ -50,7 +50,7 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // ✅ โหลด AI Picks พร้อม Progress + ETA
+      // ✅ โหลด AI Picks ทั้งตลาด พร้อม Progress
       const loadAIPicksAll = async () => {
         const pageSize = 100;
         const maxPages = 50;
@@ -58,9 +58,7 @@ export default function Home() {
         let acc = [];
 
         for (let i = 0; i < maxPages; i++) {
-          const r = await fetch(
-            `/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`
-          ).then((res) => res.json());
+          const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`).then((res) => res.json());
           const chunk = r?.results || [];
           acc = acc.concat(chunk);
 
@@ -157,54 +155,53 @@ export default function Home() {
           </thead>
         )}
         <tbody>
-          {rows.length === 0 && (
+          {rows.length === 0 ? (
             <tr>
               <td colSpan="5" className="p-3 text-gray-500">
                 No data available.
               </td>
             </tr>
-          )}
-          {rows.map((r, i) => {
-            const sym = r.symbol || r.ticker || r.Symbol || "";
-            if (!sym) return null;
-            const isFav = favorites.includes(sym);
-            const f = favoritePrices[sym];
-            const priceText = f?.price
-              ? `$${f.price.toFixed(2)}`
-              : r.lastClose
-              ? `$${r.lastClose.toFixed(2)}`
-              : "-";
-            const rsi = f?.rsi ?? r.rsi ?? "-";
-            const sig = f?.signal ?? r.signal ?? r.AI ?? "-";
-            const sigColor =
-              sig === "Buy"
-                ? "text-green-400"
-                : sig === "Sell"
-                ? "text-red-400"
-                : "text-yellow-400";
+          ) : (
+            rows.map((r, i) => {
+              const sym = r.symbol || r.ticker || r.Symbol || "";
+              if (!sym) return null;
+              const isFav = favorites.includes(sym);
+              const f = favoritePrices[sym];
+              const priceText = f?.price
+                ? `$${f.price.toFixed(2)}`
+                : r.lastClose
+                ? `$${r.lastClose.toFixed(2)}`
+                : "-";
+              const rsi = f?.rsi ?? r.rsi ?? "-";
+              const sig = f?.signal ?? r.signal ?? r.AI ?? "-";
+              const sigColor =
+                sig === "Buy"
+                  ? "text-green-400"
+                  : sig === "Sell"
+                  ? "text-red-400"
+                  : "text-yellow-400";
 
-            return (
-              <tr
-                key={`${sym}-${i}`}
-                className={`border-b border-white/5 hover:bg-white/5 transition ${
-                  compact ? "text-[13px]" : ""
-                }`}
-              >
-                <td
-                  onClick={() => toggleFavorite(sym)}
-                  className="cursor-pointer text-yellow-400 pl-4 select-none"
+              return (
+                <tr
+                  key={`${sym}-${i}`}
+                  className={`border-b border-white/5 hover:bg-white/5 transition ${compact ? "text-[13px]" : ""}`}
                 >
-                  {isFav ? "★" : "☆"}
-                </td>
-                <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
-                  <a href={`/analyze/${sym}`}>{sym}</a>
-                </td>
-                <td className="p-2 font-mono">{priceText}</td>
-                <td className="p-2 text-gray-300">{rsi}</td>
-                <td className={`p-2 font-semibold ${sigColor}`}>{sig}</td>
-              </tr>
-            );
-          })}
+                  <td
+                    onClick={() => toggleFavorite(sym)}
+                    className="cursor-pointer text-yellow-400 pl-4 select-none"
+                  >
+                    {isFav ? "★" : "☆"}
+                  </td>
+                  <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
+                    <a href={`/analyze/${sym}`}>{sym}</a>
+                  </td>
+                  <td className="p-2 font-mono">{priceText}</td>
+                  <td className="p-2 text-gray-300">{rsi}</td>
+                  <td className={`p-2 font-semibold ${sigColor}`}>{sig}</td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>
@@ -246,9 +243,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <div className="flex justify-between items-center w-full sm:w-auto">
-            <b className="text-emerald-400 text-lg sm:text-xl">
-              🌍 Visionary Stock Screener
-            </b>
+            <b className="text-emerald-400 text-lg sm:text-xl">🌍 Visionary Stock Screener</b>
             <button
               onClick={loadAll}
               className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold sm:ml-4"
@@ -256,8 +251,6 @@ export default function Home() {
               {loading ? "Loading..." : "🔁 Refresh"}
             </button>
           </div>
-
-          {/* Search */}
           <div className="relative w-full sm:w-64">
             <input
               type="text"
@@ -283,25 +276,17 @@ export default function Home() {
         {progress > 0 && (
           <>
             <div className="w-full bg-[#1a2335] h-2">
-              <div
-                className="bg-emerald-400 h-2 transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="bg-emerald-400 h-2 transition-all duration-300" style={{ width: `${progress}%` }} />
             </div>
             <div className="text-center text-xs text-emerald-300 py-1">
-              🔍 Scanning Stocks... {Math.round(progress)}% (
-              {Math.round((progress / 100) * 7000)} / 7000)
-              {eta > 0 && (
-                <span className="text-gray-400 ml-1">
-                  ⏱ ~{Math.round(eta)}s remaining
-                </span>
-              )}
+              🔍 Scanning Stocks... {Math.round(progress)}% ({Math.round((progress / 100) * 7000)} / 7000)
+              {eta > 0 && <span className="text-gray-400 ml-1">⏱ ~{Math.round(eta)}s remaining</span>}
             </div>
           </>
         )}
       </header>
 
-      {/* Body */}
+      {/* Content */}
       <div className="max-w-6xl mx-auto px-4 py-4">
         {/* Favorites */}
         {activeTab === "favorites" && (
@@ -309,22 +294,15 @@ export default function Home() {
             {favoriteData.length > 0 ? (
               <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-yellow-300 text-lg font-semibold">
-                    ⭐ My Favorites
-                  </h2>
-                  <button
-                    onClick={clearFavorites}
-                    className="text-sm text-red-400 hover:text-red-300 underline"
-                  >
+                  <h2 className="text-yellow-300 text-lg font-semibold">⭐ My Favorites</h2>
+                  <button onClick={clearFavorites} className="text-sm text-red-400 hover:text-red-300 underline">
                     Clear All
                   </button>
                 </div>
                 <Table rows={favoriteData} />
               </div>
             ) : (
-              <div className="text-center text-gray-400 py-6">
-                ⭐ No favorites yet — tap “☆” or search a symbol.
-              </div>
+              <div className="text-center text-gray-400 py-6">⭐ No favorites yet — tap “☆” or search a symbol.</div>
             )}
           </>
         )}
@@ -333,33 +311,23 @@ export default function Home() {
         {activeTab === "market" && (
           <>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-green-400 text-lg font-semibold mb-2">
-                ⚡ Fast Movers
-              </h2>
+              <h2 className="text-green-400 text-lg font-semibold mb-2">⚡ Fast Movers</h2>
               <Table rows={dataShort.slice(0, 6)} compact />
             </div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-yellow-400 text-lg font-semibold mb-2">
-                🌱 Emerging Trends
-              </h2>
+              <h2 className="text-yellow-400 text-lg font-semibold mb-2">🌱 Emerging Trends</h2>
               <Table rows={dataMedium.slice(0, 6)} compact />
             </div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-sky-400 text-lg font-semibold mb-2">
-                🚀 Future Leaders
-              </h2>
+              <h2 className="text-sky-400 text-lg font-semibold mb-2">🚀 Future Leaders</h2>
               <Table rows={dataLong.slice(0, 6)} compact />
             </div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
-              <h2 className="text-emerald-400 text-lg font-semibold mb-2">
-                🤖 AI Picks — Smart Buy Signals
-              </h2>
+              <h2 className="text-emerald-400 text-lg font-semibold mb-2">🤖 AI Picks — Smart Buy Signals</h2>
               <Table rows={aiPicks.slice(0, 20)} compact />
             </div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-cyan-300 text-lg font-semibold mb-2">
-                💎 Hidden Gems
-              </h2>
+              <h2 className="text-cyan-300 text-lg font-semibold mb-2">💎 Hidden Gems</h2>
               <Table rows={hidden.slice(0, 6)} compact />
             </div>
           </>
@@ -368,13 +336,9 @@ export default function Home() {
         {/* News */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
-            <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
-              🧠 AI Market News — Early Signals
-            </h2>
+            <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">🧠 AI Market News — Early Signals</h2>
             {newsFeed.length === 0 ? (
-              <div className="text-center text-gray-400 py-4">
-                Loading news...
-              </div>
+              <div className="text-center text-gray-400 py-4">Loading news...</div>
             ) : (
               <div className="grid gap-4">
                 {newsFeed.map((n, i) => (
@@ -383,14 +347,10 @@ export default function Home() {
                     className="block bg-[#141b2d]/70 border border-white/10 rounded-2xl p-4 hover:bg-[#1d2941]/80 transition"
                   >
                     <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="text-sky-400 font-semibold">
-                        {n.symbol}
-                      </span>
+                      <span className="text-sky-400 font-semibold">{n.symbol}</span>
                       <span className="text-gray-400 text-xs">{n.time}</span>
                     </div>
-                    <h2 className="text-emerald-300 font-semibold text-base mb-1">
-                      {n.title}
-                    </h2>
+                    <h2 className="text-emerald-300 font-semibold text-base mb-1">{n.title}</h2>
                     <div className="flex justify-between items-center text-xs mb-2">
                       <span className="text-gray-400">{n.publisher}</span>
                       <span
@@ -420,9 +380,7 @@ export default function Home() {
 
         {/* Menu */}
         {activeTab === "menu" && (
-          <div className="text-center text-gray-400 py-10">
-            ⚙️ Settings / About / Version 1.0.0
-          </div>
+          <div className="text-center text-gray-400 py-10">⚙️ Settings / About / Version 1.0.0</div>
         )}
       </div>
 
@@ -466,3 +424,6 @@ export default function Home() {
         </button>
       </nav>
     </main>
+  );
+        }
+    
