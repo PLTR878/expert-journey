@@ -30,8 +30,7 @@ export default function Home() {
         });
         const j = await res.json();
         return j?.results || [];
-      } catch (err) {
-        console.error(err);
+      } catch {
         return [];
       }
     }
@@ -55,12 +54,8 @@ export default function Home() {
   async function fetchYahooPrice(symbol, forceUpdate = false) {
     try {
       const res = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
-      if (!res.ok) {
-        console.warn(`⚠️ API /price error for ${symbol}`);
-        return;
-      }
+      if (!res.ok) return;
       const data = await res.json();
-
       const price = Number(data.price) || 0;
       const changePercent =
         typeof data.changePercent === "number" ? data.changePercent : 0;
@@ -73,9 +68,7 @@ export default function Home() {
       }));
 
       if (forceUpdate) setTimeout(() => setFavorites((prev) => [...prev]), 150);
-    } catch (err) {
-      console.error(`❌ fetchYahooPrice(${symbol}) error:`, err);
-    }
+    } catch {}
   }
 
   // ✅ โหลด Symbol จาก Yahoo
@@ -91,21 +84,19 @@ export default function Home() {
         setSymbolList(data.symbols);
         data.symbols.forEach((s) => fetchYahooPrice(s.symbol));
       }
-    } catch (err) {
-      console.error("loadSymbols error:", err);
-    }
+    } catch {}
   }
 
   useEffect(() => {
     loadAll();
   }, []);
 
-  // ✅ Search Realtime + Scroll ขึ้นบนอัตโนมัติ
+  // ✅ Search Realtime + Scroll ขึ้นบน
   useEffect(() => {
     const delay = setTimeout(() => {
       if (search.trim()) {
         loadSymbols(search);
-        window.scrollTo({ top: 0, behavior: "smooth" }); // 🔁 เลื่อนขึ้นบนอัตโนมัติ
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setSymbolList([]);
       }
@@ -124,7 +115,7 @@ export default function Home() {
   }, [favorites]);
 
   // ✅ เพิ่ม/ลบ Favorites
-  const toggleFavorite = async (symbol) => {
+  const toggleFavorite = (symbol) => {
     setFavorites((prev) => {
       if (prev.includes(symbol)) {
         return prev.filter((s) => s !== symbol);
@@ -185,12 +176,12 @@ export default function Home() {
     };
   };
 
-  // ✅ ตารางหุ้น (พร้อมสี Signal)
+  // ✅ ตารางหุ้น (ไม่มีกรอบ + ใช้พื้นที่เต็ม)
   const renderTable = (title, color, data) => {
     if (!data.length) return null;
     return (
-      <div className="my-8 rounded-2xl border border-white/10 bg-[#101827]/80 p-5 shadow-lg hover:shadow-[0_0_15px_rgba(0,255,180,0.2)] transition">
-        <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+      <div className="my-4 p-0 bg-transparent">
+        <div className="flex justify-between items-center mb-2 pb-1 border-b border-white/10">
           <h2 className={`text-lg sm:text-xl font-semibold ${color}`}>{title}</h2>
           {title.includes("Favorites") && (
             <button
@@ -202,15 +193,15 @@ export default function Home() {
           )}
         </div>
 
-        <div className="overflow-x-auto rounded-xl">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse text-center">
             <thead className="bg-white/5 text-gray-400 uppercase text-[12px] tracking-wide">
               <tr>
-                <th className="p-3 text-left pl-5">⭐</th>
-                <th className="p-3">Symbol</th>
-                <th className="p-3">Price</th>
-                <th className="p-3">RSI</th>
-                <th className="p-3">AI Signal</th>
+                <th className="p-2 text-left pl-5">⭐</th>
+                <th className="p-2">Symbol</th>
+                <th className="p-2">Price</th>
+                <th className="p-2">RSI</th>
+                <th className="p-2">AI Signal</th>
               </tr>
             </thead>
             <tbody>
@@ -222,7 +213,6 @@ export default function Home() {
                   : r.lastClose
                   ? `$${r.lastClose.toFixed(2)}`
                   : "-";
-
                 const signal = p?.signal || r.signal || "-";
                 const signalColor =
                   signal === "Buy"
@@ -242,16 +232,16 @@ export default function Home() {
                     >
                       {isFav ? "★" : "☆"}
                     </td>
-                    <td className="p-3 font-semibold text-sky-400 hover:text-emerald-400">
+                    <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
                       <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
                     </td>
-                    <td className="p-3 font-mono font-semibold text-gray-300">
+                    <td className="p-2 font-mono font-semibold text-gray-300">
                       {priceText}
                     </td>
-                    <td className="p-3 text-gray-400">
+                    <td className="p-2 text-gray-400">
                       {p?.rsi ? p.rsi.toFixed(1) : r.rsi ?? "-"}
                     </td>
-                    <td className={`p-3 font-semibold ${signalColor}`}>{signal}</td>
+                    <td className={`p-2 font-semibold ${signalColor}`}>{signal}</td>
                   </tr>
                 );
               })}
@@ -279,7 +269,6 @@ export default function Home() {
     }))
     .filter(Boolean);
 
-  // ✅ UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white font-inter">
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur-md border-b border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
@@ -330,15 +319,12 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {/* 🧠 แสดงผลค้นหาไว้บนสุด */}
             {search.trim() && extra.length > 0 &&
               renderTable("🧠 Yahoo Search Results — ผลค้นหาจาก Yahoo", "text-emerald-400", extra)}
 
-            {/* ⭐ Favorites */}
             {favoriteData.length > 0 &&
               renderTable("⭐ My Favorites — หุ้นที่คุณติดดาวไว้", "text-yellow-300", favoriteData)}
 
-            {/* ตารางหลัก */}
             {renderTable("⚡ Fast Movers — หุ้นขยับเร็วสุดในตลาด", "text-green-400", dataShort)}
             {renderTable("🌱 Emerging Trends — หุ้นแนวโน้มเกิดใหม่", "text-yellow-400", dataMedium)}
             {renderTable("🚀 Future Leaders — หุ้นต้นน้ำแห่งอนาคต", "text-sky-400", dataLong)}
@@ -347,4 +333,4 @@ export default function Home() {
       </div>
     </main>
   );
-      }
+                  }
