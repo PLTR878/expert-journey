@@ -36,13 +36,29 @@ export default function Home() {
         })
           .then((r) => r.json())
           .then((j) => j.results || []);
-      const [short, medium, long, hiddenData, ai] = await Promise.all([
+
+      const [short, medium, long, hiddenData] = await Promise.all([
         fetcher("/api/screener", { horizon: "short" }),
         fetcher("/api/screener", { horizon: "medium" }),
         fetcher("/api/screener", { horizon: "long" }),
         fetcher("/api/hidden-gems"),
-        fetcher("/api/ai-picks"),
       ]);
+
+      // ✅ โหลด AI Picks ทั้งตลาด (สแกนอัตโนมัติ)
+      const loadAIPicksAll = async () => {
+        const pageSize = 80;
+        let off = 0;
+        let acc = [];
+        for (let i = 0; i < 2; i++) { // โหลด 2 ชุด = 160 หุ้น
+          const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}`).then(res => res.json());
+          acc = acc.concat(r.results || []);
+          if (r.results.length < pageSize) break;
+          off += pageSize;
+        }
+        return acc;
+      };
+      const ai = await loadAIPicksAll();
+
       setDataShort(short);
       setDataMedium(medium);
       setDataLong(long);
@@ -133,7 +149,7 @@ export default function Home() {
               ? `$${r.lastClose.toFixed(2)}`
               : "-";
             const rsi = f?.rsi ?? r.rsi ?? "-";
-            const sig = f?.signal ?? r.signal ?? "-";
+            const sig = f?.signal ?? r.signal ?? r.AI ?? "-";
             const sigColor =
               sig === "Buy"
                 ? "text-green-400"
@@ -288,6 +304,15 @@ export default function Home() {
               </h2>
               <Table rows={dataLong.slice(0, 6)} compact />
             </div>
+
+            {/* ✅ AI Picks Section */}
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
+              <h2 className="text-emerald-400 text-lg font-semibold mb-2">
+                🤖 AI Picks — Smart Buy Signals
+              </h2>
+              <Table rows={aiPicks.slice(0, 8)} compact />
+            </div>
+
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
               <h2 className="text-cyan-300 text-lg font-semibold mb-2">
                 💎 Hidden Gems
@@ -399,4 +424,4 @@ export default function Home() {
       </nav>
     </main>
   );
-  }
+            }
