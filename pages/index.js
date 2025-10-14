@@ -24,7 +24,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลหุ้นทั้งหมด
+  // โหลดข้อมูลทั้งหมด
   async function loadAll() {
     setLoading(true);
     try {
@@ -44,19 +44,29 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // ✅ โหลด AI Picks ทั้งตลาด (สแกนอัตโนมัติ)
+      // ✅ โหลด AI Picks ทั้งตลาด (หลายหน้า)
       const loadAIPicksAll = async () => {
-        const pageSize = 80;
+        const pageSize = 100;   // ดึงทีละ 100 หุ้น
+        const maxPages = 50;    // รวม ~5000 หุ้น
         let off = 0;
         let acc = [];
-        for (let i = 0; i < 25; i++) { // โหลด ~2000 หุ้น
-          const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}`).then(res => res.json());
-          acc = acc.concat(r.results || []);
-          if (!r.results || r.results.length < pageSize) break;
+
+        for (let i = 0; i < maxPages; i++) {
+          const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`)
+            .then(res => res.json());
+          const chunk = r?.results || [];
+          acc = acc.concat(chunk);
+
+          if (chunk.length < pageSize) break;
           off += pageSize;
+
+          // พักนิดนึงกัน rate-limit (0.15s)
+          await new Promise(res => setTimeout(res, 150));
         }
+
         return acc;
       };
+
       const ai = await loadAIPicksAll();
 
       setDataShort(short);
@@ -98,7 +108,6 @@ export default function Home() {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
-  // ล้างรายการโปรด
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -107,7 +116,6 @@ export default function Home() {
     }
   };
 
-  // toggle favorite
   const toggleFavorite = (sym) => {
     if (!sym) return;
     setFavorites((prev) =>
@@ -189,7 +197,7 @@ export default function Home() {
     ...favoritePrices[s],
   }));
 
-  // โหลดข่าว
+  // ข่าว
   async function loadNews() {
     try {
       const res = await fetch("/api/news");
@@ -204,7 +212,6 @@ export default function Home() {
     if (activeTab === "news") loadNews();
   }, [activeTab]);
 
-  // ฟังก์ชันสรุปข่าว
   async function summarize(url) {
     try {
       const res = await fetch(`/api/summary?url=${encodeURIComponent(url)}`);
@@ -255,9 +262,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Body */}
+      {/* เนื้อหา */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
         {activeTab === "favorites" && (
           <>
             {favoriteData.length > 0 ? (
@@ -283,7 +289,6 @@ export default function Home() {
           </>
         )}
 
-        {/* Market */}
         {activeTab === "market" && (
           <div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
@@ -292,28 +297,24 @@ export default function Home() {
               </h2>
               <Table rows={dataShort.slice(0, 6)} compact />
             </div>
-
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
               <h2 className="text-yellow-400 text-lg font-semibold mb-2">
                 🌱 Emerging Trends
               </h2>
               <Table rows={dataMedium.slice(0, 6)} compact />
             </div>
-
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
               <h2 className="text-sky-400 text-lg font-semibold mb-2">
                 🚀 Future Leaders
               </h2>
               <Table rows={dataLong.slice(0, 6)} compact />
             </div>
-
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
               <h2 className="text-emerald-400 text-lg font-semibold mb-2">
                 🤖 AI Picks — Smart Buy Signals
               </h2>
-              <Table rows={aiPicks.slice(0, 12)} compact />
+              <Table rows={aiPicks.slice(0, 20)} compact />
             </div>
-
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
               <h2 className="text-cyan-300 text-lg font-semibold mb-2">
                 💎 Hidden Gems
@@ -323,7 +324,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* News */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
             <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
@@ -376,7 +376,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Menu */}
         {activeTab === "menu" && (
           <div className="text-center text-gray-400 py-10">
             ⚙️ Settings / About / Version 1.0.0
@@ -384,7 +383,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Bottom Nav */}
+      {/* Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
@@ -425,4 +424,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                      }
+          }
