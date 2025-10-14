@@ -178,7 +178,7 @@ export default function Home() {
     };
   };
 
-  // ✅ ตารางหุ้น
+  // ✅ ตารางหุ้น (แก้ให้ไม่พัง RSI)
   const renderTable = (title, color, data) => {
     if (!data.length) return null;
     return (
@@ -234,11 +234,9 @@ export default function Home() {
                       {priceText}
                     </td>
                     <td className="p-3 text-gray-400">
-                      {r.rsi ? r.rsi.toFixed(1) : "-"}
+                      {typeof r.rsi === "number" ? r.rsi.toFixed(1) : r.rsi || "-"}
                     </td>
-                    <td className="p-3 text-gray-400">
-                      {r.signal || "-"}
-                    </td>
+                    <td className="p-3 text-gray-400">{r.signal || "-"}</td>
                   </tr>
                 );
               })}
