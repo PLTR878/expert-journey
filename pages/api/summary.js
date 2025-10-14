@@ -3,25 +3,26 @@ export default async function handler(req, res) {
     const { url, lang = "th" } = req.query;
     if (!url) return res.status(400).json({ error: "Missing URL" });
 
-    // ✅ ใช้ Proxy ฟรีเพื่อเลี่ยง CORS Block
-    const proxyUrl = `https://r.jina.ai/${encodeURIComponent(url)}`;
+    // ✅ ใช้ AllOrigins Proxy แทน (ฟรี + ไม่ติด CORS)
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
     if (!response.ok) {
-      return res.status(400).json({ error: `Failed to fetch source: ${response.status}` });
+      return res.status(response.status).json({ error: `Failed to fetch source: ${response.status}` });
     }
 
-    const text = await response.text();
+    const html = await response.text();
 
-    // ✅ ดึงเฉพาะเนื้อหาหลัก ๆ จากข่าว
-    const cleanText = text
-      .replace(/\n+/g, " ")
+    const text = html
+      .replace(/<script[^>]*>.*?<\/script>/gis, "")
+      .replace(/<style[^>]*>.*?<\/style>/gis, "")
+      .replace(/<meta[^>]*>/gi, "")
+      .replace(/<!--.*?-->/g, "")
+      .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
 
-    // 🔹 สรุปย่อ 3–4 ประโยคแรก
-    const summary = cleanText.split(". ").slice(0, 3).join(". ");
+    const summary = text.split(/[.!?]\s+/).slice(0, 3).join(". ");
 
-    // 🔹 แปลไทยพื้นฐาน
     const translate = (t) =>
       t
         .replace(/Apple/gi, "แอปเปิล")
@@ -43,4 +44,4 @@ export default async function handler(req, res) {
     console.error("Summary Error:", err);
     res.status(500).json({ error: "Failed to summarize article" });
   }
-        }
+}
