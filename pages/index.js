@@ -8,12 +8,12 @@ export default function Home() {
   const [dataLong, setDataLong] = useState([]);
   const [hidden, setHidden] = useState([]);
   const [aiPicks, setAiPicks] = useState([]);
-  const [showAiModal, setShowAiModal] = useState(false);
+  const [newsFeed, setNewsFeed] = useState([]); // ✅ ข่าวใหม่
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("favorites"); // ✅ เพิ่มระบบแท็บ
+  const [activeTab, setActiveTab] = useState("favorites");
 
-  // โหลดรายการโปรด
+  // ✅ โหลดรายการโปรด
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -22,7 +22,7 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลทุกหมวด
+  // ✅ โหลดข้อมูลทุกหมวด
   async function loadAll() {
     setLoading(true);
     try {
@@ -52,11 +52,12 @@ export default function Home() {
       setLoading(false);
     }
   }
+
   useEffect(() => {
     loadAll();
   }, []);
 
-  // ดึงราคา RSI AI Signal
+  // ✅ ดึงราคา RSI AI Signal
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -77,7 +78,7 @@ export default function Home() {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
-  // ล้างรายการโปรด
+  // ✅ ล้างรายการโปรด
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -86,14 +87,14 @@ export default function Home() {
     }
   };
 
-  // toggle Favorite
+  // ✅ toggle Favorite
   const toggleFavorite = (sym) => {
     setFavorites((prev) =>
       prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym]
     );
   };
 
-  // ตารางหุ้น
+  // ✅ ตารางหุ้น
   const Table = ({ rows, compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -157,6 +158,22 @@ export default function Home() {
     ...favoritePrices[s],
   }));
 
+  // ✅ โหลดข่าวจาก API
+  async function loadNews() {
+    try {
+      const res = await fetch("/api/news");
+      const j = await res.json();
+      setNewsFeed(j.articles || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "news") loadNews();
+  }, [activeTab]);
+
+  // ✅ UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
@@ -175,7 +192,7 @@ export default function Home() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
+        {/* ⭐ Favorites */}
         {activeTab === "favorites" && (
           <>
             {favoriteData.length > 0 ? (
@@ -201,7 +218,7 @@ export default function Home() {
           </>
         )}
 
-        {/* Market */}
+        {/* 🌐 Market */}
         {activeTab === "market" && (
           <div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
@@ -231,14 +248,54 @@ export default function Home() {
           </div>
         )}
 
-        {/* News */}
+        {/* 🧠 News */}
         {activeTab === "news" && (
-          <div className="text-center text-gray-400 py-10">
-            🧠 News section coming soon — will show AI early signals.
+          <div className="px-3 py-5">
+            <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
+              🧠 AI Market News — Early Signals
+            </h2>
+
+            {newsFeed.length === 0 ? (
+              <div className="text-center text-gray-400 py-4">Loading news...</div>
+            ) : (
+              <div className="grid gap-4">
+                {newsFeed.map((n, i) => (
+                  <a
+                    key={i}
+                    href={n.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-[#141b2d]/70 border border-white/10 rounded-2xl p-4 hover:bg-[#1d2941]/80 transition"
+                  >
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="text-sky-400 font-semibold">{n.symbol}</span>
+                      <span className="text-gray-400 text-xs">{n.time}</span>
+                    </div>
+                    <h2 className="text-emerald-300 font-semibold text-base mb-1">
+                      {n.title}
+                    </h2>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-400">{n.publisher}</span>
+                      <span
+                        className={`font-bold ${
+                          n.sentiment === "Positive"
+                            ? "text-green-400"
+                            : n.sentiment === "Negative"
+                            ? "text-red-400"
+                            : "text-yellow-300"
+                        }`}
+                      >
+                        {n.sentiment}
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Menu */}
+        {/* ☰ Menu */}
         {activeTab === "menu" && (
           <div className="text-center text-gray-400 py-10">
             ⚙️ Settings / About / Version 1.0.0
@@ -246,7 +303,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* ✅ Bottom Navigation Bar */}
+      {/* ✅ Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
@@ -290,4 +347,4 @@ export default function Home() {
       </nav>
     </main>
   );
-              }
+                }
