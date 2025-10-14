@@ -1,4 +1,4 @@
-// pages/api/price.js
+// /pages/api/price.js
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   let changePercent = null;
 
   try {
-    // 1) chart
+    // ✅ 1) chart API
     try {
       const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
         headers: { "User-Agent": ua, Accept: "application/json" },
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       }
     } catch {}
 
-    // 2) quoteSummary
+    // ✅ 2) quoteSummary Fallback
     if (price == null) {
       try {
         const r = await fetch(
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       } catch {}
     }
 
-    // 3) quote?symbols
+    // ✅ 3) quote?symbols Fallback
     if (price == null) {
       try {
         const r = await fetch(
@@ -62,15 +62,28 @@ export default async function handler(req, res) {
       } catch {}
     }
 
+    // ❌ ถ้าไม่มีราคาจริงเลย
     if (price == null) {
       return res.status(404).json({ error: "price not found" });
     }
 
-    // cache สักหน่อย
+    // ✅ สร้าง RSI และ AI Signal จำลอง
+    const rsi = Math.floor(Math.random() * 40) + 30; // random RSI 30–70
+    let signal = "Hold";
+    if (rsi > 60) signal = "Buy";
+    else if (rsi < 40) signal = "Sell";
+
+    // ✅ ส่งข้อมูลกลับ frontend
     res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
-    return res.status(200).json({ symbol, price, changePercent });
+    return res.status(200).json({
+      symbol,
+      price,
+      changePercent,
+      rsi,
+      signal,
+    });
   } catch (e) {
     console.error("price api error:", e);
     return res.status(500).json({ error: "internal error" });
   }
-          }
+}
