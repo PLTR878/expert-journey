@@ -1,12 +1,12 @@
 // /pages/api/ai-picks.js
-// ✅ AI Scanner — Full NASDAQ + NYSE (Optimized + Cached + Stable + Fallback)
+// ✅ AI Scanner — Full NASDAQ + NYSE (All Stocks, Optimized + Cached + Stable)
 
 const STQS = [
   "https://stooq.com/t/s/us_nasdaq.csv",
   "https://stooq.com/t/s/us_nyse.csv",
 ];
 
-const CACHE_TTL_MS = 1000 * 60 * 30; // 30 นาที cache
+const CACHE_TTL_MS = 1000 * 60 * 30; // cache 30 นาที
 if (!globalThis.__AI_CACHE__)
   globalThis.__AI_CACHE__ = {
     tickers: null,
@@ -29,7 +29,7 @@ function csvToTickers(csv) {
   return list;
 }
 
-// 🧩 โหลดรายชื่อหุ้น (มี fallback)
+// 🧩 โหลดรายชื่อหุ้น (NASDAQ + NYSE ทั้งหมด)
 async function fetchUniverse() {
   const now = Date.now();
   if (C.tickers && now - C.tickersAt < CACHE_TTL_MS) return C.tickers;
@@ -41,9 +41,12 @@ async function fetchUniverse() {
     const valid = csvs
       .filter((x) => x.status === "fulfilled")
       .map((x) => x.value);
-    let tickers = Array.from(new Set(valid.flatMap(csvToTickers))).slice(0, 50);
+    let tickers = Array.from(new Set(valid.flatMap(csvToTickers)));
 
-    // ✅ Fallback 10 หุ้นแน่นอน
+    // ✅ จำกัดสูงสุด 7000 ตัวเพื่อป้องกัน overload
+    tickers = tickers.slice(0, 7000);
+
+    // ✅ fallback ถ้าโหลดไม่ได้
     if (!tickers.length) {
       tickers = [
         "AAPL", "MSFT", "NVDA", "TSLA", "AMZN",
@@ -55,7 +58,6 @@ async function fetchUniverse() {
     C.tickersAt = now;
     return tickers;
   } catch {
-    // ถ้าโหลด CSV ไม่ได้เลย
     return [
       "AAPL", "MSFT", "NVDA", "TSLA", "AMZN",
       "META", "GOOG", "AMD", "NFLX", "INTC",
@@ -67,11 +69,9 @@ async function fetchUniverse() {
 async function fetchChart(sym) {
   try {
     if (C.chart.has(sym)) return C.chart.get(sym);
-
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=6mo&interval=1d`;
     const r = await fetch(url);
     if (!r.ok) throw new Error("Yahoo API Error");
-
     const j = await r.json();
     const d = j?.chart?.result?.[0];
     const q = d?.indicators?.quote?.[0];
@@ -79,7 +79,6 @@ async function fetchChart(sym) {
 
     const closes = q.close.filter(Boolean);
     const vols = q.volume?.filter(Boolean) || [];
-
     if (!closes.length) throw new Error("No closes");
 
     const data = { closes, vols };
@@ -101,15 +100,13 @@ function ema(arr, p) {
 
 function rsi(c, p = 14) {
   if (c.length < p + 1) return null;
-  let g = 0,
-    l = 0;
+  let g = 0, l = 0;
   for (let i = 1; i <= p; i++) {
     const d = c[i] - c[i - 1];
     if (d > 0) g += d;
     else l -= d;
   }
-  g /= p;
-  l /= p;
+  g /= p; l /= p;
   const rs = l === 0 ? 0 : g / l;
   return 100 - 100 / (1 + rs);
 }
@@ -117,7 +114,6 @@ function rsi(c, p = 14) {
 // 🧮 วิเคราะห์แนวโน้ม + คะแนน
 function compute({ closes }) {
   if (!closes.length) return null;
-
   const last = closes.at(-1);
   const ema20 = ema(closes, 20);
   const ema50 = ema(closes, 50);
@@ -137,10 +133,10 @@ function compute({ closes }) {
   return { last, ema20, ema50, rsi: theRsi, score, signal: sig };
 }
 
-// ⚙️ ประมวลผลพร้อมกัน
+// ⚙️ ประมวลผลพร้อมกัน (async queue)
 async function analyzeBatch(symbols) {
   const results = [];
-  const maxParallel = 6;
+  const maxParallel = 8;
   const queue = [...symbols];
 
   const workers = Array.from({ length: maxParallel }, async () => {
@@ -170,7 +166,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const { limit = "10", offset = "0" } = req.query;
+    const { limit = "100", offset = "0" } = req.query;
     const L = parseInt(limit);
     const O = parseInt(offset);
 
@@ -180,7 +176,7 @@ export default async function handler(req, res) {
     const results = await analyzeBatch(batch);
     results.sort((a, b) => b.score - a.score);
 
-    // 🧠 เก็บ cache 30 นาที
+    // 🧠 cache 30 นาที
     C.aiResults = results;
     C.aiAt = now;
 
@@ -189,4 +185,4 @@ export default async function handler(req, res) {
     console.error("AI Picks Error:", e);
     res.status(500).json({ error: e.message || "Internal Server Error" });
   }
-}
+      }
