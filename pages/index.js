@@ -97,7 +97,7 @@ export default function Home() {
     );
   };
 
-  // ✅ ตารางหุ้น (เวอร์ชันแก้แล้ว)
+  // ตารางหุ้น
   const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -187,7 +187,17 @@ export default function Home() {
     if (activeTab === "news") loadNews();
   }, [activeTab]);
 
-  // ✅ ส่วนแสดงผล
+  // ✅ ฟังก์ชันดึงสรุปข่าวฟรี
+  async function summarize(url) {
+    try {
+      const res = await fetch(`/api/summary?url=${encodeURIComponent(url)}`);
+      const j = await res.json();
+      alert(`🧾 Summary:\n\n${j.summary}`);
+    } catch {
+      alert("❌ Failed to summarize article.");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header พร้อม Search */}
@@ -205,7 +215,7 @@ export default function Home() {
             </button>
           </div>
 
-          {/* 🔍 Search bar */}
+          {/* Search bar */}
           <div className="relative w-full sm:w-64">
             <input
               type="text"
@@ -216,7 +226,7 @@ export default function Home() {
                 if (e.key === "Enter" && searchSymbol.trim() !== "") {
                   const sym = searchSymbol.trim().toUpperCase();
                   if (!favorites.includes(sym)) {
-                    setFavorites((prev) => [...prev, sym]); // ✅ เพิ่ม Favorite จากช่อง Search
+                    setFavorites((prev) => [...prev, sym]);
                     fetchYahooPrice(sym);
                   }
                   setSearchSymbol("");
@@ -286,7 +296,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* News */}
+        {/* News + ปุ่มสรุปข่าว */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
             <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
@@ -299,11 +309,8 @@ export default function Home() {
             ) : (
               <div className="grid gap-4">
                 {newsFeed.map((n, i) => (
-                  <a
+                  <div
                     key={i}
-                    href={n.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="block bg-[#141b2d]/70 border border-white/10 rounded-2xl p-4 hover:bg-[#1d2941]/80 transition"
                   >
                     <div className="flex justify-between items-center text-sm mb-1">
@@ -315,7 +322,7 @@ export default function Home() {
                     <h2 className="text-emerald-300 font-semibold text-base mb-1">
                       {n.title}
                     </h2>
-                    <div className="flex justify-between items-center text-xs">
+                    <div className="flex justify-between items-center text-xs mb-2">
                       <span className="text-gray-400">{n.publisher}</span>
                       <span
                         className={`font-bold ${
@@ -329,7 +336,15 @@ export default function Home() {
                         {n.sentiment}
                       </span>
                     </div>
-                  </a>
+
+                    {/* ปุ่มสรุปข่าว */}
+                    <button
+                      onClick={() => summarize(n.url)}
+                      className="mt-2 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/20 px-3 py-1 rounded-lg text-emerald-300 transition"
+                    >
+                      🧾 Summary
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -385,4 +400,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                    }
+    }
