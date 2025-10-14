@@ -1,51 +1,106 @@
-export const config = { runtime: "nodejs" };
+// /pages/api/ai-picks.js
+// AI Scanner — สแกนหุ้นทั้งตลาด NASDAQ + NYSE
+// ใช้ฟรี 100% ไม่มีคีย์ OpenAI
 
-export default async function handler(req,res){
-  try{
-    const base = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+const STQS = [
+  "https://stooq.com/t/s/us_nasdaq.csv",
+  "https://stooq.com/t/s/us_nyse.csv",
+];
 
-    const [shortS, mediumS, longS, news] = await Promise.all([
-      fetch(`${base}/api/screener`, {method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({horizon:"short"})}).then(r=>r.json()),
-      fetch(`${base}/api/screener`, {method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({horizon:"medium"})}).then(r=>r.json()),
-      fetch(`${base}/api/screener`, {method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({horizon:"long"})}).then(r=>r.json()).catch(()=>({results:[]})),
-      fetch(`${base}/api/news-intelligence-free`).then(r=>r.json())
-    ]);
+const CACHE_TTL_MS = 1000 * 60 * 30;
+if (!globalThis.__AI_CACHE__)
+  globalThis.__AI_CACHE__ = { tickers: null, tickersAt: 0, chart: new Map() };
+const C = globalThis.__AI_CACHE__;
 
-    const newsBy = {};
-    for (const n of news.results||[]) {
-      if (!n.symbol) continue;
-      const boost = (n.sentiment>0 ? 0.1*n.sentiment : 0) + Math.max(0, 0.1 - (n.freshnessMin||0)/720);
-      newsBy[n.symbol] = Math.max(newsBy[n.symbol]||0, boost);
-    }
-
-    const by = {};
-    for (const r of shortS.results||[]) by[r.symbol] = { ...by[r.symbol], short:r };
-    for (const r of mediumS.results||[]) by[r.symbol] = { ...by[r.symbol], medium:r };
-    for (const r of longS.results||[]) by[r.symbol] = { ...by[r.symbol], long:r };
-
-    const picks = Object.entries(by).map(([symbol, obj])=>{
-      const s = (obj.short?.score ?? 0);
-      const m = (obj.medium?.score ?? 0);
-      const l = (obj.long?.score ?? 0);
-      const rsi = obj.short?.rsi ?? obj.medium?.rsi ?? 50;
-      const baseScore = 0.45*s + 0.4*m + 0.15*l;
-      const rsiAdj = (rsi > 70 ? -0.2 : rsi < 40 ? 0.1 : 0);
-      const newsAdj = newsBy[symbol] || 0;
-      const total = baseScore + rsiAdj + newsAdj;
-      const lastClose = obj.short?.lastClose ?? obj.medium?.lastClose ?? obj.long?.lastClose ?? null;
-      return {
-        symbol, lastClose, rsi,
-        signal: total>0.85 ? "Buy" : total>0.55 ? "Hold" : "Watch",
-        score: Number(total.toFixed(3))
-      }
-    })
-    .filter(x => x.score > 0.55)
-    .sort((a,b)=>b.score-a.score)
-    .slice(0,20);
-
-    res.setHeader("Cache-Control","public, s-maxage=60");
-    res.status(200).json({ results: picks });
-  }catch(e){
-    res.status(500).json({ error: e?.message || "ai-picks failed" });
+function csvToTickers(csv) {
+  const lines = csv.trim().split(/\r?\n/);
+  lines.shift();
+  const list = [];
+  for (const line of lines) {
+    const s = line.split(",")[0]?.trim();
+    if (s && /^[A-Z]{1,6}$/.test(s)) list.push(s);
   }
-                 }
+  return list;
+}
+
+async function fetchUniverse() {
+  const now = Date.now();
+  if (C.tickers && now - C.tickersAt < CACHE_TTL_MS) return C.tickers;
+  const csvs = await Promise.all(STQS.map((u) => fetch(u).then((r) => r.text())));
+  const tickers = Array.from(new Set(csvs.flatMap(csvToTickers))).slice(0, 3000);
+  C.tickers = tickers;
+  C.tickersAt = now;
+  return tickers;
+}
+
+async function fetchChart(sym) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=6mo&interval=1d`;
+  const r = await fetch(url);
+  const j = await r.json();
+  const d = j?.chart?.result?.[0];
+  const closes = d?.indicators?.quote?.[0]?.close || [];
+  const vols = d?.indicators?.quote?.[0]?.volume || [];
+  return { closes, vols };
+}
+
+function ema(arr, p) {
+  const k = 2 / (p + 1);
+  let e = arr[0];
+  for (let i = 1; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
+  return e;
+}
+function rsi(c, p = 14) {
+  if (c.length < p) return null;
+  let g = 0, l = 0;
+  for (let i = 1; i <= p; i++) {
+    const d = c[i] - c[i - 1];
+    if (d > 0) g += d;
+    else l -= d;
+  }
+  g /= p; l /= p;
+  const rs = g / l;
+  return 100 - 100 / (1 + rs);
+}
+
+function pct(a, b) { return ((a - b) / b) * 100; }
+
+function compute({ closes, vols }) {
+  if (!closes.length) return null;
+  const last = closes.at(-1);
+  const ema20 = ema(closes, 20);
+  const ema50 = ema(closes, 50);
+  const theRsi = rsi(closes);
+  const hi = Math.max(...closes.slice(-100));
+  const lo = Math.min(...closes.slice(-100));
+  const score =
+    50 +
+    (ema20 > ema50 ? 10 : -10) +
+    (theRsi > 55 ? 5 : -5) +
+    (last > ema20 ? 5 : -5);
+  let sig = "Hold";
+  if (score > 65) sig = "Buy";
+  if (score < 40) sig = "Sell";
+  return { last, ema20, ema50, rsi: theRsi, hi, lo, score, signal: sig };
+}
+
+export default async function handler(req, res) {
+  try {
+    const { limit = "80", offset = "0" } = req.query;
+    const L = parseInt(limit), O = parseInt(offset);
+    const universe = await fetchUniverse();
+    const batch = universe.slice(O, O + L);
+    const results = [];
+    for (const sym of batch) {
+      try {
+        const data = await fetchChart(sym);
+        const sig = compute(data);
+        if (sig)
+          results.push({ symbol: sym, ...sig });
+      } catch {}
+    }
+    results.sort((a, b) => b.score - a.score);
+    res.status(200).json({ count: results.length, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
