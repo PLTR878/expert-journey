@@ -13,8 +13,10 @@ export default function Home() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("favorites");
   const [searchSymbol, setSearchSymbol] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [eta, setEta] = useState(0);
 
-  // โหลดรายการโปรดจาก localStorage
+  // โหลด favorites
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -27,6 +29,9 @@ export default function Home() {
   // โหลดข้อมูลทั้งหมด
   async function loadAll() {
     setLoading(true);
+    setProgress(0);
+    setEta(0);
+    const startTime = Date.now();
     try {
       const fetcher = async (url, body) =>
         fetch(url, {
@@ -44,26 +49,35 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // ✅ โหลด AI Picks ทั้งตลาด (หลายหน้า)
+      // ✅ โหลด AI Picks ทั้งตลาด พร้อม progress + ETA
       const loadAIPicksAll = async () => {
-        const pageSize = 100;   // ดึงทีละ 100 หุ้น
-        const maxPages = 50;    // รวม ~5000 หุ้น
+        const pageSize = 100;
+        const maxPages = 50;
         let off = 0;
         let acc = [];
 
         for (let i = 0; i < maxPages; i++) {
-          const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`)
-            .then(res => res.json());
+          const r = await fetch(
+            `/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`
+          ).then((res) => res.json());
           const chunk = r?.results || [];
           acc = acc.concat(chunk);
 
+          // ✅ อัปเดตความคืบหน้า + เวลาที่เหลือ
+          const done = ((i + 1) / maxPages) * 100;
+          setProgress(done);
+          const elapsed = (Date.now() - startTime) / 1000;
+          const estimatedTotal = (elapsed / (i + 1)) * maxPages;
+          const remaining = Math.max(estimatedTotal - elapsed, 0);
+          setEta(remaining);
+
           if (chunk.length < pageSize) break;
           off += pageSize;
-
-          // พักนิดนึงกัน rate-limit (0.15s)
-          await new Promise(res => setTimeout(res, 150));
+          await new Promise((res) => setTimeout(res, 150)); // กัน rate-limit
         }
 
+        setProgress(100);
+        setEta(0);
         return acc;
       };
 
@@ -78,6 +92,7 @@ export default function Home() {
       setError("Failed to load data");
     } finally {
       setLoading(false);
+      setTimeout(() => setProgress(0), 1000);
     }
   }
 
@@ -85,7 +100,7 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // ดึงราคา RSI และสัญญาณ AI
+  // ดึงราคา RSI / AI
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -108,6 +123,7 @@ export default function Home() {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
+  // ล้าง favorites
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -116,6 +132,7 @@ export default function Home() {
     }
   };
 
+  // toggle favorite
   const toggleFavorite = (sym) => {
     if (!sym) return;
     setFavorites((prev) =>
@@ -197,7 +214,7 @@ export default function Home() {
     ...favoritePrices[s],
   }));
 
-  // ข่าว
+  // โหลดข่าว
   async function loadNews() {
     try {
       const res = await fetch("/api/news");
@@ -260,10 +277,32 @@ export default function Home() {
             />
           </div>
         </div>
+
+        {/* ✅ Progress Bar */}
+        {progress > 0 && (
+          <>
+            <div className="w-full bg-[#1a2335] h-2">
+              <div
+                className="bg-emerald-400 h-2 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="text-center text-xs text-emerald-300 py-1">
+              🔍 Scanning Stocks... {Math.round(progress)}% (
+              {Math.round((progress / 100) * 7000)} / 7000)
+              {eta > 0 && (
+                <span className="text-gray-400 ml-1">
+                  ⏱ ~{Math.round(eta)}s remaining
+                </span>
+              )}
+            </div>
+          </>
+        )}
       </header>
 
       {/* เนื้อหา */}
       <div className="max-w-6xl mx-auto px-4 py-4">
+        {/* Favorites */}
         {activeTab === "favorites" && (
           <>
             {favoriteData.length > 0 ? (
@@ -289,8 +328,9 @@ export default function Home() {
           </>
         )}
 
+        {/* Market */}
         {activeTab === "market" && (
-          <div>
+          <>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
               <h2 className="text-green-400 text-lg font-semibold mb-2">
                 ⚡ Fast Movers
@@ -321,9 +361,10 @@ export default function Home() {
               </h2>
               <Table rows={hidden.slice(0, 6)} compact />
             </div>
-          </div>
+          </>
         )}
 
+        {/* News */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
             <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
@@ -376,6 +417,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Menu */}
         {activeTab === "menu" && (
           <div className="text-center text-gray-400 py-10">
             ⚙️ Settings / About / Version 1.0.0
@@ -383,7 +425,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Navigation */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
@@ -414,14 +456,4 @@ export default function Home() {
         </button>
         <button
           onClick={() => setActiveTab("menu")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
-        >
-          <span className="text-[18px]">☰</span>
-          Menu
-        </button>
-      </nav>
-    </main>
-  );
-          }
+          className={`py-
