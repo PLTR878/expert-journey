@@ -1,12 +1,12 @@
 // /pages/api/ai-picks.js
-// ✅ AI Scanner — Full NASDAQ + NYSE (Optimized + Cached + Fast + Stable)
+// ✅ AI Scanner — Full NASDAQ + NYSE (Optimized + Cached + Stable + Fallback)
 
 const STQS = [
   "https://stooq.com/t/s/us_nasdaq.csv",
   "https://stooq.com/t/s/us_nyse.csv",
 ];
 
-const CACHE_TTL_MS = 1000 * 60 * 30; // 30 นาที
+const CACHE_TTL_MS = 1000 * 60 * 30; // 30 นาที cache
 if (!globalThis.__AI_CACHE__)
   globalThis.__AI_CACHE__ = {
     tickers: null,
@@ -17,7 +17,7 @@ if (!globalThis.__AI_CACHE__)
   };
 const C = globalThis.__AI_CACHE__;
 
-// 🧩 แปลง CSV → รายชื่อหุ้น
+// 🧩 CSV → สัญลักษณ์หุ้น
 function csvToTickers(csv) {
   const lines = csv.trim().split(/\r?\n/);
   lines.shift();
@@ -29,19 +29,38 @@ function csvToTickers(csv) {
   return list;
 }
 
-// 🧩 โหลด universe (NASDAQ + NYSE)
+// 🧩 โหลดรายชื่อหุ้น (มี fallback)
 async function fetchUniverse() {
   const now = Date.now();
   if (C.tickers && now - C.tickersAt < CACHE_TTL_MS) return C.tickers;
 
-  const csvs = await Promise.allSettled(
-    STQS.map((u) => fetch(u).then((r) => r.text()))
-  );
-  const valid = csvs.filter((x) => x.status === "fulfilled").map((x) => x.value);
-  const tickers = Array.from(new Set(valid.flatMap(csvToTickers))).slice(0, 50); // ⚡ จำกัด 50 ตัว (เร็วสุด)
-  C.tickers = tickers;
-  C.tickersAt = now;
-  return tickers;
+  try {
+    const csvs = await Promise.allSettled(
+      STQS.map((u) => fetch(u).then((r) => r.text()))
+    );
+    const valid = csvs
+      .filter((x) => x.status === "fulfilled")
+      .map((x) => x.value);
+    let tickers = Array.from(new Set(valid.flatMap(csvToTickers))).slice(0, 50);
+
+    // ✅ Fallback 10 หุ้นแน่นอน
+    if (!tickers.length) {
+      tickers = [
+        "AAPL", "MSFT", "NVDA", "TSLA", "AMZN",
+        "META", "GOOG", "AMD", "NFLX", "INTC",
+      ];
+    }
+
+    C.tickers = tickers;
+    C.tickersAt = now;
+    return tickers;
+  } catch {
+    // ถ้าโหลด CSV ไม่ได้เลย
+    return [
+      "AAPL", "MSFT", "NVDA", "TSLA", "AMZN",
+      "META", "GOOG", "AMD", "NFLX", "INTC",
+    ];
+  }
 }
 
 // 🧩 ดึงกราฟจาก Yahoo Finance
@@ -52,15 +71,18 @@ async function fetchChart(sym) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=6mo&interval=1d`;
     const r = await fetch(url);
     if (!r.ok) throw new Error("Yahoo API Error");
+
     const j = await r.json();
     const d = j?.chart?.result?.[0];
     const q = d?.indicators?.quote?.[0];
-    if (!q?.close) throw new Error("No chart data");
+    if (!q?.close?.length) throw new Error("No chart data");
 
     const closes = q.close.filter(Boolean);
-    const vols = q.volume.filter(Boolean);
-    const data = { closes, vols };
+    const vols = q.volume?.filter(Boolean) || [];
 
+    if (!closes.length) throw new Error("No closes");
+
+    const data = { closes, vols };
     C.chart.set(sym, data);
     return data;
   } catch {
@@ -92,7 +114,7 @@ function rsi(c, p = 14) {
   return 100 - 100 / (1 + rs);
 }
 
-// 🧮 คำนวณคะแนนและสัญญาณ
+// 🧮 วิเคราะห์แนวโน้ม + คะแนน
 function compute({ closes }) {
   if (!closes.length) return null;
 
@@ -115,7 +137,7 @@ function compute({ closes }) {
   return { last, ema20, ema50, rsi: theRsi, score, signal: sig };
 }
 
-// ⚙️ ประมวลผลหลายตัวพร้อมกัน (async)
+// ⚙️ ประมวลผลพร้อมกัน
 async function analyzeBatch(symbols) {
   const results = [];
   const maxParallel = 6;
@@ -139,7 +161,6 @@ async function analyzeBatch(symbols) {
 // 🚀 Handler หลัก
 export default async function handler(req, res) {
   try {
-    // ✅ ดึงจาก cache ถ้ามี (ลดโหลด Yahoo)
     const now = Date.now();
     if (C.aiResults && now - C.aiAt < CACHE_TTL_MS) {
       return res.status(200).json({
@@ -149,7 +170,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const { limit = "30", offset = "0" } = req.query;
+    const { limit = "10", offset = "0" } = req.query;
     const L = parseInt(limit);
     const O = parseInt(offset);
 
