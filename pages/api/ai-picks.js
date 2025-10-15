@@ -1,5 +1,5 @@
 // ✅ AI Screener — Full US Market (NASDAQ + NYSE) with /api/symbols support
-// ใช้ข้อมูลจาก /api/symbols (ของโปรเจคคุณเอง) + วิเคราะห์ RSI/EMA/Trend + Cache
+// ใช้ข้อมูลจาก /api/symbols (ของโปรเจคคุณเอง) + วิเคราะห์ RSI/EMA/Trend + Cache + Target/Confidence
 
 const CACHE_TTL_MS = 1000 * 60 * 30; // 30 นาที
 
@@ -43,12 +43,14 @@ async function fetchChart(sym) {
     const q = d?.indicators?.quote?.[0];
     if (!q?.close?.length) throw new Error("No chart data");
 
+    // ✅ เพิ่มราคาปัจจุบันให้ตรงกับ TradingView
     const closes = q.close.filter(Boolean);
-    const data = { closes };
+    const price = d?.meta?.regularMarketPrice || closes.at(-1);
+    const data = { closes, price };
     C.chart.set(sym, data);
     return data;
   } catch {
-    return { closes: [] };
+    return { closes: [], price: 0 };
   }
 }
 
@@ -60,8 +62,15 @@ function ema(arr, p) {
   for (let i = 1; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
   return e;
 }
+
+// ✅ RSI พร้อม fallback (ป้องกันกรณีข้อมูลไม่พอ)
 function rsi(c, p = 14) {
-  if (c.length < p + 1) return null;
+  if (c.length < p + 1) {
+    const last = c.at(-1);
+    const prev = c.at(-2) || last;
+    const change = ((last - prev) / prev) * 100;
+    return Math.max(0, Math.min(100, 50 + change)); // จำกัดไม่เกิน 0–100
+  }
   let g = 0, l = 0;
   for (let i = 1; i <= p; i++) {
     const d = c[i] - c[i - 1];
@@ -72,22 +81,31 @@ function rsi(c, p = 14) {
   const rs = l === 0 ? 0 : g / l;
   return 100 - 100 / (1 + rs);
 }
-function compute({ closes }) {
+
+// ✅ ฟังก์ชันคำนวณสัญญาณ (เพิ่ม Target + Confidence)
+function compute({ closes, price }) {
   if (!closes.length) return null;
-  const last = closes.at(-1);
+  const last = price || closes.at(-1);
   const ema20 = ema(closes, 20);
   const ema50 = ema(closes, 50);
   const theRsi = rsi(closes);
   if (!theRsi) return null;
+
   const score =
     50 +
     (ema20 > ema50 ? 10 : -10) +
     (theRsi > 55 ? 5 : -5) +
     (last > ema20 ? 5 : -5);
+
   let sig = "Hold";
   if (score > 65) sig = "Buy";
   if (score < 40) sig = "Sell";
-  return { last, ema20, ema50, rsi: theRsi, score, signal: sig };
+
+  // ✅ เพิ่ม Target และระดับความมั่นใจ (AI Confidence)
+  const target = last * (score > 65 ? 1.08 : score < 40 ? 0.92 : 1.0);
+  const confidence = Math.min(100, Math.abs(score - 50) * 2);
+
+  return { last, ema20, ema50, rsi: theRsi, score, signal: sig, target, confidence };
 }
 
 // ⚙️ วิเคราะห์เป็นชุด (batch)
@@ -147,4 +165,4 @@ export default async function handler(req, res) {
     console.error("AI Picks Error:", e);
     res.status(500).json({ error: e.message || "Internal error" });
   }
-     }
+      }
