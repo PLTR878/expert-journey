@@ -84,6 +84,20 @@ export default function Home() {
 
       const ai = await loadAIPicksAll();
 
+      // ✅ ดึงราคาจริงและ RSI สำหรับหุ้นใน AI Picks
+      for (let stock of ai.slice(0, 50)) {
+        try {
+          const r = await fetch(`/api/price?symbol=${stock.symbol}`);
+          if (!r.ok) continue;
+          const j = await r.json();
+          stock.price = j.price || "-";
+          stock.rsi = j.rsi || "-";
+          stock.signal = j.signal || "-";
+        } catch (err) {
+          console.warn("Price fetch failed for", stock.symbol);
+        }
+      }
+
       setDataShort(short);
       setDataMedium(medium);
       setDataLong(long);
@@ -168,14 +182,9 @@ export default function Home() {
               const sym = r.symbol || r.ticker || r.Symbol || "";
               if (!sym) return null;
               const isFav = favorites.includes(sym);
-              const f = favoritePrices[sym];
-              const priceText = f?.price
-                ? `$${f.price.toFixed(2)}`
-                : r.lastClose
-                ? `$${r.lastClose.toFixed(2)}`
-                : "-";
-              const rsi = f?.rsi ?? r.rsi ?? "-";
-              const sig = f?.signal ?? r.signal ?? r.AI ?? "-";
+              const price = r.price || r.lastClose || "-";
+              const rsi = r.rsi ?? "-";
+              const sig = r.signal ?? r.AI ?? "-";
               const sigColor =
                 sig === "Buy"
                   ? "text-green-400"
@@ -199,7 +208,9 @@ export default function Home() {
                   <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
                     <a href={`/analyze/${sym}`}>{sym}</a>
                   </td>
-                  <td className="p-2 font-mono">{priceText}</td>
+                  <td className="p-2 font-mono">
+                    {price !== "-" ? `$${Number(price).toFixed(2)}` : "-"}
+                  </td>
                   <td className="p-2 text-gray-300">{rsi}</td>
                   <td className={`p-2 font-semibold ${sigColor}`}>{sig}</td>
                 </tr>
@@ -460,10 +471,4 @@ export default function Home() {
             activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
           }`}
         >
-          <span className="text-[18px]">☰</span>
-          Menu
-        </button>
-      </nav>
-    </main>
-  );
-    }
+          <span className="text-[
