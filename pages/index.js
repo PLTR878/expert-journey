@@ -16,46 +16,6 @@ export default function Home() {
   const [progress, setProgress] = useState(0);
   const [eta, setEta] = useState(0);
 
-  // ---------- Alerts ----------
-  const [alerts, setAlerts] = useState([]);
-  const [toasts, setToasts] = useState([]);
-  const uid = () => Math.random().toString(36).slice(2, 9);
-
-  useEffect(() => {
-    fetch("/api/alerts")
-      .then((r) => r.json())
-      .then((j) => setAlerts(j.results || []))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const tick = async () => {
-      try {
-        const r = await fetch("/api/alerts/runner");
-        const j = await r.json().catch(() => ({}));
-        if (Array.isArray(j.results) && j.results.length) {
-          setToasts((prev) => [
-            ...prev,
-            ...j.results.map((h) => ({ id: uid(), msg: h.message })),
-          ]);
-        }
-      } catch {}
-    };
-    tick();
-    const id = setInterval(tick, 60000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    if (!toasts.length) return;
-    const timers = toasts.map((t) =>
-      setTimeout(() => {
-        setToasts((p) => p.filter((x) => x.id !== t.id));
-      }, 6000)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [toasts]);
-
   // ---------- LocalStorage: favorites ----------
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
@@ -128,6 +88,7 @@ export default function Home() {
       const long = sLong?.results || [];
       const hiddenData = sHidden?.results || [];
 
+      // AI picks พร้อม progress
       const pageSize = 100;
       const maxPages = 20;
       let off = 0;
@@ -138,11 +99,13 @@ export default function Home() {
         ).then((x) => x.json().catch(() => ({})));
         const chunk = Array.isArray(r?.results) ? r.results : [];
         ai = ai.concat(chunk);
+
         const pct = ((i + 1) / maxPages) * 100;
         setProgress(pct);
         const elapsed = (Date.now() - started) / 1000;
         const estTotal = (elapsed / (i + 1)) * maxPages;
         setEta(Math.max(estTotal - elapsed, 0));
+
         if (chunk.length < pageSize) break;
         off += pageSize;
         await sleep(120);
@@ -150,6 +113,7 @@ export default function Home() {
       setProgress(100);
       setEta(0);
 
+      // เติมราคา/RSI/สัญญาณให้หน้าแรกของ AI Picks
       await Promise.all(
         ai.slice(0, 40).map(async (row) => {
           const sym = row.symbol || row.ticker;
@@ -167,6 +131,7 @@ export default function Home() {
         })
       );
 
+      // News
       const newsRaw = await fetch("/api/news")
         .then((x) => x.json().catch(() => ({})))
         .catch(() => ({}));
@@ -232,6 +197,7 @@ export default function Home() {
     }
   };
 
+  // ---------- Table ----------
   const Table = ({ rows = [] }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -259,8 +225,15 @@ export default function Home() {
               const sym = r.symbol || r.ticker || r.Symbol || "";
               if (!sym) return null;
               const fav = favorites.includes(sym);
+
               const priceRaw =
-                r.price ?? r.lastClose ?? r.close ?? r.last ?? favoritePrices[sym]?.price ?? "-";
+                r.price ??
+                r.lastClose ??
+                r.close ??
+                r.last ??
+                favoritePrices[sym]?.price ??
+                "-";
+
               const rsi = r.rsi ?? favoritePrices[sym]?.rsi ?? "-";
               const sig = r.signal ?? favoritePrices[sym]?.signal ?? "-";
               const color =
@@ -269,19 +242,31 @@ export default function Home() {
                   : sig === "Sell"
                   ? "text-red-400"
                   : "text-yellow-400";
+
               const targetVal = r.target ?? favoritePrices[sym]?.target ?? null;
-              const targetTxt = targetVal != null ? `$${Number(targetVal).toFixed(2)}` : "-";
-              const confVal = r.confidence ?? favoritePrices[sym]?.confidence ?? null;
-              const confTxt = typeof confVal === "number" ? `${confVal.toFixed(0)}%` : "-";
+              const targetTxt =
+                targetVal != null ? `$${Number(targetVal).toFixed(2)}` : "-";
+
+              const confVal =
+                r.confidence ?? favoritePrices[sym]?.confidence ?? null;
+              const confTxt =
+                typeof confVal === "number" ? `${confVal.toFixed(0)}%` : "-";
+
               const moveNum =
                 (typeof r.predictedMove === "number"
                   ? r.predictedMove
                   : typeof r.predicted_move === "number"
                   ? r.predicted_move
                   : favoritePrices[sym]?.predictedMove) ?? null;
-              const moveTxt = moveNum === null ? "-" : `${moveNum > 0 ? "+" : ""}${moveNum}%`;
+              const moveTxt =
+                moveNum === null ? "-" : `${moveNum > 0 ? "+" : ""}${moveNum}%`;
               const moveColor =
-                moveNum > 0 ? "text-green-400" : moveNum < 0 ? "text-red-400" : "text-gray-400";
+                moveNum > 0
+                  ? "text-green-400"
+                  : moveNum < 0
+                  ? "text-red-400"
+                  : "text-gray-400";
+
               return (
                 <tr
                   key={sym + i}
@@ -319,101 +304,388 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* Toast แจ้งเตือน */}
-      <div className="fixed top-16 right-4 space-y-2 z-50">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className="bg-[#101827]/90 border border-emerald-400/30 text-emerald-200 px-3 py-2 rounded shadow"
-          >
-            {t.msg}
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="flex justify-between items-center w-full sm:w-auto">
+            <b className="text-emerald-400 text-lg sm:text-xl">
+              🌍 Visionary Stock Screener
+            </b>
+            <button
+              onClick={loadAll}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold sm:ml-4"
+            >
+              {loading ? "Loading..." : "🔁 Refresh"}
+            </button>
           </div>
-        ))}
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
+              value={searchSymbol}
+              onChange={(e) => setSearchSymbol(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchSymbol.trim()) {
+                  const sym = searchSymbol.trim().toUpperCase();
+                  if (!favorites.includes(sym)) {
+                    setFavorites((prev) => [...prev, sym]);
+                    fetchYahooPrice(sym);
+                  }
+                  setSearchSymbol("");
+                }
+              }}
+              className="w-full bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-400 placeholder-gray-500"
+            />
+          </div>
+        </div>
+
+        {/* Progress */}
+        {progress > 0 && (
+          <>
+            <div className="w-full bg-[#1a2335] h-2">
+              <div
+                className="bg-emerald-400 h-2 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="text-center text-xs text-emerald-300 py-1">
+              🔍 Scanning Stocks... {Math.round(progress)}%{" "}
+              {eta > 0 && (
+                <span className="text-gray-400 ml-1">
+                  ⏱ ~{Math.round(eta)}s
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </header>
+
+      {/* Body */}
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        {error && (
+          <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {activeTab === "market" && (
+          <>
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
+              <h2 className="text-emerald-400 mb-2 font-semibold text-lg">
+                🤖 AI Picks — Smart Buy Signals
+              </h2>
+              <Table rows={aiPicks.slice(0, 20)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-green-400 mb-2 font-semibold text-lg">
+                ⚡ Fast Movers
+              </h2>
+              <Table rows={dataShort.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-yellow-400 mb-2 font-semibold text-lg">
+                🌱 Emerging Trends
+              </h2>
+              <Table rows={dataMedium.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-sky-400 mb-2 font-semibold text-lg">
+                🚀 Future Leaders
+              </h2>
+              <Table rows={dataLong.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-cyan-400/30">
+              <h2 className="text-cyan-300 mb-2 font-semibold text-lg">
+                💎 Hidden Gems
+              </h2>
+              <Table rows={hidden.slice(0, 6)} />
+            </section>
+          </>
+        )}
+
+        {activeTab === "favorites" && (
+          <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-yellow-300 text-lg font-semibold">
+                ⭐ My Favorites
+              </h2>
+              <button
+                onClick={clearFavorites}
+                className="text-sm text-red-400 hover:text-red-300 underline"
+              >
+                Clear All
+              </button>
+            </div>
+            <Table rows={favoriteData} />
+          </section>
+        )}
+
+        {activeTab === "news" && (
+          <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-purple-400/30">
+            <h2 className="text-purple-400 text-xl font-semibold mb-4">
+              🧠 AI Market News — Early Signals
+            </h2>
+            {newsFeed.length === 0 ? (
+              <div className="text-center text-gray-400">
+                No news data available.
+              </div>
+            ) : (
+              newsFeed.slice(0, 12).map((n, i) => (
+                <div
+                  key={i}
+                  className="border border-white/10 bg-[#0e1628]/80 rounded-xl p-4 mb-3"
+                >
+                  <div className="flex justify-between text-[12px] text-gray-400 mb-1">
+                    <span className="text-sky-400 font-semibold">
+                      {n.symbol}
+                    </span>
+                    <span>{n.time}</span>
+                  </div>
+                  <div className="text-[15px] font-medium text-emerald-300 mb-1">
+                    {n.title}
+                    <div className="text-[13px] text-gray-400 mb-2">
+                    {n.publisher}
+                  </div>
+                  <span
+                    className={`text-xs font-semibold ${
+                      n.sentiment === "Positive"
+                        ? "text-green-400"
+                        : n.sentiment === "Negative"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {n.sentiment}
+                  </span>
+                </div>
+              ))
+            )}
+          </section>
+        )}
+
+        {/* ✅ แท็บแจ้งเตือน */}
+        {activeTab === "alerts" && <AlertSystem />}
+
+        {activeTab === "menu" && (
+          <section className="text-center text-gray-400 py-10">
+            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">
+              ⚙️ Settings & Info
+            </h2>
+            <p>📡 Auto refresh every 10 minutes</p>
+            <p>💾 Favorites stored locally</p>
+            <p>🔔 Alerts check every 1 minute</p>
+            <div className="text-xs text-gray-500 mt-3">Version 1.1.0</div>
+          </section>
+        )}
       </div>
 
-      {/* ...ส่วนอื่นๆ ของหน้า เช่น header, table, menu เหมือนเดิม... */}
+      {/* ✅ Bottom nav (เพิ่มปุ่ม Alerts แล้ว) */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
+        <button
+          onClick={() => setActiveTab("favorites")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "favorites" ? "text-blue-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">💙</span>
+          Favorites
+        </button>
 
-      {/* หน้าแจ้งเตือน */}
-      {activeTab === "menu" && (
-        <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
-          <h2 className="text-emerald-400 text-xl font-semibold mb-3">🔔 Stock Alerts</h2>
-          <AlertForm onAdd={(a) => setAlerts((p) => [a, ...p])} />
-          <AlertList
-            alerts={alerts}
-            onDelete={(id) => setAlerts((p) => p.filter((x) => x.id !== id))}
-          />
-        </section>
-      )}
+        <button
+          onClick={() => setActiveTab("market")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "market" ? "text-blue-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">🌐</span>
+          Market
+        </button>
+
+        <button
+          onClick={() => setActiveTab("news")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "news" ? "text-purple-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">🧠</span>
+          News
+        </button>
+
+        <button
+          onClick={() => setActiveTab("alerts")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "alerts" ? "text-emerald-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">🔔</span>
+          Alerts
+        </button>
+
+        <button
+          onClick={() => setActiveTab("menu")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "menu" ? "text-blue-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">☰</span>
+          Menu
+        </button>
+      </nav>
     </main>
   );
 }
 
-function AlertForm({ onAdd }) {
-  const [symbol, setSymbol] = useState("");
-  const [type, setType] = useState("price_above");
-  const [value, setValue] = useState("");
+// ---------- ✅ ระบบแจ้งเตือนหุ้น ----------
+import { useEffect as useEff, useState as useSt } from "react";
+
+function AlertSystem() {
+  const [alerts, setAlerts] = useSt([]);
+  const [symbol, setSymbol] = useSt("");
+  const [type, setType] = useSt("price_above");
+  const [value, setValue] = useSt("");
+  const [messages, setMessages] = useSt([]);
+
+  // โหลดจาก localStorage
+  useEff(() => {
+    const saved = localStorage.getItem("alerts");
+    if (saved) setAlerts(JSON.parse(saved));
+  }, []);
+
+  useEff(() => {
+    localStorage.setItem("alerts", JSON.stringify(alerts));
+  }, [alerts]);
+
+  // ตรวจทุก 1 นาที
+  useEff(() => {
+    const checkAlerts = async () => {
+      for (const a of alerts) {
+        try {
+          const r = await fetch(`/api/price?symbol=${encodeURIComponent(a.symbol)}`);
+          const j = await r.json();
+          const price = j.price ?? 0;
+          const rsi = j.rsi ?? 50;
+          const sig = j.signal ?? "Neutral";
+          let hit = false;
+
+          if (a.type === "price_above" && price > a.value) hit = true;
+          if (a.type === "price_below" && price < a.value) hit = true;
+          if (a.type === "rsi_above" && rsi > a.value) hit = true;
+          if (a.type === "rsi_below" && rsi < a.value) hit = true;
+          if (a.type === "ai_is" && sig.toLowerCase() === a.value.toLowerCase())
+            hit = true;
+
+          if (hit) {
+            const msg = `⚡ ${a.symbol} ${a.type.replace("_", " ")} ${a.value}`;
+            if (!messages.find((m) => m.msg === msg)) {
+              setMessages((prev) => [...prev, { id: Date.now(), msg }]);
+            }
+          }
+        } catch {}
+      }
+    };
+
+    checkAlerts();
+    const id = setInterval(checkAlerts, 60000);
+    return () => clearInterval(id);
+  }, [alerts]);
+
+  // ลบ toast หลัง 6 วิ
+  useEff(() => {
+    if (!messages.length) return;
+    const timers = messages.map((m) =>
+      setTimeout(() => {
+        setMessages((prev) => prev.filter((x) => x.id !== m.id));
+      }, 6000)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [messages]);
 
   return (
-    <div className="flex flex-wrap gap-2 mb-3">
-      <input
-        className="bg-[#141b2d] px-2 py-1 rounded w-24"
-        placeholder="Symbol"
-        value={symbol}
-        onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-      />
-      <select
-        className="bg-[#141b2d] px-2 py-1 rounded"
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-      >
-        <option value="price_above">Price &gt;</option>
-        <option value="price_below">Price &lt;</option>
-        <option value="rsi_above">RSI &gt;</option>
-        <option value="rsi_below">RSI &lt;</option>
-        <option value="ai_is">AI Signal =</option>
-      </select>
-      <input
-        className="bg-[#141b2d] px-2 py-1 rounded w-24"
-        placeholder="Value"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-      />
-      <button
-        onClick={() => {
-          if (!symbol) return;
-          onAdd({ id: Date.now(), symbol, type, value });
-          setSymbol("");
-          setValue("");
-        }}
-        className="bg-emerald-500/20 border border-emerald-400/40 rounded px-3 py-1 text-emerald-300"
-      >
-        ➕ Add
-      </button>
-    </div>
-  );
-}
+    <section className="bg-[#101827]/80 rounded-2xl p-4 mb-6 border border-emerald-400/30">
+      <h2 className="text-emerald-400 text-lg font-semibold mb-2">
+        🔔 Stock Alerts
+      </h2>
 
-function AlertList({ alerts, onDelete }) {
-  return alerts.length === 0 ? (
-    <div className="text-gray-400">ยังไม่มีแจ้งเตือน</div>
-  ) : (
-    <ul className="space-y-2">
-      {alerts.map((a) => (
-        <li
-          key={a.id}
-          className="flex items-center justify-between bg-[#0e1628] border border-white/10 rounded-lg px-3 py-2"
+      <div className="flex flex-wrap gap-2 mb-3">
+        <input
+          className="bg-[#141b2d] px-2 py-1 rounded w-24"
+          placeholder="Symbol"
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+        />
+        <select
+          className="bg-[#141b2d] px-2 py-1 rounded"
+          value={type}
+          onChange={(e) => setType(e.target.value)}
         >
-          <div className="text-sm text-emerald-200">
-            {a.symbol} — {a.type} {a.value}
-          </div>
-          <button
-            onClick={() => onDelete(a.id)}
-            className="text-red-300 hover:text-red-200 text-sm underline"
+          <option value="price_above">Price &gt;</option>
+          <option value="price_below">Price &lt;</option>
+          <option value="rsi_above">RSI &gt;</option>
+          <option value="rsi_below">RSI &lt;</option>
+          <option value="ai_is">AI Signal =</option>
+        </select>
+        <input
+          className="bg-[#141b2d] px-2 py-1 rounded w-24"
+          placeholder="Value"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          onClick={() => {
+            if (!symbol || !value) return;
+            setAlerts((p) => [
+              ...p,
+              { id: Date.now(), symbol, type, value: parseFloat(value) || value },
+            ]);
+            setSymbol("");
+            setValue("");
+          }}
+          className="bg-emerald-500/20 border border-emerald-400/40 rounded px-3 py-1 text-emerald-300"
+        >
+          ➕ Add
+        </button>
+      </div>
+
+      <ul className="space-y-2">
+        {alerts.length === 0 ? (
+          <div className="text-gray-400">ยังไม่มีแจ้งเตือน</div>
+        ) : (
+          alerts.map((a) => (
+            <li
+              key={a.id}
+              className="flex justify-between items-center bg-[#0e1628]/70 border border-white/10 rounded px-3 py-2 text-sm"
+            >
+              <span className="text-emerald-200">
+                {a.symbol} — {a.type} {a.value}
+              </span>
+              <button
+                onClick={() =>
+                  setAlerts((p) => p.filter((x) => x.id !== a.id))
+                }
+                className="text-red-400 hover:text-red-300 text-xs underline"
+              >
+                Remove
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+
+      {/* Toast แจ้งเตือน */}
+      <div className="fixed top-16 right-4 space-y-2 z-50">
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className="bg-[#101827]/90 border border-emerald-400/30 text-emerald-200 px-3 py-2 rounded shadow"
           >
-            Remove
-          </button>
-        </li>
-      ))}
-    </ul>
+            {m.msg}
+          </div>
+        ))}
+      </div>
+    </section>
   );
-                              }
+          }
