@@ -60,7 +60,6 @@ export default function Home() {
           const chunk = j?.results || [];
           acc = acc.concat(chunk);
 
-          // Progress bar
           const pct = ((i + 1) / maxPages) * 100;
           setProgress(pct);
           const elapsed = (Date.now() - start) / 1000;
@@ -78,7 +77,6 @@ export default function Home() {
 
       const ai = await loadAIPicksAll();
 
-      // เติมราคาจริง/RSI/สัญญาณให้ AI Picks หน้าแรก
       await Promise.all(
         ai.slice(0, 40).map(async (row) => {
           try {
@@ -105,7 +103,6 @@ export default function Home() {
     }
   }
 
-  // โหลดครั้งแรก + Auto refresh ทุก 10 นาที
   useEffect(() => {
     loadAll();
     const interval = setInterval(loadAll, 10 * 60 * 1000);
@@ -318,6 +315,28 @@ export default function Home() {
             </div>
           </>
         )}
+
+        {/* Menu Tab */}
+        {activeTab === "menu" && (
+          <div className="max-w-6xl mx-auto px-6 py-10 text-center text-gray-300">
+            <h2 className="text-emerald-400 text-2xl font-bold mb-4">⚙️ Settings & Info</h2>
+            <p className="mb-2">
+              🌍 Visionary Stock Screener — AI-driven market insights.
+            </p>
+            <p className="mb-4">📡 Data auto-refresh every 10 minutes.</p>
+
+            <button
+              onClick={loadAll}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-5 py-2 rounded-lg text-emerald-300 text-sm font-semibold mb-5"
+            >
+              🔄 Reload Data
+            </button>
+
+            <div className="text-xs text-gray-500">
+              Version 1.0.2 • Built by AI Engine • {new Date().getFullYear()}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom nav */}
@@ -328,23 +347,30 @@ export default function Home() {
             activeTab === "favorites" ? "text-blue-400" : "hover:text-blue-300"
           }`}
         >
-          <span className="text-[18px]">💙</span>Favorites
+          <span className="text-[18px]">💙</span>
+          <span>Favorites</span>
         </button>
+
         <button
           onClick={() => setActiveTab("market")}
           className={`py-2 flex flex-col items-center ${
             activeTab === "market" ? "text-blue-400" : "hover:text-blue-300"
           }`}
         >
-          <span className="text-[18px]">🌐</span>Market
+          <span className="text-[18px]">🌐</span>
+          <span>Market</span>
         </button>
+
         <button
-          onClick={() => alert("📜 Coming soon: News, AI Alerts & Settings")}
-          className="py-2 flex flex-col items-center hover:text-blue-300"
+          onClick={() => setActiveTab("menu")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
+          }`}
         >
-          <span className="text-[18px]">☰</span>Menu
+          <span className="text-[18px]">☰</span>
+          <span>Menu</span>
         </button>
       </nav>
     </main>
   );
-    }
+                }
