@@ -1,14 +1,33 @@
 import { useEffect, useState } from "react";
 
-// ---------- หน้าหลัก ----------
+/* ---------------------------------------------------------
+   🔧 Helper alias (ใช้แทนการ import ซ้ำด้านล่างให้ไฟล์ถูกต้อง)
+--------------------------------------------------------- */
+const useEff = useEffect;
+const useSt = useState;
+const useEff2 = useEffect;
+const useSt2 = useState;
+
+/* ---------------------------------------------------------
+   🏠 หน้า Home (ครบตามของเดิม + เพิ่ม Alerts/AutoScan)
+--------------------------------------------------------- */
 export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [favoritePrices, setFavoritePrices] = useState({});
+  const [dataShort, setDataShort] = useState([]);
+  const [dataMedium, setDataMedium] = useState([]);
+  const [dataLong, setDataLong] = useState([]);
+  const [hidden, setHidden] = useState([]);
   const [aiPicks, setAiPicks] = useState([]);
+  const [newsFeed, setNewsFeed] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("alerts");
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("market");
+  const [searchSymbol, setSearchSymbol] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [eta, setEta] = useState(0);
 
-  // โหลด favorite
+  // ---------- LocalStorage: favorites ----------
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -17,51 +36,503 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลหุ้น AI Picks
+  // ---------- Helpers ----------
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const normalizeNews = (raw) => {
+    const arr = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.articles)
+      ? raw.articles
+      : Array.isArray(raw?.results)
+      ? raw.results
+      : [];
+    return arr.map((n) => ({
+      symbol: n.symbol || n.ticker || n.Symbol || "-",
+      title: n.title || n.headline || "(no title)",
+      url: n.url || n.link || "#",
+      publisher: n.publisher || n.source || "",
+      time: n.time || n.date || "",
+      sentiment:
+        n.sentiment ||
+        n.Sentiment ||
+        (typeof n.score === "number"
+          ? n.score > 0.25
+            ? "Positive"
+            : n.score < -0.25
+            ? "Negative"
+            : "Neutral"
+          : "Neutral"),
+    }));
+  };
+
+  // ---------- Load all ----------
   async function loadAll() {
     setLoading(true);
+    setProgress(0);
+    setEta(0);
+    const started = Date.now();
+
+    const fetcher = async (url, body) => {
+      try {
+        const r = await fetch(url, {
+          method: body ? "POST" : "GET",
+          headers: { "Content-Type": "application/json" },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        return await r.json();
+      } catch {
+        return {};
+      }
+    };
+
     try {
-      const r = await fetch(`/api/ai-picks?limit=200&nocache=1`).then((x) => x.json());
-      setAiPicks(r?.results || []);
+      const [sShort, sMed, sLong, sHidden] = await Promise.all([
+        fetcher("/api/screener", { horizon: "short" }),
+        fetcher("/api/screener", { horizon: "medium" }),
+        fetcher("/api/screener", { horizon: "long" }),
+        fetcher("/api/hidden-gems"),
+      ]);
+
+      const short = sShort?.results || [];
+      const medium = sMed?.results || [];
+      const long = sLong?.results || [];
+      const hiddenData = sHidden?.results || [];
+
+      // AI picks พร้อม progress
+      const pageSize = 100;
+      const maxPages = 20;
+      let off = 0;
+      let ai = [];
+      for (let i = 0; i < maxPages; i++) {
+        const r = await fetch(
+          `/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`
+        ).then((x) => x.json().catch(() => ({})));
+        const chunk = Array.isArray(r?.results) ? r.results : [];
+        ai = ai.concat(chunk);
+
+        const pct = ((i + 1) / maxPages) * 100;
+        setProgress(pct);
+        const elapsed = (Date.now() - started) / 1000;
+        const estTotal = (elapsed / (i + 1)) * maxPages;
+        setEta(Math.max(estTotal - elapsed, 0));
+
+        if (chunk.length < pageSize) break;
+        off += pageSize;
+        await sleep(120);
+      }
+      setProgress(100);
+      setEta(0);
+
+      // เติมราคา/RSI/สัญญาณให้หน้าแรกของ AI Picks
+      await Promise.all(
+        ai.slice(0, 40).map(async (row) => {
+          const sym = row.symbol || row.ticker;
+          if (!sym) return;
+          try {
+            const r = await fetch(`/api/price?symbol=${encodeURIComponent(sym)}`);
+            const j = await r.json().catch(() => ({}));
+            row.price = j.price ?? row.price ?? row.last ?? row.lastClose ?? 0;
+            row.rsi = j.rsi ?? row.rsi ?? "-";
+            row.signal = j.signal ?? row.signal ?? "-";
+            row.target = j.target ?? row.target ?? null;
+            row.confidence = j.confidence ?? row.confidence ?? null;
+            row.predictedMove = j.predictedMove ?? row.predictedMove ?? null;
+          } catch {}
+        })
+      );
+
+      // News
+      const newsRaw = await fetch("/api/news")
+        .then((x) => x.json().catch(() => ({})))
+        .catch(() => ({}));
+      const normalizedNews = normalizeNews(newsRaw);
+
+      setDataShort(short);
+      setDataMedium(medium);
+      setDataLong(long);
+      setHidden(hiddenData);
+      setAiPicks(ai);
+      setNewsFeed(normalizedNews);
+      setError("");
     } catch (e) {
       console.error(e);
+      setError("Load failed");
     } finally {
       setLoading(false);
+      setTimeout(() => setProgress(0), 600);
+      setEta(0);
     }
   }
 
   useEffect(() => {
     loadAll();
+    const id = setInterval(loadAll, 10 * 60 * 1000);
+    return () => clearInterval(id);
   }, []);
+
+  // ---------- Favorites ----------
+  async function fetchYahooPrice(symbol) {
+    try {
+      // ✅ ใช้ template literal ให้ถูกต้อง
+      const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
+      const j = await r.json().catch(() => ({}));
+      setFavoritePrices((p) => ({
+        ...p,
+        [symbol]: {
+          price: j.price ?? 0,
+          rsi: j.rsi ?? "-",
+          signal: j.signal ?? "-",
+          target: j.target ?? null,
+          confidence: j.confidence ?? null,
+          predictedMove: j.predictedMove ?? null,
+        },
+      }));
+    } catch (err) {
+      console.error("fetchYahooPrice error:", err);
+    }
+  }
+  useEffect(() => {
+    favorites.forEach(fetchYahooPrice);
+  }, [favorites]);
 
   const toggleFavorite = (sym) =>
     setFavorites((prev) =>
       prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
     );
 
+  const clearFavorites = () => {
+    if (confirm("Clear all favorites?")) {
+      setFavorites([]);
+      localStorage.removeItem("favorites");
+      setFavoritePrices({});
+    }
+  };
+
+  // ---------- Table ----------
+  const Table = ({ rows = [] }) => (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse text-center">
+        <thead className="bg-white/5 text-gray-400 uppercase text-[11px]">
+          <tr>
+            <th className="p-2 text-left pl-4">⭐</th>
+            <th className="p-2">Symbol</th>
+            <th className="p-2">Price</th>
+            <th className="p-2">RSI</th>
+            <th className="p-2">AI</th>
+            <th className="p-2">🎯 Target</th>
+            <th className="p-2">🤖 AI %</th>
+            <th className="p-2">🔮 3D Move</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan="8" className="p-3 text-gray-500">
+                No data available.
+              </td>
+            </tr>
+          ) : (
+            rows.map((r, i) => {
+              const sym = r.symbol || r.ticker || r.Symbol || "";
+              if (!sym) return null;
+              const fav = favorites.includes(sym);
+
+              const priceRaw =
+                r.price ??
+                r.lastClose ??
+                r.close ??
+                r.last ??
+                favoritePrices[sym]?.price ??
+                "-";
+
+              const rsi = r.rsi ?? favoritePrices[sym]?.rsi ?? "-";
+              const sig = r.signal ?? favoritePrices[sym]?.signal ?? "-";
+              const color =
+                sig === "Buy"
+                  ? "text-green-400"
+                  : sig === "Sell"
+                  ? "text-red-400"
+                  : "text-yellow-400";
+
+              const targetVal = r.target ?? favoritePrices[sym]?.target ?? null;
+              const targetTxt =
+                targetVal != null ? `$${Number(targetVal).toFixed(2)}` : "-";
+
+              const confVal =
+                r.confidence ?? favoritePrices[sym]?.confidence ?? null;
+              const confTxt =
+                typeof confVal === "number" ? `${confVal.toFixed(0)}%` : "-";
+
+              const moveNum =
+                (typeof r.predictedMove === "number"
+                  ? r.predictedMove
+                  : typeof r.predicted_move === "number"
+                  ? r.predicted_move
+                  : favoritePrices[sym]?.predictedMove) ?? null;
+              const moveTxt =
+                moveNum === null ? "-" : `${moveNum > 0 ? "+" : ""}${moveNum}%`;
+              const moveColor =
+                moveNum > 0
+                  ? "text-green-400"
+                  : moveNum < 0
+                  ? "text-red-400"
+                  : "text-gray-400";
+
+              return (
+                <tr
+                  key={sym + i}
+                  className="border-b border-white/5 hover:bg-white/5 transition"
+                >
+                  <td
+                    onClick={() => toggleFavorite(sym)}
+                    className="cursor-pointer text-yellow-400 pl-4 select-none"
+                  >
+                    {fav ? "★" : "☆"}
+                  </td>
+                  <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
+                    <a href={`/analyze/${sym}`}>{sym}</a>
+                  </td>
+                  <td className="p-2 font-mono">
+                    {priceRaw !== "-" ? `$${Number(priceRaw).toFixed(2)}` : "-"}
+                  </td>
+                  <td className="p-2">
+                    {typeof rsi === "number" ? Math.round(rsi) : rsi}
+                  </td>
+                  <td className={`p-2 font-semibold ${color}`}>{sig}</td>
+                  <td className="p-2 text-emerald-300">{targetTxt}</td>
+                  <td className="p-2 text-cyan-300">{confTxt}</td>
+                  <td className={`p-2 font-semibold ${moveColor}`}>{moveTxt}</td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const favoriteData = favorites.map((s) => ({ symbol: s, ...favoritePrices[s] }));
+
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      <header className="sticky top-0 bg-[#0e1628]/80 backdrop-blur border-b border-white/10 p-3 flex justify-between items-center">
-        <b className="text-emerald-400 text-lg">🌍 Visionary Stock Screener</b>
-        <button
-          onClick={loadAll}
-          className="bg-emerald-500/10 border border-emerald-400/30 px-3 py-1 rounded text-emerald-300 text-sm"
-        >
-          {loading ? "Loading..." : "🔁 Refresh"}
-        </button>
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="flex justify-between items-center w-full sm:w-auto">
+            <b className="text-emerald-400 text-lg sm:text-xl">
+              🌍 Visionary Stock Screener
+            </b>
+            <button
+              onClick={loadAll}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold sm:ml-4"
+            >
+              {loading ? "Loading..." : "🔁 Refresh"}
+            </button>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
+              value={searchSymbol}
+              onChange={(e) => setSearchSymbol(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchSymbol.trim()) {
+                  const sym = searchSymbol.trim().toUpperCase();
+                  if (!favorites.includes(sym)) {
+                    setFavorites((prev) => [...prev, sym]);
+                    fetchYahooPrice(sym);
+                  }
+                  setSearchSymbol("");
+                }
+              }}
+              className="w-full bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-400 placeholder-gray-500"
+            />
+          </div>
+        </div>
+
+        {/* Progress */}
+        {progress > 0 && (
+          <>
+            <div className="w-full bg-[#1a2335] h-2">
+              <div
+                className="bg-emerald-400 h-2 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="text-center text-xs text-emerald-300 py-1">
+              🔍 Scanning Stocks... {Math.round(progress)}%{" "}
+              {eta > 0 && (
+                <span className="text-gray-400 ml-1">
+                  ⏱ ~{Math.round(eta)}s
+                </span>
+              )}
+            </div>
+          </>
+        )}
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-4">
+      {/* Body */}
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        {error && (
+          <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {activeTab === "market" && (
+          <>
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
+              <h2 className="text-emerald-400 mb-2 font-semibold text-lg">
+                🤖 AI Picks — Smart Buy Signals
+              </h2>
+              <Table rows={aiPicks.slice(0, 20)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-green-400 mb-2 font-semibold text-lg">
+                ⚡ Fast Movers
+              </h2>
+              <Table rows={dataShort.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-yellow-400 mb-2 font-semibold text-lg">
+                🌱 Emerging Trends
+              </h2>
+              <Table rows={dataMedium.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-sky-400 mb-2 font-semibold text-lg">
+                🚀 Future Leaders
+              </h2>
+              <Table rows={dataLong.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-cyan-400/30">
+              <h2 className="text-cyan-300 mb-2 font-semibold text-lg">
+                💎 Hidden Gems
+              </h2>
+              <Table rows={hidden.slice(0, 6)} />
+            </section>
+          </>
+        )}
+
+        {activeTab === "favorites" && (
+          <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-yellow-300 text-lg font-semibold">
+                ⭐ My Favorites
+              </h2>
+              <button
+                onClick={clearFavorites}
+                className="text-sm text-red-400 hover:text-red-300 underline"
+              >
+                Clear All
+              </button>
+            </div>
+            <Table rows={favoriteData} />
+          </section>
+        )}
+
+        {activeTab === "news" && (
+          <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-purple-400/30">
+            <h2 className="text-purple-400 text-xl font-semibold mb-4">
+              🧠 AI Market News — Early Signals
+            </h2>
+            {newsFeed.length === 0 ? (
+              <div className="text-center text-gray-400">
+                No news data available.
+              </div>
+            ) : (
+              newsFeed.slice(0, 12).map((n, i) => (
+                <div
+                  key={i}
+                  className="border border-white/10 bg-[#0e1628]/80 rounded-xl p-4 mb-3"
+                >
+                  <div className="flex justify-between text-[12px] text-gray-400 mb-1">
+                    <span className="text-sky-400 font-semibold">
+                      {n.symbol}
+                    </span>
+                    <span>{n.time}</span>
+                  </div>
+                  <div className="text-[15px] font-medium text-emerald-300 mb-1">
+                    {n.title}
+                  </div>
+                  <div className="text-[13px] text-gray-400 mb-2">
+                    {n.publisher}
+                  </div>
+                  <span
+                    className={`text-xs font-semibold ${
+                      n.sentiment === "Positive"
+                        ? "text-green-400"
+                        : n.sentiment === "Negative"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {n.sentiment}
+                  </span>
+                </div>
+              ))
+            )}
+          </section>
+        )}
+
+        {/* ✅ แท็บแจ้งเตือน + Auto Scan */}
         {activeTab === "alerts" && (
           <>
             <AlertSystem />
-            <AutoMarketScan /> {/* ✅ ระบบ AI Auto Scan */}
+            <AutoMarketScan />
           </>
+        )}
+
+        {activeTab === "menu" && (
+          <section className="text-center text-gray-400 py-10">
+            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">
+              ⚙️ Settings & Info
+            </h2>
+            <p>📡 Auto refresh every 10 minutes</p>
+            <p>💾 Favorites stored locally</p>
+            <p>🔔 Alerts check every 1 minute</p>
+            <div className="text-xs text-gray-500 mt-3">Version 1.1.0</div>
+          </section>
         )}
       </div>
 
-      {/* เมนูด้านล่าง */}
+      {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
+        <button
+          onClick={() => setActiveTab("favorites")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "favorites" ? "text-blue-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">💙</span>
+          Favorites
+        </button>
+
+        <button
+          onClick={() => setActiveTab("market")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "market" ? "text-blue-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">🌐</span>
+          Market
+        </button>
+
+        <button
+          onClick={() => setActiveTab("news")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "news" ? "text-purple-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">🧠</span>
+          News
+        </button>
+
         <button
           onClick={() => setActiveTab("alerts")}
           className={`py-2 flex flex-col items-center ${
@@ -71,14 +542,24 @@ export default function Home() {
           <span className="text-[18px]">🔔</span>
           Alerts
         </button>
+
+        <button
+          onClick={() => setActiveTab("menu")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "menu" ? "text-blue-400" : ""
+          }`}
+        >
+          <span className="text-[18px]">☰</span>
+          Menu
+        </button>
       </nav>
     </main>
   );
 }
 
-// ---------- ระบบแจ้งเตือนหุ้น ----------
-import { useEffect as useEff, useState as useSt } from "react";
-
+/* ---------------------------------------------------------
+   🔔 ระบบแจ้งเตือนหุ้น (ใช้งานได้เลย)
+--------------------------------------------------------- */
 function AlertSystem() {
   const [alerts, setAlerts] = useSt([]);
   const [symbol, setSymbol] = useSt("");
@@ -90,272 +571,8 @@ function AlertSystem() {
   useEff(() => {
     const saved = localStorage.getItem("alerts");
     if (saved) setAlerts(JSON.parse(saved));
-  }, []);
-  useEff(() => {
-    localStorage.setItem("alerts", JSON.stringify(alerts));
-  }, [alerts]);
-
-  // ตรวจราคาทุก 1 นาที
-  useEff(() => {
-    const checkAlerts = async () => {
-      for (const a of alerts) {
-        try {
-          const r = await fetch(`/api/price?symbol=${encodeURIComponent(a.symbol)}`);
-          const j = await r.json();
-          const price = j.price ?? 0;
-          let hit = false;
-          if (a.type === "price_above" && price > a.value) hit = true;
-          if (a.type === "price_below" && price < a.value) hit = true;
-          if (hit) {
-            const msg = `🔔 ${a.symbol} ${a.type.replace("_", " ")} ${a.value} (now $${price})`;
-            setMessages((p) => [...p, { id: Date.now(), msg }]);
-            beep();
-          }
-        } catch {}
-      }
-    };
-    const beep = () => {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.type = "square";
-      osc.frequency.value = 880;
-      osc.connect(ctx.destination);
-      osc.start();
-      setTimeout(() => {
-        osc.stop();
-        ctx.close();
-      }, 300);
-    };
-    checkAlerts();
-    const id = setInterval(checkAlerts, 60 * 1000);
-    return () => clearInterval(id);
-  }, [alerts]);
-
-  useEff(() => {
-    if (!messages.length) return;
-    const timers = messages.map((m) =>
-      setTimeout(() => setMessages((p) => p.filter((x) => x.id !== m.id)), 5000)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [messages]);
-
-  const addAlert = () => {
-    if (!symbol || !value) return alert("กรอก Symbol และ Value ก่อน");
-    setAlerts((p) => [...p, { symbol: symbol.toUpperCase(), type, value: Number(value) }]);
-    setSymbol("");
-    setValue("");
-  };
-
-  return (
-    <section className="bg-[#101827]/80 rounded-2xl p-4 border border-emerald-400/30 mb-6">
-      <h2 className="text-emerald-300 text-lg mb-2">📢 Stock Alerts</h2>
-      <div className="flex flex-wrap gap-2 mb-3">
-        <input
-          placeholder="Symbol"
-          className="bg-[#141b2d] px-3 py-1 rounded"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-        />
-        <select
-          className="bg-[#141b2d] px-3 py-1 rounded"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        >
-          <option value="price_above">Price &gt;</option>
-          <option value="price_below">Price &lt;</option>
-        </select>
-        <input
-          placeholder="Value"
-          className="bg-[#141b2d] px-3 py-1 rounded"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-        <button
-          onClick={addAlert}
-          className="bg-emerald-600/30 border border-emerald-400/50 rounded px-3 py-1"
-        >
-          ➕ Add
-        </button>
-      </div>
-      {alerts.length === 0 ? (
-        <p className="text-gray-400 text-sm">ยังไม่มีแจ้งเตือน</p>
-      ) : (
-        <ul className="text-sm space-y-1">
-          {alerts.map((a, i) => (
-            <li key={i} className="text-gray-200 bg-[#0e1628]/70 rounded p-2 border border-white/5">
-              {a.symbol} — {a.type.replace("_", " ")} {a.value}
-            </li>
-          ))}
-        </ul>
-      )}
-      {/* Toast */}
-      <div className="fixed top-16 right-4 space-y-2 z-50">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className="bg-[#101827]/90 border border-emerald-400/40 text-emerald-100 px-3 py-2 rounded shadow"
-          >
-            {m.msg}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ---------- ✅ ระบบสแกนหุ้นอัตโนมัติ (AI Auto Scan ทั้งตลาด) ----------
-import { useEffect as useEff2, useState as useSt2 } from "react";
-
-function AutoMarketScan() {
-  const [enabled, setEnabled] = useSt2(false);
-  const [aiSignal, setAiSignal] = useSt2("Buy");
-  const [rsiMin, setRsiMin] = useSt2("");
-  const [rsiMax, setRsiMax] = useSt2("");
-  const [priceMin, setPriceMin] = useSt2("");
-  const [priceMax, setPriceMax] = useSt2("");
-  const [scanProg, setScanProg] = useSt2(0);
-  const [hits, setHits] = useSt2([]);
-  const [messages, setMessages] = useSt2([]);
-
-  const beep = () => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = 880;
-    osc.connect(ctx.destination);
-    osc.start();
-    setTimeout(() => {
-      osc.stop();
-      ctx.close();
-    }, 200);
-  };
-
-  const match = (r) => {
-    const sig = (r.signal || "").toLowerCase();
-    const price = r.price ?? r.lastClose ?? 0;
-    const rsi = r.rsi ?? 50;
-    if (aiSignal !== "Any" && sig !== aiSignal.toLowerCase()) return false;
-    if (rsiMin && rsi < Number(rsiMin)) return false;
-    if (rsiMax && rsi > Number(rsiMax)) return false;
-    if (priceMin && price < Number(priceMin)) return false;
-    if (priceMax && price > Number(priceMax)) return false;
-    return true;
-  };
-
-  const runScan = async () => {
-    if (!enabled) return;
-    setScanProg(0);
-    setHits([]);
-    let found = [];
-    const limit = 200;
-    let off = 0;
-    for (let i = 0; i < 25; i++) {
-      try {
-        const r = await fetch(`/api/ai-picks?limit=${limit}&offset=${off}&nocache=1`).then((x) => x.json());
-        const list = r?.results || [];
-        for (const item of list) {
-          if (match(item)) {
-            const msg = `⚡ ${item.symbol} | AI=${item.signal} | RSI=${item.rsi} | $${item.price}`;
-            if (!found.find((f) => f.msg === msg)) {
-              found.push({ msg });
-              setMessages((p) => [...p, { id: Date.now(), msg }]);
-              beep();
-            }
-          }
-        }
-        setScanProg(Math.round(((i + 1) / 25) * 100));
-        if (list.length < limit) break;
-        off += limit;
-      } catch {}
     }
-    setHits(found.slice(0, 30));
-  };
-
-  // สแกนอัตโนมัติทุก 5 นาที
-  useEff2(() => {
-    if (!enabled) return;
-    runScan();
-    const id = setInterval(runScan, 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax]);
-
-  return (
-    <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
-      <h2 className="text-cyan-300 text-lg font-semibold mb-2">🛰️ Auto Scan — US Stocks</h2>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-          <span className="text-emerald-300 font-semibold">Enable</span>
-        </label>
-
-        <select
-          className="bg-[#141b2d] px-2 py-1 rounded"
-          value={aiSignal}
-          onChange={(e) => setAiSignal(e.target.value)}
-        >
-          <option>Buy</option>
-          <option>Sell</option>
-          <option>Neutral</option>
-          <option>Any</option>
-        </select>
-
-        <input
-          className="bg-[#141b2d] px-2 py-1 rounded"
-          placeholder="RSI Min"
-          value={rsiMin}
-          onChange={(e) => setRsiMin(e.target.value)}
-        />
-        <input
-          className="bg-[#141b2d] px-2 py-1 rounded"
-          placeholder="RSI Max"
-          value={rsiMax}
-          onChange={(e) => setRsiMax(e.target.value)}
-        />
-        <input
-          className="bg-[#141b2d] px-2 py-1 rounded"
-          placeholder="Price Min"
-          value={priceMin}
-          onChange={(e) => setPriceMin(e.target.value)}
-        />
-        <input
-          className="bg-[#141b2d] px-2 py-1 rounded"
-          placeholder="Price Max"
-          value={priceMax}
-          onChange={(e) => setPriceMax(e.target.value)}
-        />
-        <button
-          onClick={runScan}
-          className="bg-emerald-500/20 border border-emerald-400/40 rounded px-3 py-2 text-emerald-300 font-semibold"
-        >
-          ▶️ Run Now
-        </button>
-      </div>
-
-      {enabled && (
-        <div className="mt-3">
-          <div className="w-full bg-[#1a2335] h-2 rounded">
-            <div className="bg-cyan-400 h-2 rounded" style={{ width: `${scanProg}%` }} />
-          </div>
-          <div className="text-xs text-cyan-300 mt-1">Scanning... {scanProg}%</div>
-        </div>
-      )}
-
-      <div className="mt-4">
-        <h3 className="text-cyan-200 text-sm font-semibold mb-2">Latest Matches</h3>
-        {hits.length === 0 ? (
-          <div className="text-gray-400 text-sm">ยังไม่พบที่เข้าเงื่อนไข</div>
-        ) : (
-          <ul className="space-y-1">
-            {hits.map((h, i) => (
-              <li key={i} className="text-sm text-emerald-200 bg-[#0e1628]/70 border border-white/10 rounded px-3 py-2">
-                {h.msg}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
+         {/* Toast แจ้งเตือนของ AutoScan */}
       <div className="fixed top-16 right-4 space-y-2 z-50">
         {messages.map((m) => (
           <div
@@ -368,392 +585,13 @@ function AutoMarketScan() {
       </div>
     </section>
   );
-    }
-// ============= ✅ ระบบแจ้งเตือนหุ้น =============
-function AlertSystem() {
-  const [alerts, setAlerts] = useState([]);
-  const [symbol, setSymbol] = useState("");
-  const [type, setType] = useState("price_above"); // price_above|price_below|rsi_above|rsi_below|ai_is
-  const [value, setValue] = useState("");
-  const [messages, setMessages] = useState([]);
-
-  // โหลด/บันทึก localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("alerts");
-    if (saved) setAlerts(JSON.parse(saved));
-  }, []);
-  useEffect(() => {
-    localStorage.setItem("alerts", JSON.stringify(alerts));
-  }, [alerts]);
-
-  // เสียงเตือนสั้น ๆ
-  const beep = () => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    osc.type = "square";
-    osc.frequency.value = 880;
-    osc.connect(ctx.destination);
-    osc.start();
-    setTimeout(() => {
-      osc.stop();
-      ctx.close();
-    }, 250);
-  };
-
-  // ตรวจแจ้งเตือนทุก 60 วินาที
-  useEffect(() => {
-    const checkAlerts = async () => {
-      for (const a of alerts) {
-        try {
-          const r = await fetch(`/api/price?symbol=${encodeURIComponent(a.symbol)}`);
-          const j = await r.json();
-          const price = j.price ?? 0;
-          const rsi = j.rsi ?? 50;
-          const sig = (j.signal ?? "Neutral").toLowerCase();
-
-          let hit = false;
-          if (a.type === "price_above" && price > Number(a.value)) hit = true;
-          if (a.type === "price_below" && price < Number(a.value)) hit = true;
-          if (a.type === "rsi_above" && rsi > Number(a.value)) hit = true;
-          if (a.type === "rsi_below" && rsi < Number(a.value)) hit = true;
-          if (a.type === "ai_is" && sig === String(a.value).toLowerCase()) hit = true;
-
-          if (hit) {
-            const msg = `🔔 ${a.symbol} ${a.type.replace("_", " ")} ${a.value} — now $${price} | RSI ${Math.round(rsi)} | AI ${sig}`;
-            setMessages((p) => [...p, { id: Date.now(), msg }]);
-            beep();
-          }
-        } catch {}
-      }
-    };
-    checkAlerts();
-    const id = setInterval(checkAlerts, 60 * 1000);
-    return () => clearInterval(id);
-  }, [alerts]);
-
-  // Toast auto-hide
-  useEffect(() => {
-    if (!messages.length) return;
-    const timers = messages.map((m) =>
-      setTimeout(() => {
-        setMessages((p) => p.filter((x) => x.id !== m.id));
-      }, 6000)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [messages]);
-
-  const addAlert = () => {
-    if (!symbol.trim()) return alert("กรอก Symbol");
-    if (!value && type !== "ai_is") return alert("กรอก Value");
-    const v = type === "ai_is" ? value || "buy" : Number(value);
-    setAlerts((p) => [
-      ...p,
-      {
-        id: Date.now(),
-        symbol: symbol.trim().toUpperCase(),
-        type,
-        value: v,
-      },
-    ]);
-    setSymbol("");
-    setValue("");
-  };
-
-  return (
-    <section className="bg-[#101827]/80 rounded-2xl p-4 mb-6 border border-emerald-400/30">
-      <h2 className="text-emerald-400 text-lg font-semibold mb-2">🔔 Stock Alerts</h2>
-
-      <div className="flex flex-wrap gap-2 mb-3">
-        <input
-          className="bg-[#141b2d] px-3 py-2 rounded w-28"
-          placeholder="Symbol"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-        />
-        <select
-          className="bg-[#141b2d] px-3 py-2 rounded"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        >
-          <option value="price_above">Price &gt;</option>
-          <option value="price_below">Price &lt;</option>
-          <option value="rsi_above">RSI &gt;</option>
-          <option value="rsi_below">RSI &lt;</option>
-          <option value="ai_is">AI Signal =</option>
-        </select>
-
-        {type === "ai_is" ? (
-          <select
-            className="bg-[#141b2d] px-3 py-2 rounded"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          >
-            <option value="">(เลือก)</option>
-            <option value="Buy">Buy</option>
-            <option value="Sell">Sell</option>
-            <option value="Neutral">Neutral</option>
-          </select>
-        ) : (
-          <input
-            className="bg-[#141b2d] px-3 py-2 rounded w-28"
-            placeholder="Value"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        )}
-
-        <button
-          onClick={addAlert}
-          className="bg-emerald-500/20 border border-emerald-400/40 rounded px-4 py-2 text-emerald-300 font-semibold"
-        >
-          ➕ Add
-        </button>
-      </div>
-
-      <ul className="space-y-2">
-        {alerts.length === 0 ? (
-          <div className="text-gray-400">ยังไม่มีแจ้งเตือน</div>
-        ) : (
-          alerts.map((a) => (
-            <li
-              key={a.id}
-              className="flex justify-between items-center bg-[#0e1628]/70 border border-white/10 rounded px-3 py-2 text-sm"
-            >
-              <span className="text-emerald-200">
-                {a.symbol} — {a.type} {String(a.value)}
-              </span>
-              <button
-                onClick={() => setAlerts((p) => p.filter((x) => x.id !== a.id))}
-                className="text-red-400 hover:text-red-300 text-xs underline"
-              >
-                Remove
-              </button>
-            </li>
-          ))
-        )}
-      </ul>
-
-      {/* Toast แจ้งเตือน */}
-      <div className="fixed top-16 right-4 space-y-2 z-50">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className="bg-[#101827]/90 border border-emerald-400/30 text-emerald-200 px-3 py-2 rounded shadow"
-          >
-            {m.msg}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
 }
 
-// ============= ✅ สแกนทั้งตลาดแบบอัตโนมัติ (AI Auto Scan) =============
-function AutoMarketScan() {
-  const [enabled, setEnabled] = useState(false);
-  const [aiSignal, setAiSignal] = useState("Any"); // Buy|Sell|Neutral|Any
-  const [rsiMin, setRsiMin] = useState("");
-  const [rsiMax, setRsiMax] = useState("");
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
-  const [progress, setProgress] = useState(0);
-  const [hits, setHits] = useState([]);
-  const [messages, setMessages] = useState([]);
+/* ---------------------------------------------------------
+   ✅ สรุปฟังก์ชันทั้งหมดในไฟล์
+   - Home()       → หน้าหลัก Market/Favorites/News/Alerts
+   - AlertSystem() → แจ้งเตือนราคาหุ้น/RSI/AI
+   - AutoMarketScan() → สแกนหุ้นอัตโนมัติทั้งตลาด (US)
+--------------------------------------------------------- */
 
-  // จำค่าตัวกรอง
-  useEffect(() => {
-    const s = localStorage.getItem("autoscan_cfg");
-    if (s) {
-      try {
-        const j = JSON.parse(s);
-        setEnabled(!!j.enabled);
-        setAiSignal(j.aiSignal ?? "Any");
-        setRsiMin(j.rsiMin ?? "");
-        setRsiMax(j.rsiMax ?? "");
-        setPriceMin(j.priceMin ?? "");
-        setPriceMax(j.priceMax ?? "");
-      } catch {}
-    }
-  }, []);
-  useEffect(() => {
-    localStorage.setItem(
-      "autoscan_cfg",
-      JSON.stringify({ enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax })
-    );
-  }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax]);
-
-  const beep = () => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = 1000;
-    osc.connect(ctx.destination);
-    osc.start();
-    setTimeout(() => {
-      osc.stop();
-      ctx.close();
-    }, 180);
-  };
-
-  const matchRow = (r) => {
-    const sig = (r.signal || "").toLowerCase();
-    const price = r.price ?? r.lastClose ?? 0;
-    const rsi = r.rsi ?? 50;
-
-    if (aiSignal !== "Any" && sig !== aiSignal.toLowerCase()) return false;
-    if (rsiMin && rsi < Number(rsiMin)) return false;
-    if (rsiMax && rsi > Number(rsiMax)) return false;
-    if (priceMin && price < Number(priceMin)) return false;
-    if (priceMax && price > Number(priceMax)) return false;
-    return true;
-  };
-
-  const runScan = async () => {
-    setProgress(0);
-    setHits([]);
-    let found = [];
-
-    const pageSize = 200;      // ดึงทีละ 200
-    const maxPages = 25;       // สูงสุด ~5,000 รายการต่อรอบ
-    let off = 0;
-
-    for (let i = 0; i < maxPages; i++) {
-      try {
-        const r = await fetch(
-          `/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`
-        ).then((x) => x.json().catch(() => ({})));
-
-        const list = Array.isArray(r?.results) ? r.results : [];
-        for (const row of list) {
-          if (matchRow(row)) {
-            const msg = `⚡ ${row.symbol} | AI=${row.signal} | RSI=${Math.round(row.rsi ?? 0)} | $${(row.price ?? row.lastClose ?? 0).toFixed(2)}`;
-            if (!found.find((f) => f.msg === msg)) {
-              found.push({ msg });
-              setMessages((p) => [...p, { id: Date.now(), msg }]);
-              beep();
-            }
-          }
-        }
-
-        setProgress(Math.round(((i + 1) / maxPages) * 100));
-        if (list.length < pageSize) break; // หมดหน้า
-        off += pageSize;
-        await new Promise((r) => setTimeout(r, 120)); // ผ่อน API
-      } catch {
-        // เงียบไว้ ไปหน้าถัดไป
-      }
-    }
-    setHits(found.slice(0, 50));
-  };
-
-  // สแกนอัตโนมัติทุก 5 นาทีเมื่อเปิดใช้งาน
-  useEffect(() => {
-    if (!enabled) return;
-    runScan();
-    const id = setInterval(runScan, 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax]);
-
-  // Toast auto-hide
-  useEffect(() => {
-    if (!messages.length) return;
-    const timers = messages.map((m) =>
-      setTimeout(() => {
-        setMessages((p) => p.filter((x) => x.id !== m.id));
-      }, 6000)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [messages]);
-
-  return (
-    <section className="bg-[#101827]/80 rounded-2xl p-4 border border-cyan-400/30">
-      <h2 className="text-cyan-300 text-lg font-semibold mb-2">🛰️ Auto Scan — US Stocks</h2>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-        <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-          <span className="text-emerald-300 font-semibold">Enable</span>
-        </label>
-
-        <select
-          className="bg-[#141b2d] px-3 py-2 rounded"
-          value={aiSignal}
-          onChange={(e) => setAiSignal(e.target.value)}
-        >
-          <option>Any</option>
-          <option>Buy</option>
-          <option>Sell</option>
-          <option>Neutral</option>
-        </select>
-
-        <input
-          className="bg-[#141b2d] px-3 py-2 rounded"
-          placeholder="RSI Min"
-          value={rsiMin}
-          onChange={(e) => setRsiMin(e.target.value)}
-        />
-        <input
-          className="bg-[#141b2d] px-3 py-2 rounded"
-          placeholder="RSI Max"
-          value={rsiMax}
-          onChange={(e) => setRsiMax(e.target.value)}
-        />
-        <input
-          className="bg-[#141b2d] px-3 py-2 rounded"
-          placeholder="Price Min"
-          value={priceMin}
-          onChange={(e) => setPriceMin(e.target.value)}
-        />
-        <input
-          className="bg-[#141b2d] px-3 py-2 rounded"
-          placeholder="Price Max"
-          value={priceMax}
-          onChange={(e) => setPriceMax(e.target.value)}
-        />
-
-        <button
-          onClick={runScan}
-          className="bg-emerald-500/20 border border-emerald-400/40 rounded px-4 py-2 text-emerald-300 font-semibold"
-        >
-          ▶️ Run Now
-        </button>
-      </div>
-
-      {enabled && (
-        <div className="mb-3">
-          <div className="w-full bg-[#1a2335] h-2 rounded">
-            <div className="bg-cyan-400 h-2 rounded" style={{ width: `${progress}%` }} />
-          </div>
-          <div className="text-xs text-cyan-300 mt-1">Scanning... {progress}%</div>
-        </div>
-      )}
-
-      <div>
-        <h3 className="text-cyan-200 text-sm font-semibold mb-2">Latest Matches</h3>
-        {hits.length === 0 ? (
-          <div className="text-gray-400 text-sm">ยังไม่พบที่เข้าเงื่อนไข</div>
-        ) : (
-          <ul className="space-y-1">
-            {hits.map((h, i) => (
-              <li key={i} className="text-sm text-emerald-200 bg-[#0e1628]/70 border border-white/10 rounded px-3 py-2">
-                {h.msg}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Toast จาก AutoScan */}
-      <div className="fixed top-28 right-4 space-y-2 z-50">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className="bg-[#101827]/90 border border-cyan-400/40 text-cyan-100 px-3 py-2 rounded shadow"
-          >
-            {m.msg}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-    }
+// ✅ จบไฟล์
