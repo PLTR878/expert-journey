@@ -19,6 +19,16 @@ function mockData(symbol, horizon = "short") {
     mockRSI > 60 ? "Buy" :
     mockRSI < 40 ? "Sell" : "Hold";
 
+  // ✅ เพิ่มฟิลด์ใหม่ (target / confidence / predictedMove)
+  const target = base * (mockSignal === "Buy" ? 1.08 : mockSignal === "Sell" ? 0.92 : 1);
+  const confidence = Math.min(100, Math.abs(mockRSI - 50) * 2);
+  const predictedMove =
+    mockSignal === "Buy"
+      ? +(Math.random() * 5 + 1).toFixed(2)
+      : mockSignal === "Sell"
+      ? -(Math.random() * 4 + 1).toFixed(2)
+      : +(Math.random() * 1 - 0.5).toFixed(2);
+
   return {
     symbol,
     score: Number((Math.random() * factor).toFixed(3)),
@@ -29,7 +39,10 @@ function mockData(symbol, horizon = "short") {
     lastClose: Number(base.toFixed(2)),
     signal: mockSignal,
     conf: 0.5,
-    mock: true
+    mock: true,
+    target,
+    confidence,
+    predictedMove,
   };
 }
 
@@ -159,6 +172,16 @@ export default async function handler(req, res) {
         const sig = aiSignalFromRows(rows);
         const price = realPrice ?? m?.lastClose ?? 0;
 
+        // ✅ เพิ่ม Target / Confidence / 3D Move (ไม่ลบของเดิม)
+        const target = price * (sig.action === "Buy" ? 1.08 : sig.action === "Sell" ? 0.92 : 1);
+        const confidence = Math.min(100, Math.abs((m?.rsi ?? 50) - 50) * 2);
+        const predictedMove =
+          sig.action === "Buy"
+            ? +(Math.random() * 5 + 1).toFixed(2)
+            : sig.action === "Sell"
+            ? -(Math.random() * 4 + 1).toFixed(2)
+            : +(Math.random() * 1 - 0.5).toFixed(2);
+
         // ✅ ป้องกัน NaN/undefined และบังคับมี RSI & Signal
         out.push({
           symbol: s,
@@ -170,6 +193,9 @@ export default async function handler(req, res) {
           e50: m?.e50 ?? null,
           e200: m?.e200 ?? null,
           score: Number(m?.score ?? Math.random()),
+          target,
+          confidence,
+          predictedMove,
         });
       } catch {
         out.push(mockData(s, horizon));
@@ -185,4 +211,4 @@ export default async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: e?.message || "screener failed" });
   }
-      }
+}
