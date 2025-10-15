@@ -29,7 +29,6 @@ export default function Home() {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const normalizeNews = (raw) => {
-    // รับได้ทั้ง {articles: []} | {results: []} | [] ตรง ๆ
     const arr = Array.isArray(raw)
       ? raw
       : Array.isArray(raw?.articles)
@@ -37,8 +36,6 @@ export default function Home() {
       : Array.isArray(raw?.results)
       ? raw.results
       : [];
-
-    // ทำให้ทุกชิ้นมีโครงสร้างเดียวกัน
     return arr.map((n) => ({
       symbol: n.symbol || n.ticker || n.Symbol || "-",
       title: n.title || n.headline || "(no title)",
@@ -86,21 +83,20 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // normalize results arrays
       const short = sShort?.results || [];
       const medium = sMed?.results || [];
       const long = sLong?.results || [];
       const hiddenData = sHidden?.results || [];
 
-      // AI picks (พร้อม progress)
+      // AI picks พร้อม progress
       const pageSize = 100;
       const maxPages = 20;
       let off = 0;
       let ai = [];
       for (let i = 0; i < maxPages; i++) {
-        const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`).then((x) =>
-          x.json().catch(() => ({}))
-        );
+        const r = await fetch(
+          `/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`
+        ).then((x) => x.json().catch(() => ({})));
         const chunk = Array.isArray(r?.results) ? r.results : [];
         ai = ai.concat(chunk);
 
@@ -117,7 +113,7 @@ export default function Home() {
       setProgress(100);
       setEta(0);
 
-      // เติมราคาให้ AI picks เฉพาะหน้าแรกเพื่อเบาโหลด
+      // เติมราคา/RSI/สัญญาณให้หน้าแรกของ AI Picks เพื่อลื่น
       await Promise.all(
         ai.slice(0, 40).map(async (row) => {
           const sym = row.symbol || row.ticker;
@@ -132,8 +128,10 @@ export default function Home() {
         })
       );
 
-      // ข่าว
-      let newsRaw = await fetch("/api/news").then((x) => x.json().catch(() => ({}))).catch(() => ({}));
+      // News
+      const newsRaw = await fetch("/api/news")
+        .then((x) => x.json().catch(() => ({})))
+        .catch(() => ({}));
       const normalizedNews = normalizeNews(newsRaw);
 
       setDataShort(short);
@@ -159,7 +157,7 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // ดึงราคาของ Favorites ทีละตัว
+  // ---------- Favorites ----------
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
@@ -175,7 +173,9 @@ export default function Home() {
   }, [favorites]);
 
   const toggleFavorite = (sym) =>
-    setFavorites((prev) => (prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]));
+    setFavorites((prev) =>
+      prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
+    );
 
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
@@ -185,7 +185,7 @@ export default function Home() {
     }
   };
 
-  // ---------- Table (แก้เรื่องราคา) ----------
+  // ---------- Table (เพิ่ม Target / AI% / 3D Move) ----------
   const Table = ({ rows = [] }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -196,35 +196,46 @@ export default function Home() {
             <th className="p-2">Price</th>
             <th className="p-2">RSI</th>
             <th className="p-2">AI</th>
+            <th className="p-2">🎯 Target</th>
+            <th className="p-2">🤖 AI %</th>
+            <th className="p-2">🔮 3D Move</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan="5" className="p-3 text-gray-500">
-                No data available.
-              </td>
+              <td colSpan="8" className="p-3 text-gray-500">No data available.</td>
             </tr>
           ) : (
             rows.map((r, i) => {
               const sym = r.symbol || r.ticker || r.Symbol || "";
+              if (!sym) return null;
               const fav = favorites.includes(sym);
 
-              // ✅ ใช้ราคาหลายชื่อได้
               const priceRaw =
                 r.price ??
                 r.lastClose ??
                 r.close ??
                 r.last ??
-                r.Last ??
                 favoritePrices[sym]?.price ??
                 "-";
 
               const rsi = r.rsi ?? favoritePrices[sym]?.rsi ?? "-";
               const sig = r.signal ?? favoritePrices[sym]?.signal ?? "-";
-
               const color =
                 sig === "Buy" ? "text-green-400" : sig === "Sell" ? "text-red-400" : "text-yellow-400";
+
+              const targetTxt = r.target ? `$${Number(r.target).toFixed(2)}` : "-";
+              const confTxt = typeof r.confidence === "number" ? `${r.confidence.toFixed(0)}%` : "-";
+              const moveNum =
+                typeof r.predictedMove === "number"
+                  ? r.predictedMove
+                  : typeof r.predicted_move === "number"
+                  ? r.predicted_move
+                  : null;
+              const moveTxt = moveNum === null ? "-" : `${moveNum > 0 ? "+" : ""}${moveNum}%`;
+              const moveColor =
+                moveNum > 0 ? "text-green-400" : moveNum < 0 ? "text-red-400" : "text-gray-400";
 
               return (
                 <tr key={sym + i} className="border-b border-white/5 hover:bg-white/5 transition">
@@ -237,6 +248,9 @@ export default function Home() {
                   <td className="p-2 font-mono">{priceRaw !== "-" ? `$${Number(priceRaw).toFixed(2)}` : "-"}</td>
                   <td className="p-2">{typeof rsi === "number" ? Math.round(rsi) : rsi}</td>
                   <td className={`p-2 font-semibold ${color}`}>{sig}</td>
+                  <td className="p-2 text-emerald-300">{targetTxt}</td>
+                  <td className="p-2 text-cyan-300">{confTxt}</td>
+                  <td className={`p-2 font-semibold ${moveColor}`}>{moveTxt}</td>
                 </tr>
               );
             })
@@ -283,7 +297,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* progress */}
+        {/* Progress */}
         {progress > 0 && (
           <>
             <div className="w-full bg-[#1a2335] h-2">
@@ -299,6 +313,12 @@ export default function Home() {
 
       {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-4">
+        {error && (
+          <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2">
+            ⚠️ {error}
+          </div>
+        )}
+
         {activeTab === "market" && (
           <>
             <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
@@ -376,38 +396,42 @@ export default function Home() {
             <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
             <p>📡 Auto refresh every 10 minutes</p>
             <p>💾 Favorites stored locally</p>
-            <div className="text-xs text-gray-500 mt-3">Version 1.0.6</div>
+            <div className="text-xs text-gray-500 mt-3">Version 1.0.7</div>
           </section>
         )}
       </div>
 
-      {/* Bottom nav */}
+      {/* Bottom nav (ครบ 4 ปุ่ม) */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
           className={`py-2 flex flex-col items-center ${activeTab === "favorites" ? "text-blue-400" : ""}`}
         >
-          <span className="text-[18px]">💙</span>Favorites
+          <span className="text-[18px]">💙</span>
+          Favorites
         </button>
         <button
           onClick={() => setActiveTab("market")}
           className={`py-2 flex flex-col items-center ${activeTab === "market" ? "text-blue-400" : ""}`}
         >
-          <span className="text-[18px]">🌐</span>Market
+          <span className="text-[18px]">🌐</span>
+          Market
         </button>
         <button
           onClick={() => setActiveTab("news")}
           className={`py-2 flex flex-col items-center ${activeTab === "news" ? "text-purple-400" : ""}`}
         >
-          <span className="text-[18px]">🧠</span>News
+          <span className="text-[18px]">🧠</span>
+          News
         </button>
         <button
           onClick={() => setActiveTab("menu")}
           className={`py-2 flex flex-col items-center ${activeTab === "menu" ? "text-blue-400" : ""}`}
         >
-          <span className="text-[18px]">☰</span>Menu
+          <span className="text-[18px]">☰</span>
+          Menu
         </button>
       </nav>
     </main>
   );
-         }
+        }
