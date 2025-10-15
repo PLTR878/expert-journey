@@ -50,7 +50,7 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // ✅ โหลด AI Picks ทั้งตลาด พร้อม Progress
+      // โหลด AI Picks ทั้งตลาด พร้อม Progress
       const loadAIPicksAll = async () => {
         const pageSize = 100;
         const maxPages = 50;
@@ -58,7 +58,9 @@ export default function Home() {
         let acc = [];
 
         for (let i = 0; i < maxPages; i++) {
-          const r = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`).then((res) => res.json());
+          const r = await fetch(
+            `/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`
+          ).then((res) => res.json());
           const chunk = r?.results || [];
           acc = acc.concat(chunk);
 
@@ -139,7 +141,7 @@ export default function Home() {
     );
   };
 
-  // ✅ ตารางหุ้น (แก้เต็มระบบ)
+  // ตารางหุ้น
   const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -167,27 +169,13 @@ export default function Home() {
               if (!sym) return null;
               const isFav = favorites.includes(sym);
               const f = favoritePrices[sym];
-
-              // ✅ ปรับตรงนี้ให้รองรับ AI Picks (price, rsi, signal)
-              const priceText =
-                r.price
-                  ? `$${Number(r.price).toFixed(2)}`
-                  : f?.price
-                  ? `$${f.price.toFixed(2)}`
-                  : r.lastClose
-                  ? `$${r.lastClose.toFixed(2)}`
-                  : "-";
-
-              const rsi =
-                r.rsi !== undefined
-                  ? Number(r.rsi).toFixed(1)
-                  : f?.rsi !== undefined
-                  ? Number(f.rsi).toFixed(1)
-                  : "-";
-
-              const sig =
-                r.signal || f?.signal || r.AI || "-";
-
+              const priceText = f?.price
+                ? `$${f.price.toFixed(2)}`
+                : r.lastClose
+                ? `$${r.lastClose.toFixed(2)}`
+                : "-";
+              const rsi = f?.rsi ?? r.rsi ?? "-";
+              const sig = f?.signal ?? r.signal ?? r.AI ?? "-";
               const sigColor =
                 sig === "Buy"
                   ? "text-green-400"
@@ -198,7 +186,9 @@ export default function Home() {
               return (
                 <tr
                   key={`${sym}-${i}`}
-                  className={`border-b border-white/5 hover:bg-white/5 transition ${compact ? "text-[13px]" : ""}`}
+                  className={`border-b border-white/5 hover:bg-white/5 transition ${
+                    compact ? "text-[13px]" : ""
+                  }`}
                 >
                   <td
                     onClick={() => toggleFavorite(sym)}
@@ -210,17 +200,7 @@ export default function Home() {
                     <a href={`/analyze/${sym}`}>{sym}</a>
                   </td>
                   <td className="p-2 font-mono">{priceText}</td>
-                  <td
-                    className={`p-2 font-mono ${
-                      rsi >= 70
-                        ? "text-red-400"
-                        : rsi <= 30
-                        ? "text-green-400"
-                        : "text-gray-300"
-                    }`}
-                  >
-                    {rsi}
-                  </td>
+                  <td className="p-2 text-gray-300">{rsi}</td>
                   <td className={`p-2 font-semibold ${sigColor}`}>{sig}</td>
                 </tr>
               );
@@ -320,8 +300,9 @@ export default function Home() {
         )}
       </header>
 
-      {/* เนื้อหา */}
+      {/* Content */}
       <div className="max-w-6xl mx-auto px-4 py-4">
+        {/* Favorites */}
         {activeTab === "favorites" && (
           <>
             {favoriteData.length > 0 ? (
@@ -347,6 +328,7 @@ export default function Home() {
           </>
         )}
 
+        {/* Market */}
         {activeTab === "market" && (
           <>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
@@ -382,6 +364,7 @@ export default function Home() {
           </>
         )}
 
+        {/* News */}
         {activeTab === "news" && (
           <div className="px-3 py-5">
             <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
@@ -434,6 +417,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Menu */}
         {activeTab === "menu" && (
           <div className="text-center text-gray-400 py-10">
             ⚙️ Settings / About / Version 1.0.0
@@ -441,7 +425,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Navigation */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
@@ -472,4 +456,14 @@ export default function Home() {
         </button>
         <button
           onClick={() => setActiveTab("menu")}
-          class
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
+          }`}
+        >
+          <span className="text-[18px]">☰</span>
+          Menu
+        </button>
+      </nav>
+    </main>
+  );
+    }
