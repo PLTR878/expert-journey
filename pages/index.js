@@ -690,3 +690,247 @@ function AlertSystem() {
     </section>
   );
                              }
+// ---------- Auto Scan: สแกนหุ้นสหรัฐทั้งตลาด + แจ้งเตือนอัตโนมัติ ----------
+import { useEffect as useEff2, useState as useSt2 } from "react";
+
+function AutoMarketScan() {
+  // ตั้งค่า
+  const [enabled, setEnabled] = useSt2(false);
+  const [aiSignal, setAiSignal] = useSt2("Buy"); // Buy / Sell / Neutral / Any
+  const [rsiMin, setRsiMin] = useSt2("");
+  const [rsiMax, setRsiMax] = useSt2("");
+  const [priceMin, setPriceMin] = useSt2("");
+  const [priceMax, setPriceMax] = useSt2("");
+  const [pages, setPages]   = useSt2(25);   // จำนวนหน้าที่จะไล่สแกน (limit=200 ต่อหน้า)
+  const [everyMin, setEveryMin] = useSt2(5); // สแกนซ้ำทุกกี่นาที
+  const [scanProg, setScanProg] = useSt2(0);
+  const [hits, setHits] = useSt2([]);       // รายการที่เข้าเงื่อนไขล่าสุด
+  const [messages, setMessages] = useSt2([]); // toast ภายใน component นี้
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // beep เสียงสั้น ๆ ตอนเจอ
+  const beep = () => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = 850;
+      osc.connect(ctx.destination);
+      osc.start();
+      setTimeout(() => { osc.stop(); ctx.close(); }, 180);
+    } catch {}
+  };
+
+  // โหลด/บันทึกค่าลง localStorage
+  useEff2(() => {
+    const saved = localStorage.getItem("autoScanSettings");
+    if (saved) {
+      try {
+        const j = JSON.parse(saved);
+        if (typeof j.enabled === "boolean") setEnabled(j.enabled);
+        if (j.aiSignal) setAiSignal(j.aiSignal);
+        if (j.rsiMin !== undefined) setRsiMin(j.rsiMin);
+        if (j.rsiMax !== undefined) setRsiMax(j.rsiMax);
+        if (j.priceMin !== undefined) setPriceMin(j.priceMin);
+        if (j.priceMax !== undefined) setPriceMax(j.priceMax);
+        if (j.pages) setPages(j.pages);
+        if (j.everyMin) setEveryMin(j.everyMin);
+      } catch {}
+    }
+  }, []);
+  useEff2(() => {
+    localStorage.setItem(
+      "autoScanSettings",
+      JSON.stringify({ enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax, pages, everyMin })
+    );
+  }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax, pages, everyMin]);
+
+  // เงื่อนไขคัดกรอง
+  const matchRow = (row) => {
+    const price = row.price ?? row.lastClose ?? row.close ?? row.last ?? 0;
+    const rsi   = typeof row.rsi === "number" ? row.rsi : (typeof row.RSI === "number" ? row.RSI : null);
+    const sig   = (row.signal || row.ai || row.AI || "-").toString();
+
+    if (aiSignal !== "Any" && sig.toLowerCase() !== aiSignal.toLowerCase()) return false;
+    if (rsiMin !== "" && rsi != null && rsi < Number(rsiMin)) return false;
+    if (rsiMax !== "" && rsi != null && rsi > Number(rsiMax)) return false;
+    if (priceMin !== "" && price < Number(priceMin)) return false;
+    if (priceMax !== "" && price > Number(priceMax)) return false;
+    return true;
+  };
+
+  // สแกนทั้งตลาดจาก /api/ai-picks (มีแบ่งหน้าอยู่แล้ว)
+  const runScan = async () => {
+    if (!enabled) return;
+    setScanProg(0);
+    let off = 0;
+    let found = [];
+    const limit = 200;
+    for (let i = 0; i < Math.max(1, Number(pages)); i++) {
+      let r;
+      try {
+        r = await fetch(`/api/ai-picks?limit=${limit}&offset=${off}&nocache=1`)
+          .then((x) => x.json())
+          .catch(() => ({}));
+      } catch {
+        r = {};
+      }
+      const arr = Array.isArray(r?.results) ? r.results : [];
+
+      for (const row of arr) {
+        if (matchRow(row)) {
+          const sym = row.symbol || row.ticker || row.Symbol;
+          if (sym) {
+            const msg = `⚡ ${sym} hit: AI=${row.signal || "-"} | P=${(row.price ?? row.lastClose ?? 0)} | RSI=${row.rsi ?? "-"}`;
+            // กันซ้ำในรอบเดียว
+            if (!found.find((x) => x.sym === sym)) {
+              found.push({ sym, msg });
+              setMessages((prev) => [...prev, { id: Date.now() + Math.random(), msg }]);
+              beep();
+            }
+          }
+        }
+      }
+
+      setScanProg(Math.round(((i + 1) / Math.max(1, Number(pages))) * 100));
+      if (arr.length < limit) break; // หมดหน้าแล้ว
+      off += limit;
+      await sleep(120);
+    }
+    setHits(found.slice(0, 30));
+  };
+
+  // auto run ตามรอบเวลา
+  useEff2(() => {
+    if (!enabled) return;
+    runScan();
+    const id = setInterval(runScan, Math.max(1, Number(everyMin)) * 60 * 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax, pages, everyMin]);
+
+  // Toast auto hide
+  useEff2(() => {
+    if (!messages.length) return;
+    const ids = messages.map((m) =>
+      setTimeout(() => {
+        setMessages((p) => p.filter((x) => x.id !== m.id));
+      }, 5500)
+    );
+    return () => ids.forEach(clearTimeout);
+  }, [messages]);
+
+  return (
+    <section className="bg-[#0f172a]/80 rounded-2xl p-4 mb-6 border border-cyan-400/30">
+      <h2 className="text-cyan-300 text-lg font-semibold mb-3">🛰️ Auto Scan — US Market</h2>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          <span className="text-emerald-300 font-semibold">Enable</span>
+        </label>
+
+        <div className="bg-[#141b2d] px-3 py-2 rounded">
+          <div className="text-xs text-gray-400 mb-1">AI Signal</div>
+          <select
+            className="bg-[#0b1220] w-full rounded px-2 py-1"
+            value={aiSignal}
+            onChange={(e) => setAiSignal(e.target.value)}
+          >
+            <option>Buy</option>
+            <option>Sell</option>
+            <option>Neutral</option>
+            <option>Any</option>
+          </select>
+        </div>
+
+        <div className="bg-[#141b2d] px-3 py-2 rounded">
+          <div className="text-xs text-gray-400 mb-1">RSI Min</div>
+          <input className="bg-[#0b1220] w-full rounded px-2 py-1" value={rsiMin} onChange={(e) => setRsiMin(e.target.value)} />
+        </div>
+
+        <div className="bg-[#141b2d] px-3 py-2 rounded">
+          <div className="text-xs text-gray-400 mb-1">RSI Max</div>
+          <input className="bg-[#0b1220] w-full rounded px-2 py-1" value={rsiMax} onChange={(e) => setRsiMax(e.target.value)} />
+        </div>
+
+        <div className="bg-[#141b2d] px-3 py-2 rounded">
+          <div className="text-xs text-gray-400 mb-1">Price Min</div>
+          <input className="bg-[#0b1220] w-full rounded px-2 py-1" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
+        </div>
+
+        <div className="bg-[#141b2d] px-3 py-2 rounded">
+          <div className="text-xs text-gray-400 mb-1">Price Max</div>
+          <input className="bg-[#0b1220] w-full rounded px-2 py-1" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+        </div>
+
+        <div className="bg-[#141b2d] px-3 py-2 rounded">
+          <div className="text-xs text-gray-400 mb-1">Pages (×200)</div>
+          <input className="bg-[#0b1220] w-full rounded px-2 py-1" value={pages} onChange={(e) => setPages(e.target.value)} />
+        </div>
+
+        <div className="bg-[#141b2d] px-3 py-2 rounded">
+          <div className="text-xs text-gray-400 mb-1">Scan every (min)</div>
+          <input className="bg-[#0b1220] w-full rounded px-2 py-1" value={everyMin} onChange={(e) => setEveryMin(e.target.value)} />
+        </div>
+
+        <button
+          onClick={runScan}
+          className="bg-emerald-500/20 border border-emerald-400/40 rounded px-3 py-2 text-emerald-300 font-semibold"
+        >
+          ▶️ Run now
+        </button>
+      </div>
+
+      {/* Progress */}
+      {enabled && (
+        <div className="mt-3">
+          <div className="w-full bg-[#1a2335] h-2 rounded">
+            <div className="bg-cyan-400 h-2 rounded" style={{ width: `${scanProg}%` }} />
+          </div>
+          <div className="text-xs text-cyan-300 mt-1">Scanning... {scanProg}%</div>
+        </div>
+      )}
+
+      {/* Last hits */}
+      <div className="mt-4">
+        <h3 className="text-cyan-200 text-sm font-semibold mb-2">Latest matches</h3>
+        {hits.length === 0 ? (
+          <div className="text-gray-400 text-sm">ยังไม่พบที่เข้าเงื่อนไข</div>
+        ) : (
+          <ul className="space-y-1">
+            {hits.map((h, i) => (
+              <li key={i} className="text-sm text-emerald-200 bg-[#0e1628]/70 border border-white/10 rounded px-3 py-2">
+                {h.msg}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Toast */}
+      <div className="fixed top-16 right-4 space-y-2 z-50">
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className="bg-[#101827]/90 border border-cyan-400/40 text-cyan-100 px-3 py-2 rounded shadow"
+          >
+            {m.msg}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ---------- ใส่ AutoMarketScan เข้าไปในหน้า Alerts เดิม (เพิ่มบรรทัดเดียว) ----------
+// เปิดไฟล์เดียวกัน หา export function AlertsTab() { ... } ที่คุณมีอยู่
+// แล้ว "เพิ่ม" <AutoMarketScan /> ต่อจาก <AlertSystem /> ได้เลย เช่น:
+// ...
+//   <div className="max-w-4xl mx-auto px-4 py-6">
+//     <AlertSystem />
+//     <AutoMarketScan />   // <-- เพิ่มบรรทัดนี้
+//   </div>
+// ...
