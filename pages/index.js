@@ -124,6 +124,9 @@ export default function Home() {
             row.price = j.price ?? row.price ?? row.last ?? row.lastClose ?? 0;
             row.rsi = j.rsi ?? row.rsi ?? "-";
             row.signal = j.signal ?? row.signal ?? "-";
+            row.target = j.target ?? row.target ?? null;
+            row.confidence = j.confidence ?? row.confidence ?? null;
+            row.predictedMove = j.predictedMove ?? row.predictedMove ?? null;
           } catch {}
         })
       );
@@ -160,13 +163,23 @@ export default function Home() {
   // ---------- Favorites ----------
   async function fetchYahooPrice(symbol) {
     try {
+      // ✅ ตรงนี้ต้องใช้ template literal (มี backticks) ไม่งั้นพัง
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
       const j = await r.json().catch(() => ({}));
       setFavoritePrices((p) => ({
         ...p,
-        [symbol]: { price: j.price ?? 0, rsi: j.rsi ?? "-", signal: j.signal ?? "-" },
+        [symbol]: {
+          price: j.price ?? 0,
+          rsi: j.rsi ?? "-",
+          signal: j.signal ?? "-",
+          target: j.target ?? null,
+          confidence: j.confidence ?? null,
+          predictedMove: j.predictedMove ?? null,
+        },
       }));
-    } catch {}
+    } catch (err) {
+      console.error("fetchYahooPrice error:", err);
+    }
   }
   useEffect(() => {
     favorites.forEach(fetchYahooPrice);
@@ -185,7 +198,7 @@ export default function Home() {
     }
   };
 
-  // ---------- Table (เพิ่ม Target / AI% / 3D Move) ----------
+  // ---------- Table ----------
   const Table = ({ rows = [] }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -204,7 +217,9 @@ export default function Home() {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan="8" className="p-3 text-gray-500">No data available.</td>
+              <td colSpan="8" className="p-3 text-gray-500">
+                No data available.
+              </td>
             </tr>
           ) : (
             rows.map((r, i) => {
@@ -223,30 +238,63 @@ export default function Home() {
               const rsi = r.rsi ?? favoritePrices[sym]?.rsi ?? "-";
               const sig = r.signal ?? favoritePrices[sym]?.signal ?? "-";
               const color =
-                sig === "Buy" ? "text-green-400" : sig === "Sell" ? "text-red-400" : "text-yellow-400";
+                sig === "Buy"
+                  ? "text-green-400"
+                  : sig === "Sell"
+                  ? "text-red-400"
+                  : "text-yellow-400";
 
-              const targetTxt = r.target ? `$${Number(r.target).toFixed(2)}` : "-";
-              const confTxt = typeof r.confidence === "number" ? `${r.confidence.toFixed(0)}%` : "-";
+              const targetVal =
+                r.target ??
+                favoritePrices[sym]?.target ??
+                null;
+              const targetTxt =
+                targetVal != null ? `$${Number(targetVal).toFixed(2)}` : "-";
+
+              const confVal =
+                r.confidence ??
+                favoritePrices[sym]?.confidence ??
+                null;
+              const confTxt =
+                typeof confVal === "number" ? `${confVal.toFixed(0)}%` : "-";
+
               const moveNum =
-                typeof r.predictedMove === "number"
+                (typeof r.predictedMove === "number"
                   ? r.predictedMove
                   : typeof r.predicted_move === "number"
                   ? r.predicted_move
-                  : null;
-              const moveTxt = moveNum === null ? "-" : `${moveNum > 0 ? "+" : ""}${moveNum}%`;
+                  : favoritePrices[sym]?.predictedMove) ?? null;
+              const moveTxt =
+                moveNum === null ? "-" : `${moveNum > 0 ? "+" : ""}${moveNum}%`;
               const moveColor =
-                moveNum > 0 ? "text-green-400" : moveNum < 0 ? "text-red-400" : "text-gray-400";
+                moveNum > 0
+                  ? "text-green-400"
+                  : moveNum < 0
+                  ? "text-red-400"
+                  : "text-gray-400";
 
               return (
-                <tr key={sym + i} className="border-b border-white/5 hover:bg-white/5 transition">
-                  <td onClick={() => toggleFavorite(sym)} className="cursor-pointer text-yellow-400 pl-4 select-none">
+                <tr
+                  key={sym + i}
+                  className="border-b border-white/5 hover:bg-white/5 transition"
+                >
+                  <td
+                    onClick={() => toggleFavorite(sym)}
+                    className="cursor-pointer text-yellow-400 pl-4 select-none"
+                  >
                     {fav ? "★" : "☆"}
                   </td>
                   <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
                     <a href={`/analyze/${sym}`}>{sym}</a>
                   </td>
-                  <td className="p-2 font-mono">{priceRaw !== "-" ? `$${Number(priceRaw).toFixed(2)}` : "-"}</td>
-                  <td className="p-2">{typeof rsi === "number" ? Math.round(rsi) : rsi}</td>
+                  <td className="p-2 font-mono">
+                    {priceRaw !== "-"
+                      ? `$${Number(priceRaw).toFixed(2)}`
+                      : "-"}
+                  </td>
+                  <td className="p-2">
+                    {typeof rsi === "number" ? Math.round(rsi) : rsi}
+                  </td>
                   <td className={`p-2 font-semibold ${color}`}>{sig}</td>
                   <td className="p-2 text-emerald-300">{targetTxt}</td>
                   <td className="p-2 text-cyan-300">{confTxt}</td>
@@ -301,11 +349,16 @@ export default function Home() {
         {progress > 0 && (
           <>
             <div className="w-full bg-[#1a2335] h-2">
-              <div className="bg-emerald-400 h-2 transition-all duration-300" style={{ width: `${progress}%` }} />
+              <div
+                className="bg-emerald-400 h-2 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
             </div>
             <div className="text-center text-xs text-emerald-300 py-1">
               🔍 Scanning Stocks... {Math.round(progress)}%{" "}
-              {eta > 0 && <span className="text-gray-400 ml-1">⏱ ~{Math.round(eta)}s</span>}
+              {eta > 0 && (
+                <span className="text-gray-400 ml-1">⏱ ~{Math.round(eta)}s</span>
+              )}
             </div>
           </>
         )}
@@ -352,7 +405,10 @@ export default function Home() {
           <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-yellow-300 text-lg font-semibold">⭐ My Favorites</h2>
-              <button onClick={clearFavorites} className="text-sm text-red-400 hover:text-red-300 underline">
+              <button
+                onClick={clearFavorites}
+                className="text-sm text-red-400 hover:text-red-300 underline"
+              >
                 Clear All
               </button>
             </div>
@@ -396,7 +452,7 @@ export default function Home() {
             <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
             <p>📡 Auto refresh every 10 minutes</p>
             <p>💾 Favorites stored locally</p>
-            <div className="text-xs text-gray-500 mt-3">Version 1.0.7</div>
+            <div className="text-xs text-gray-500 mt-3">Version 1.0.8</div>
           </section>
         )}
       </div>
