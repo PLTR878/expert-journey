@@ -571,7 +571,7 @@ function AlertSystem() {
   useEff(() => {
     const saved = localStorage.getItem("alerts");
     if (saved) setAlerts(JSON.parse(saved));
-    }
+
          {/* Toast แจ้งเตือนของ AutoScan */}
       <div className="fixed top-16 right-4 space-y-2 z-50">
         {messages.map((m) => (
