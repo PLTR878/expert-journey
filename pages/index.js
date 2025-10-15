@@ -8,20 +8,18 @@ export default function Home() {
   const [dataLong, setDataLong] = useState([]);
   const [hidden, setHidden] = useState([]);
   const [aiPicks, setAiPicks] = useState([]);
-  const [newsFeed, setNewsFeed] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("favorites");
+  const [activeTab, setActiveTab] = useState("market");
   const [searchSymbol, setSearchSymbol] = useState("");
   const [progress, setProgress] = useState(0);
   const [eta, setEta] = useState(0);
 
-  // โหลดรายการโปรดจาก localStorage
+  // โหลด favorites จาก localStorage
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
-
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -31,7 +29,7 @@ export default function Home() {
     setLoading(true);
     setProgress(0);
     setEta(0);
-    const startTime = Date.now();
+    const start = Date.now();
 
     try {
       const fetcher = async (url, body) =>
@@ -50,95 +48,86 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // โหลด AI Picks ทั้งตลาด พร้อม Progress
-      const loadAIPicksAll = async () => {
+      // โหลด AI Picks ทั้งหมด (แบบมี progress bar)
+      async function loadAIPicksAll() {
         const pageSize = 100;
-        const maxPages = 50;
+        const maxPages = 30;
         let off = 0;
         let acc = [];
-
         for (let i = 0; i < maxPages; i++) {
-          const r = await fetch(
-            `/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`
-          ).then((res) => res.json());
-          const chunk = r?.results || [];
+          const res = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`);
+          const j = await res.json();
+          const chunk = j?.results || [];
           acc = acc.concat(chunk);
 
-          const done = ((i + 1) / maxPages) * 100;
-          setProgress(done);
-
-          const elapsed = (Date.now() - startTime) / 1000;
-          const estimatedTotal = (elapsed / (i + 1)) * maxPages;
-          const remaining = Math.max(estimatedTotal - elapsed, 0);
-          setEta(remaining);
+          // Progress bar
+          const pct = ((i + 1) / maxPages) * 100;
+          setProgress(pct);
+          const elapsed = (Date.now() - start) / 1000;
+          const est = (elapsed / (i + 1)) * maxPages;
+          setEta(Math.max(est - elapsed, 0));
 
           if (chunk.length < pageSize) break;
           off += pageSize;
-          await new Promise((res) => setTimeout(res, 150));
+          await new Promise((r) => setTimeout(r, 120));
         }
-
         setProgress(100);
         setEta(0);
         return acc;
-      };
+      }
 
       const ai = await loadAIPicksAll();
 
-      // ✅ ดึงราคาจริงและ RSI สำหรับหุ้นใน AI Picks
-      for (let stock of ai.slice(0, 50)) {
-        try {
-          const r = await fetch(`/api/price?symbol=${stock.symbol}`);
-          if (!r.ok) continue;
-          const j = await r.json();
-          stock.price = j.price || "-";
-          stock.rsi = j.rsi || "-";
-          stock.signal = j.signal || "-";
-        } catch (err) {
-          console.warn("Price fetch failed for", stock.symbol);
-        }
-      }
+      // เติมราคาจริง/RSI/สัญญาณให้ AI Picks หน้าแรก
+      await Promise.all(
+        ai.slice(0, 40).map(async (row) => {
+          try {
+            const r = await fetch(`/api/price?symbol=${row.symbol}`);
+            const j = await r.json();
+            row.price = j.price ?? row.last;
+            row.rsi = j.rsi ?? "-";
+            row.signal = j.signal ?? "-";
+          } catch {}
+        })
+      );
 
       setDataShort(short);
       setDataMedium(medium);
       setDataLong(long);
       setHidden(hiddenData);
       setAiPicks(ai);
-    } catch {
-      setError("Failed to load data");
+    } catch (err) {
+      console.error(err);
+      setError("Load data failed");
     } finally {
       setLoading(false);
-      setTimeout(() => setProgress(0), 1000);
+      setTimeout(() => setProgress(0), 800);
     }
   }
 
+  // โหลดครั้งแรก + Auto refresh ทุก 10 นาที
   useEffect(() => {
     loadAll();
+    const interval = setInterval(loadAll, 10 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  // ดึงราคา RSI และสัญญาณ AI
+  // โหลดราคาของ favorites
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
-      if (!r.ok) return;
       const j = await r.json();
       setFavoritePrices((p) => ({
         ...p,
-        [symbol]: {
-          price: Number(j.price) || 0,
-          rsi: j.rsi ?? "-",
-          signal: j.signal ?? "-",
-        },
+        [symbol]: { price: j.price ?? 0, rsi: j.rsi ?? "-", signal: j.signal ?? "-" },
       }));
-    } catch {
-      console.error("Error fetching price for", symbol);
-    }
+    } catch {}
   }
 
   useEffect(() => {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
-  // ล้าง favorites
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -147,15 +136,12 @@ export default function Home() {
     }
   };
 
-  // toggle favorite
-  const toggleFavorite = (sym) => {
-    if (!sym) return;
+  const toggleFavorite = (sym) =>
     setFavorites((prev) =>
-      prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym]
+      prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
     );
-  };
 
-  // ตารางหุ้น
+  // ===== ตารางหุ้น =====
   const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -179,22 +165,20 @@ export default function Home() {
             </tr>
           ) : (
             rows.map((r, i) => {
-              const sym = r.symbol || r.ticker || r.Symbol || "";
-              if (!sym) return null;
+              const sym = r.symbol || r.ticker || "";
               const isFav = favorites.includes(sym);
-              const price = r.price || r.lastClose || "-";
+              const price = r.price ?? r.lastClose ?? "-";
               const rsi = r.rsi ?? "-";
-              const sig = r.signal ?? r.AI ?? "-";
-              const sigColor =
+              const sig = r.signal ?? "-";
+              const color =
                 sig === "Buy"
                   ? "text-green-400"
                   : sig === "Sell"
                   ? "text-red-400"
                   : "text-yellow-400";
-
               return (
                 <tr
-                  key={`${sym}-${i}`}
+                  key={sym + i}
                   className={`border-b border-white/5 hover:bg-white/5 transition ${
                     compact ? "text-[13px]" : ""
                   }`}
@@ -212,7 +196,7 @@ export default function Home() {
                     {price !== "-" ? `$${Number(price).toFixed(2)}` : "-"}
                   </td>
                   <td className="p-2 text-gray-300">{rsi}</td>
-                  <td className={`p-2 font-semibold ${sigColor}`}>{sig}</td>
+                  <td className={`p-2 font-semibold ${color}`}>{sig}</td>
                 </tr>
               );
             })
@@ -222,36 +206,9 @@ export default function Home() {
     </div>
   );
 
-  const favoriteData = favorites.map((s) => ({
-    symbol: s,
-    ...favoritePrices[s],
-  }));
+  const favoriteData = favorites.map((s) => ({ symbol: s, ...favoritePrices[s] }));
 
-  // ข่าว
-  async function loadNews() {
-    try {
-      const res = await fetch("/api/news");
-      const j = await res.json();
-      setNewsFeed(j.articles || []);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  useEffect(() => {
-    if (activeTab === "news") loadNews();
-  }, [activeTab]);
-
-  async function summarize(url) {
-    try {
-      const res = await fetch(`/api/summary?url=${encodeURIComponent(url)}`);
-      const j = await res.json();
-      alert(`🧾 Summary:\n\n${j.summary}`);
-    } catch {
-      alert("❌ Failed to summarize article.");
-    }
-  }
-
+  // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
@@ -271,11 +228,11 @@ export default function Home() {
           <div className="relative w-full sm:w-64">
             <input
               type="text"
-              placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
+              placeholder="🔍 Search symbol (e.g. NVDA)"
               value={searchSymbol}
               onChange={(e) => setSearchSymbol(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && searchSymbol.trim() !== "") {
+                if (e.key === "Enter" && searchSymbol.trim()) {
                   const sym = searchSymbol.trim().toUpperCase();
                   if (!favorites.includes(sym)) {
                     setFavorites((prev) => [...prev, sym]);
@@ -289,7 +246,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Progress Bar */}
         {progress > 0 && (
           <>
             <div className="w-full bg-[#1a2335] h-2">
@@ -311,41 +267,39 @@ export default function Home() {
         )}
       </header>
 
-      {/* Content */}
+      {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
         {activeTab === "favorites" && (
-          <>
+          <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-yellow-300 text-lg font-semibold">⭐ My Favorites</h2>
+              <button
+                onClick={clearFavorites}
+                className="text-sm text-red-400 hover:text-red-300 underline"
+              >
+                Clear All
+              </button>
+            </div>
             {favoriteData.length > 0 ? (
-              <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-yellow-300 text-lg font-semibold">
-                    ⭐ My Favorites
-                  </h2>
-                  <button
-                    onClick={clearFavorites}
-                    className="text-sm text-red-400 hover:text-red-300 underline"
-                  >
-                    Clear All
-                  </button>
-                </div>
-                <Table rows={favoriteData} />
-              </div>
+              <Table rows={favoriteData} />
             ) : (
               <div className="text-center text-gray-400 py-6">
                 ⭐ No favorites yet — tap “☆” or search a symbol.
               </div>
             )}
-          </>
+          </div>
         )}
 
-        {/* Market */}
         {activeTab === "market" && (
           <>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-green-400 text-lg font-semibold mb-2">
-                ⚡ Fast Movers
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
+              <h2 className="text-emerald-400 text-lg font-semibold mb-2">
+                🤖 AI Picks — Smart Buy Signals
               </h2>
+              <Table rows={aiPicks.slice(0, 20)} compact />
+            </div>
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-green-400 text-lg font-semibold mb-2">⚡ Fast Movers</h2>
               <Table rows={dataShort.slice(0, 6)} compact />
             </div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
@@ -355,88 +309,18 @@ export default function Home() {
               <Table rows={dataMedium.slice(0, 6)} compact />
             </div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-sky-400 text-lg font-semibold mb-2">
-                🚀 Future Leaders
-              </h2>
+              <h2 className="text-sky-400 text-lg font-semibold mb-2">🚀 Future Leaders</h2>
               <Table rows={dataLong.slice(0, 6)} compact />
             </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
-              <h2 className="text-emerald-400 text-lg font-semibold mb-2">
-                🤖 AI Picks — Smart Buy Signals
-              </h2>
-              <Table rows={aiPicks.slice(0, 20)} compact />
-            </div>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-cyan-300 text-lg font-semibold mb-2">
-                💎 Hidden Gems
-              </h2>
+              <h2 className="text-cyan-300 text-lg font-semibold mb-2">💎 Hidden Gems</h2>
               <Table rows={hidden.slice(0, 6)} compact />
             </div>
           </>
         )}
-
-        {/* News */}
-        {activeTab === "news" && (
-          <div className="px-3 py-5">
-            <h2 className="text-purple-400 text-xl font-bold mb-4 text-center">
-              🧠 AI Market News — Early Signals
-            </h2>
-            {newsFeed.length === 0 ? (
-              <div className="text-center text-gray-400 py-4">
-                Loading news...
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {newsFeed.map((n, i) => (
-                  <div
-                    key={i}
-                    className="block bg-[#141b2d]/70 border border-white/10 rounded-2xl p-4 hover:bg-[#1d2941]/80 transition"
-                  >
-                    <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="text-sky-400 font-semibold">
-                        {n.symbol}
-                      </span>
-                      <span className="text-gray-400 text-xs">{n.time}</span>
-                    </div>
-                    <h2 className="text-emerald-300 font-semibold text-base mb-1">
-                      {n.title}
-                    </h2>
-                    <div className="flex justify-between items-center text-xs mb-2">
-                      <span className="text-gray-400">{n.publisher}</span>
-                      <span
-                        className={`font-bold ${
-                          n.sentiment === "Positive"
-                            ? "text-green-400"
-                            : n.sentiment === "Negative"
-                            ? "text-red-400"
-                            : "text-yellow-300"
-                        }`}
-                      >
-                        {n.sentiment}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => summarize(n.url)}
-                      className="mt-2 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/20 px-3 py-1 rounded-lg text-emerald-300 transition"
-                    >
-                      🧾 Summary
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Menu */}
-        {activeTab === "menu" && (
-          <div className="text-center text-gray-400 py-10">
-            ⚙️ Settings / About / Version 1.0.0
-          </div>
-        )}
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
@@ -444,8 +328,7 @@ export default function Home() {
             activeTab === "favorites" ? "text-blue-400" : "hover:text-blue-300"
           }`}
         >
-          <span className="text-[18px]">💙</span>
-          Favorites
+          <span className="text-[18px]">💙</span>Favorites
         </button>
         <button
           onClick={() => setActiveTab("market")}
@@ -453,22 +336,15 @@ export default function Home() {
             activeTab === "market" ? "text-blue-400" : "hover:text-blue-300"
           }`}
         >
-          <span className="text-[18px]">🌐</span>
-          Market
+          <span className="text-[18px]">🌐</span>Market
         </button>
         <button
-          onClick={() => setActiveTab("news")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "news" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
+          onClick={() => alert("📜 Coming soon: News, AI Alerts & Settings")}
+          className="py-2 flex flex-col items-center hover:text-blue-300"
         >
-          <span className="text-[18px]">🧠</span>
-          News
+          <span className="text-[18px]">☰</span>Menu
         </button>
-        <button
-          onClick={() => setActiveTab("menu")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
-        >
-          <span className="text-[
+      </nav>
+    </main>
+  );
+    }
