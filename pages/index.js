@@ -42,14 +42,23 @@ export default function Home() {
           .then((r) => r.json())
           .then((j) => j.results || []);
 
-      const [short, medium, long, hiddenData, newsData] = await Promise.all([
+      // 🔹 โหลดข่าวแบบไม่ให้ error ถ้าไม่มี /api/news
+      let newsData = [];
+      try {
+        const res = await fetch("/api/news");
+        if (res.ok) newsData = await res.json();
+      } catch (e) {
+        newsData = [];
+      }
+
+      const [short, medium, long, hiddenData] = await Promise.all([
         fetcher("/api/screener", { horizon: "short" }),
         fetcher("/api/screener", { horizon: "medium" }),
         fetcher("/api/screener", { horizon: "long" }),
         fetcher("/api/hidden-gems"),
-        fetch("/api/news").then((r) => r.json()).catch(() => []),
       ]);
 
+      // 🔹 โหลด AI Picks ทั้งหมด
       async function loadAIPicksAll() {
         const pageSize = 100;
         const maxPages = 30;
@@ -138,7 +147,7 @@ export default function Home() {
       prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
     );
 
-  // ตารางหุ้น
+  // ===== ตารางหุ้น =====
   const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -205,6 +214,7 @@ export default function Home() {
 
   const favoriteData = favorites.map((s) => ({ symbol: s, ...favoritePrices[s] }));
 
+  // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
@@ -224,7 +234,7 @@ export default function Home() {
           <div className="relative w-full sm:w-64">
             <input
               type="text"
-              placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
+              placeholder="🔍 Search symbol (e.g. NVDA)"
               value={searchSymbol}
               onChange={(e) => setSearchSymbol(e.target.value)}
               onKeyDown={(e) => {
@@ -243,9 +253,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Content */}
+      {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
         {activeTab === "favorites" && (
           <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
             <div className="flex justify-between items-center mb-3">
@@ -267,7 +276,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Market */}
         {activeTab === "market" && (
           <>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
@@ -290,24 +298,22 @@ export default function Home() {
               <h2 className="text-sky-400 text-lg font-semibold mb-2">🚀 Future Leaders</h2>
               <Table rows={dataLong.slice(0, 6)} compact />
             </div>
-            {/* Hidden Gems */}
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-cyan-400/30">
-              <h2 className="text-cyan-300 text-lg font-semibold mb-2">
-                💎 Hidden Gems
-              </h2>
+              <h2 className="text-cyan-300 text-lg font-semibold mb-2">💎 Hidden Gems</h2>
               <Table rows={hidden.slice(0, 6)} compact />
             </div>
           </>
         )}
 
-        {/* News */}
         {activeTab === "news" && (
           <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-purple-400/30">
             <h2 className="text-purple-400 text-xl font-semibold mb-4">
               🧠 AI Market News — Early Signals
             </h2>
             {newsFeed.length === 0 ? (
-              <div className="text-gray-400 text-center py-6">No news data available.</div>
+              <div className="text-gray-400 text-center py-6">
+                No news data available.
+              </div>
             ) : (
               newsFeed.slice(0, 20).map((n, i) => (
                 <div
@@ -344,10 +350,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* Menu */}
         {activeTab === "menu" && (
           <div className="max-w-6xl mx-auto px-6 py-10 text-center text-gray-300">
-            <h2 className="text-emerald-400 text-2xl font-bold mb-4">⚙️ Settings & Info</h2>
+            <h2 className="text-emerald-400 text-2xl font-bold mb-4">
+              ⚙️ Settings & Info
+            </h2>
             <p className="mb-2">🌍 Visionary Stock Screener — AI-driven insights.</p>
             <p className="mb-4">📡 Auto-refresh every 10 minutes.</p>
             <button
@@ -357,7 +364,7 @@ export default function Home() {
               🔄 Reload Data
             </button>
             <div className="text-xs text-gray-500">
-              Version 1.0.3 • Built by AI Engine • {new Date().getFullYear()}
+              Version 1.0.4 • Built by AI Engine • {new Date().getFullYear()}
             </div>
           </div>
         )}
@@ -404,4 +411,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                }
+    }
