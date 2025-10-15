@@ -16,7 +16,7 @@ export default function Home() {
   const [progress, setProgress] = useState(0);
   const [eta, setEta] = useState(0);
 
-  // โหลด favorites จาก localStorage
+  // โหลด favorites
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
@@ -25,32 +25,27 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // โหลดข้อมูลทั้งหมด
   async function loadAll() {
     setLoading(true);
     setProgress(0);
     setEta(0);
     const start = Date.now();
 
-    try {
-      const fetcher = async (url, body) =>
-        fetch(url, {
+    const fetcher = async (url, body) => {
+      try {
+        const r = await fetch(url, {
           method: body ? "POST" : "GET",
           headers: { "Content-Type": "application/json" },
           body: body ? JSON.stringify(body) : undefined,
-        })
-          .then((r) => r.json())
-          .then((j) => j.results || []);
-
-      // 🔹 โหลดข่าวแบบไม่ให้ error ถ้าไม่มี /api/news
-      let newsData = [];
-      try {
-        const res = await fetch("/api/news");
-        if (res.ok) newsData = await res.json();
-      } catch (e) {
-        newsData = [];
+        });
+        const j = await r.json().catch(() => ({}));
+        return j?.results || [];
+      } catch {
+        return [];
       }
+    };
 
+    try {
       const [short, medium, long, hiddenData] = await Promise.all([
         fetcher("/api/screener", { horizon: "short" }),
         fetcher("/api/screener", { horizon: "medium" }),
@@ -58,39 +53,32 @@ export default function Home() {
         fetcher("/api/hidden-gems"),
       ]);
 
-      // 🔹 โหลด AI Picks ทั้งหมด
-      async function loadAIPicksAll() {
-        const pageSize = 100;
-        const maxPages = 30;
-        let off = 0;
-        let acc = [];
-        for (let i = 0; i < maxPages; i++) {
-          const res = await fetch(`/api/ai-picks?limit=${pageSize}&offset=${off}&nocache=1`);
-          const j = await res.json();
-          const chunk = j?.results || [];
-          acc = acc.concat(chunk);
-          const pct = ((i + 1) / maxPages) * 100;
-          setProgress(pct);
-          const elapsed = (Date.now() - start) / 1000;
-          const est = (elapsed / (i + 1)) * maxPages;
-          setEta(Math.max(est - elapsed, 0));
-          if (chunk.length < pageSize) break;
-          off += pageSize;
-          await new Promise((r) => setTimeout(r, 120));
+      // โหลดข่าวแบบปลอดภัย
+      let newsData = [];
+      try {
+        const r = await fetch("/api/news");
+        if (r.ok) {
+          const j = await r.json().catch(() => []);
+          if (Array.isArray(j.results)) newsData = j.results;
+          else if (Array.isArray(j)) newsData = j;
         }
-        setProgress(100);
-        setEta(0);
-        return acc;
-      }
+      } catch {}
 
-      const ai = await loadAIPicksAll();
+      // โหลด AI picks ปลอดภัย
+      let ai = [];
+      try {
+        const res = await fetch("/api/ai-picks?limit=200");
+        const j = await res.json().catch(() => ({}));
+        ai = Array.isArray(j.results) ? j.results : [];
+      } catch {}
 
+      // เติมราคาจริงให้หน้าแรก
       await Promise.all(
         ai.slice(0, 40).map(async (row) => {
           try {
             const r = await fetch(`/api/price?symbol=${row.symbol}`);
-            const j = await r.json();
-            row.price = j.price ?? row.last;
+            const j = await r.json().catch(() => ({}));
+            row.price = j.price ?? row.last ?? 0;
             row.rsi = j.rsi ?? "-";
             row.signal = j.signal ?? "-";
           } catch {}
@@ -102,13 +90,14 @@ export default function Home() {
       setDataLong(long);
       setHidden(hiddenData);
       setAiPicks(ai);
-      setNewsFeed(newsData?.results || newsData || []);
+      setNewsFeed(newsData);
     } catch (err) {
       console.error(err);
-      setError("Load data failed");
+      setError("Load failed");
     } finally {
       setLoading(false);
-      setTimeout(() => setProgress(0), 800);
+      setProgress(0);
+      setEta(0);
     }
   }
 
@@ -118,11 +107,10 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // โหลดราคาของ favorites
   async function fetchYahooPrice(symbol) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
-      const j = await r.json();
+      const j = await r.json().catch(() => ({}));
       setFavoritePrices((p) => ({
         ...p,
         [symbol]: { price: j.price ?? 0, rsi: j.rsi ?? "-", signal: j.signal ?? "-" },
@@ -134,6 +122,11 @@ export default function Home() {
     favorites.forEach(fetchYahooPrice);
   }, [favorites]);
 
+  const toggleFavorite = (sym) =>
+    setFavorites((prev) =>
+      prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
+    );
+
   const clearFavorites = () => {
     if (confirm("Clear all favorites?")) {
       setFavorites([]);
@@ -142,26 +135,18 @@ export default function Home() {
     }
   };
 
-  const toggleFavorite = (sym) =>
-    setFavorites((prev) =>
-      prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
-    );
-
-  // ===== ตารางหุ้น =====
-  const Table = ({ rows = [], compact }) => (
+  const Table = ({ rows = [] }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
-        {!compact && (
-          <thead className="bg-white/5 text-gray-400 uppercase text-[11px]">
-            <tr>
-              <th className="p-2 text-left pl-4">⭐</th>
-              <th className="p-2">Symbol</th>
-              <th className="p-2">Price</th>
-              <th className="p-2">RSI</th>
-              <th className="p-2">AI</th>
-            </tr>
-          </thead>
-        )}
+        <thead className="bg-white/5 text-gray-400 uppercase text-[11px]">
+          <tr>
+            <th className="p-2 text-left pl-4">⭐</th>
+            <th className="p-2">Symbol</th>
+            <th className="p-2">Price</th>
+            <th className="p-2">RSI</th>
+            <th className="p-2">AI</th>
+          </tr>
+        </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
@@ -172,8 +157,7 @@ export default function Home() {
           ) : (
             rows.map((r, i) => {
               const sym = r.symbol || r.ticker || "";
-              const isFav = favorites.includes(sym);
-              const price = r.price ?? r.lastClose ?? "-";
+              const price = r.price ?? "-";
               const rsi = r.rsi ?? "-";
               const sig = r.signal ?? "-";
               const color =
@@ -182,18 +166,17 @@ export default function Home() {
                   : sig === "Sell"
                   ? "text-red-400"
                   : "text-yellow-400";
+              const fav = favorites.includes(sym);
               return (
                 <tr
                   key={sym + i}
-                  className={`border-b border-white/5 hover:bg-white/5 transition ${
-                    compact ? "text-[13px]" : ""
-                  }`}
+                  className="border-b border-white/5 hover:bg-white/5 transition"
                 >
                   <td
                     onClick={() => toggleFavorite(sym)}
-                    className="cursor-pointer text-yellow-400 pl-4 select-none"
+                    className="cursor-pointer text-yellow-400 pl-4"
                   >
-                    {isFav ? "★" : "☆"}
+                    {fav ? "★" : "☆"}
                   </td>
                   <td className="p-2 font-semibold text-sky-400 hover:text-emerald-400">
                     <a href={`/analyze/${sym}`}>{sym}</a>
@@ -201,7 +184,7 @@ export default function Home() {
                   <td className="p-2 font-mono">
                     {price !== "-" ? `$${Number(price).toFixed(2)}` : "-"}
                   </td>
-                  <td className="p-2 text-gray-300">{rsi}</td>
+                  <td className="p-2">{rsi}</td>
                   <td className={`p-2 font-semibold ${color}`}>{sig}</td>
                 </tr>
               );
@@ -214,51 +197,66 @@ export default function Home() {
 
   const favoriteData = favorites.map((s) => ({ symbol: s, ...favoritePrices[s] }));
 
-  // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <div className="flex justify-between items-center w-full sm:w-auto">
-            <b className="text-emerald-400 text-lg sm:text-xl">
-              🌍 Visionary Stock Screener
-            </b>
-            <button
-              onClick={loadAll}
-              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold sm:ml-4"
-            >
-              {loading ? "Loading..." : "🔁 Refresh"}
-            </button>
-          </div>
-          <div className="relative w-full sm:w-64">
-            <input
-              type="text"
-              placeholder="🔍 Search symbol (e.g. NVDA)"
-              value={searchSymbol}
-              onChange={(e) => setSearchSymbol(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && searchSymbol.trim()) {
-                  const sym = searchSymbol.trim().toUpperCase();
-                  if (!favorites.includes(sym)) {
-                    setFavorites((prev) => [...prev, sym]);
-                    fetchYahooPrice(sym);
-                  }
-                  setSearchSymbol("");
-                }
-              }}
-              className="w-full bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-400 placeholder-gray-500"
-            />
-          </div>
+        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+          <b className="text-emerald-400 text-lg">🌍 Visionary Stock Screener</b>
+          <button
+            onClick={loadAll}
+            className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-4 py-1.5 rounded-lg text-emerald-300 text-sm font-semibold"
+          >
+            {loading ? "Loading..." : "🔁 Refresh"}
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-4">
+        {activeTab === "market" && (
+          <>
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
+              <h2 className="text-emerald-400 mb-2 font-semibold text-lg">
+                🤖 AI Picks — Smart Buy Signals
+              </h2>
+              <Table rows={aiPicks.slice(0, 20)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-green-400 mb-2 font-semibold text-lg">
+                ⚡ Fast Movers
+              </h2>
+              <Table rows={dataShort.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-yellow-400 mb-2 font-semibold text-lg">
+                🌱 Emerging Trends
+              </h2>
+              <Table rows={dataMedium.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
+              <h2 className="text-sky-400 mb-2 font-semibold text-lg">
+                🚀 Future Leaders
+              </h2>
+              <Table rows={dataLong.slice(0, 6)} />
+            </section>
+
+            <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-cyan-400/30">
+              <h2 className="text-cyan-300 mb-2 font-semibold text-lg">
+                💎 Hidden Gems
+              </h2>
+              <Table rows={hidden.slice(0, 6)} />
+            </section>
+          </>
+        )}
+
         {activeTab === "favorites" && (
-          <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
+          <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-yellow-300 text-lg font-semibold">⭐ My Favorites</h2>
+              <h2 className="text-yellow-300 text-lg font-semibold">
+                ⭐ My Favorites
+              </h2>
               <button
                 onClick={clearFavorites}
                 className="text-sm text-red-400 hover:text-red-300 underline"
@@ -266,59 +264,22 @@ export default function Home() {
                 Clear All
               </button>
             </div>
-            {favoriteData.length > 0 ? (
-              <Table rows={favoriteData} />
-            ) : (
-              <div className="text-center text-gray-400 py-6">
-                ⭐ No favorites yet — tap “☆” or search a symbol.
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "market" && (
-          <>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
-              <h2 className="text-emerald-400 text-lg font-semibold mb-2">
-                🤖 AI Picks — Smart Buy Signals
-              </h2>
-              <Table rows={aiPicks.slice(0, 20)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-green-400 text-lg font-semibold mb-2">⚡ Fast Movers</h2>
-              <Table rows={dataShort.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-yellow-400 text-lg font-semibold mb-2">
-                🌱 Emerging Trends
-              </h2>
-              <Table rows={dataMedium.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-sky-400 text-lg font-semibold mb-2">🚀 Future Leaders</h2>
-              <Table rows={dataLong.slice(0, 6)} compact />
-            </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-cyan-400/30">
-              <h2 className="text-cyan-300 text-lg font-semibold mb-2">💎 Hidden Gems</h2>
-              <Table rows={hidden.slice(0, 6)} compact />
-            </div>
-          </>
+            <Table rows={favoriteData} />
+          </section>
         )}
 
         {activeTab === "news" && (
-          <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-purple-400/30">
+          <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-purple-400/30">
             <h2 className="text-purple-400 text-xl font-semibold mb-4">
               🧠 AI Market News — Early Signals
             </h2>
             {newsFeed.length === 0 ? (
-              <div className="text-gray-400 text-center py-6">
-                No news data available.
-              </div>
+              <div className="text-center text-gray-400">No news data available.</div>
             ) : (
-              newsFeed.slice(0, 20).map((n, i) => (
+              newsFeed.slice(0, 10).map((n, i) => (
                 <div
                   key={i}
-                  className="border border-white/10 bg-[#0e1628]/80 rounded-xl p-4 mb-4 shadow-sm"
+                  className="border border-white/10 bg-[#0e1628]/80 rounded-xl p-4 mb-3"
                 >
                   <div className="flex justify-between text-[12px] text-gray-400 mb-1">
                     <span className="text-sky-400 font-semibold">{n.symbol}</span>
@@ -328,87 +289,71 @@ export default function Home() {
                     {n.title}
                   </div>
                   <div className="text-[13px] text-gray-400 mb-2">{n.source}</div>
-                  <div className="flex justify-between items-center">
-                    <button className="bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-xs px-3 py-1 rounded-lg">
-                      📄 Summary
-                    </button>
-                    <span
-                      className={`text-xs font-semibold ${
-                        n.sentiment === "Positive"
-                          ? "text-green-400"
-                          : n.sentiment === "Negative"
-                          ? "text-red-400"
-                          : "text-yellow-400"
-                      }`}
-                    >
-                      {n.sentiment || "Neutral"}
-                    </span>
-                  </div>
+                  <span
+                    className={`text-xs font-semibold ${
+                      n.sentiment === "Positive"
+                        ? "text-green-400"
+                        : n.sentiment === "Negative"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {n.sentiment || "Neutral"}
+                  </span>
                 </div>
               ))
             )}
-          </div>
+          </section>
         )}
 
         {activeTab === "menu" && (
-          <div className="max-w-6xl mx-auto px-6 py-10 text-center text-gray-300">
-            <h2 className="text-emerald-400 text-2xl font-bold mb-4">
+          <section className="text-center text-gray-400 py-10">
+            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">
               ⚙️ Settings & Info
             </h2>
-            <p className="mb-2">🌍 Visionary Stock Screener — AI-driven insights.</p>
-            <p className="mb-4">📡 Auto-refresh every 10 minutes.</p>
-            <button
-              onClick={loadAll}
-              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-5 py-2 rounded-lg text-emerald-300 text-sm font-semibold mb-5"
-            >
-              🔄 Reload Data
-            </button>
-            <div className="text-xs text-gray-500">
-              Version 1.0.4 • Built by AI Engine • {new Date().getFullYear()}
+            <p>🌍 Visionary Stock Screener — AI-powered insights.</p>
+            <p>📡 Auto refresh every 10 minutes.</p>
+            <div className="text-xs text-gray-500 mt-3">
+              Version 1.0.5 • {new Date().getFullYear()}
             </div>
-          </div>
+          </section>
         )}
       </div>
 
-      {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         <button
           onClick={() => setActiveTab("favorites")}
           className={`py-2 flex flex-col items-center ${
-            activeTab === "favorites" ? "text-blue-400" : "hover:text-blue-300"
+            activeTab === "favorites" ? "text-blue-400" : ""
           }`}
         >
-          <span className="text-[18px]">💙</span>
-          <span>Favorites</span>
+          <span className="text-[18px]">💙</span>Favorites
         </button>
         <button
           onClick={() => setActiveTab("market")}
           className={`py-2 flex flex-col items-center ${
-            activeTab === "market" ? "text-blue-400" : "hover:text-blue-300"
+            activeTab === "market" ? "text-blue-400" : ""
           }`}
         >
-          <span className="text-[18px]">🌐</span>
-          <span>Market</span>
+          <span className="text-[18px]">🌐</span>Market
         </button>
         <button
           onClick={() => setActiveTab("news")}
           className={`py-2 flex flex-col items-center ${
-            activeTab === "news" ? "text-purple-400" : "hover:text-purple-300"
+            activeTab === "news" ? "text-purple-400" : ""
           }`}
         >
-          <span className="text-[18px]">🧠</span>
-          <span>News</span>
+          <span className="text-[18px]">🧠</span>News
         </button>
         <button
           onClick={() => setActiveTab("menu")}
           className={`py-2 flex flex-col items-center ${
-            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
+            activeTab === "menu" ? "text-blue-400" : ""
           }`}
         >
-          <span className="text-[18px]">☰</span>
-          <span>Menu</span>
+          <span className="text-[18px]">☰</span>Menu
         </button>
       </nav>
     </main>
   );
-    }
+                }
