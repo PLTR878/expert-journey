@@ -447,7 +447,8 @@ export default function Home() {
                   </div>
                   <div className="text-[15px] font-medium text-emerald-300 mb-1">
                     {n.title}
-                    <div className="text-[13px] text-gray-400 mb-2">
+                  </div>
+             <div className="text-[13px] text-gray-400 mb-2">
                     {n.publisher}
                   </div>
                   <span
@@ -688,4 +689,4 @@ function AlertSystem() {
       </div>
     </section>
   );
-          }
+                             }
