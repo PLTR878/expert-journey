@@ -8,6 +8,7 @@ export default function Home() {
   const [dataLong, setDataLong] = useState([]);
   const [hidden, setHidden] = useState([]);
   const [aiPicks, setAiPicks] = useState([]);
+  const [newsFeed, setNewsFeed] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("market");
@@ -41,14 +42,14 @@ export default function Home() {
           .then((r) => r.json())
           .then((j) => j.results || []);
 
-      const [short, medium, long, hiddenData] = await Promise.all([
+      const [short, medium, long, hiddenData, newsData] = await Promise.all([
         fetcher("/api/screener", { horizon: "short" }),
         fetcher("/api/screener", { horizon: "medium" }),
         fetcher("/api/screener", { horizon: "long" }),
         fetcher("/api/hidden-gems"),
+        fetch("/api/news").then((r) => r.json()).catch(() => []),
       ]);
 
-      // โหลด AI Picks ทั้งหมด (แบบมี progress bar)
       async function loadAIPicksAll() {
         const pageSize = 100;
         const maxPages = 30;
@@ -59,13 +60,11 @@ export default function Home() {
           const j = await res.json();
           const chunk = j?.results || [];
           acc = acc.concat(chunk);
-
           const pct = ((i + 1) / maxPages) * 100;
           setProgress(pct);
           const elapsed = (Date.now() - start) / 1000;
           const est = (elapsed / (i + 1)) * maxPages;
           setEta(Math.max(est - elapsed, 0));
-
           if (chunk.length < pageSize) break;
           off += pageSize;
           await new Promise((r) => setTimeout(r, 120));
@@ -94,6 +93,7 @@ export default function Home() {
       setDataLong(long);
       setHidden(hiddenData);
       setAiPicks(ai);
+      setNewsFeed(newsData?.results || newsData || []);
     } catch (err) {
       console.error(err);
       setError("Load data failed");
@@ -138,7 +138,7 @@ export default function Home() {
       prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
     );
 
-  // ===== ตารางหุ้น =====
+  // ตารางหุ้น
   const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -205,7 +205,6 @@ export default function Home() {
 
   const favoriteData = favorites.map((s) => ({ symbol: s, ...favoritePrices[s] }));
 
-  // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
@@ -225,7 +224,7 @@ export default function Home() {
           <div className="relative w-full sm:w-64">
             <input
               type="text"
-              placeholder="🔍 Search symbol (e.g. NVDA)"
+              placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
               value={searchSymbol}
               onChange={(e) => setSearchSymbol(e.target.value)}
               onKeyDown={(e) => {
@@ -242,30 +241,11 @@ export default function Home() {
             />
           </div>
         </div>
-
-        {progress > 0 && (
-          <>
-            <div className="w-full bg-[#1a2335] h-2">
-              <div
-                className="bg-emerald-400 h-2 transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="text-center text-xs text-emerald-300 py-1">
-              🔍 Scanning Stocks... {Math.round(progress)}% (
-              {Math.round((progress / 100) * 7000)} / 7000)
-              {eta > 0 && (
-                <span className="text-gray-400 ml-1">
-                  ⏱ ~{Math.round(eta)}s remaining
-                </span>
-              )}
-            </div>
-          </>
-        )}
       </header>
 
-      {/* Body */}
+      {/* Content */}
       <div className="max-w-6xl mx-auto px-4 py-4">
+        {/* Favorites */}
         {activeTab === "favorites" && (
           <div className="bg-[#101827]/70 rounded-2xl shadow-md p-4 mb-6">
             <div className="flex justify-between items-center mb-3">
@@ -287,6 +267,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Market */}
         {activeTab === "market" && (
           <>
             <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-emerald-400/30">
@@ -309,31 +290,74 @@ export default function Home() {
               <h2 className="text-sky-400 text-lg font-semibold mb-2">🚀 Future Leaders</h2>
               <Table rows={dataLong.slice(0, 6)} compact />
             </div>
-            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6">
-              <h2 className="text-cyan-300 text-lg font-semibold mb-2">💎 Hidden Gems</h2>
+            {/* Hidden Gems */}
+            <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-cyan-400/30">
+              <h2 className="text-cyan-300 text-lg font-semibold mb-2">
+                💎 Hidden Gems
+              </h2>
               <Table rows={hidden.slice(0, 6)} compact />
             </div>
           </>
         )}
 
-        {/* Menu Tab */}
+        {/* News */}
+        {activeTab === "news" && (
+          <div className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-purple-400/30">
+            <h2 className="text-purple-400 text-xl font-semibold mb-4">
+              🧠 AI Market News — Early Signals
+            </h2>
+            {newsFeed.length === 0 ? (
+              <div className="text-gray-400 text-center py-6">No news data available.</div>
+            ) : (
+              newsFeed.slice(0, 20).map((n, i) => (
+                <div
+                  key={i}
+                  className="border border-white/10 bg-[#0e1628]/80 rounded-xl p-4 mb-4 shadow-sm"
+                >
+                  <div className="flex justify-between text-[12px] text-gray-400 mb-1">
+                    <span className="text-sky-400 font-semibold">{n.symbol}</span>
+                    <span>{n.time || n.date}</span>
+                  </div>
+                  <div className="text-[15px] font-medium text-emerald-300 mb-1">
+                    {n.title}
+                  </div>
+                  <div className="text-[13px] text-gray-400 mb-2">{n.source}</div>
+                  <div className="flex justify-between items-center">
+                    <button className="bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-xs px-3 py-1 rounded-lg">
+                      📄 Summary
+                    </button>
+                    <span
+                      className={`text-xs font-semibold ${
+                        n.sentiment === "Positive"
+                          ? "text-green-400"
+                          : n.sentiment === "Negative"
+                          ? "text-red-400"
+                          : "text-yellow-400"
+                      }`}
+                    >
+                      {n.sentiment || "Neutral"}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Menu */}
         {activeTab === "menu" && (
           <div className="max-w-6xl mx-auto px-6 py-10 text-center text-gray-300">
             <h2 className="text-emerald-400 text-2xl font-bold mb-4">⚙️ Settings & Info</h2>
-            <p className="mb-2">
-              🌍 Visionary Stock Screener — AI-driven market insights.
-            </p>
-            <p className="mb-4">📡 Data auto-refresh every 10 minutes.</p>
-
+            <p className="mb-2">🌍 Visionary Stock Screener — AI-driven insights.</p>
+            <p className="mb-4">📡 Auto-refresh every 10 minutes.</p>
             <button
               onClick={loadAll}
               className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 px-5 py-2 rounded-lg text-emerald-300 text-sm font-semibold mb-5"
             >
               🔄 Reload Data
             </button>
-
             <div className="text-xs text-gray-500">
-              Version 1.0.2 • Built by AI Engine • {new Date().getFullYear()}
+              Version 1.0.3 • Built by AI Engine • {new Date().getFullYear()}
             </div>
           </div>
         )}
@@ -350,7 +374,6 @@ export default function Home() {
           <span className="text-[18px]">💙</span>
           <span>Favorites</span>
         </button>
-
         <button
           onClick={() => setActiveTab("market")}
           className={`py-2 flex flex-col items-center ${
@@ -360,7 +383,15 @@ export default function Home() {
           <span className="text-[18px]">🌐</span>
           <span>Market</span>
         </button>
-
+        <button
+          onClick={() => setActiveTab("news")}
+          className={`py-2 flex flex-col items-center ${
+            activeTab === "news" ? "text-purple-400" : "hover:text-purple-300"
+          }`}
+        >
+          <span className="text-[18px]">🧠</span>
+          <span>News</span>
+        </button>
         <button
           onClick={() => setActiveTab("menu")}
           className={`py-2 flex flex-col items-center ${
