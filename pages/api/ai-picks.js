@@ -1,57 +1,48 @@
-// ✅ AI Screener: Full US Market (NASDAQ + NYSE)
-// สแกนหุ้นทั้งหมด ~7000 ตัว พร้อมระบบ Cache + Smart Signal
+// ✅ AI Screener — Full US Market (NASDAQ + NYSE) with /api/symbols support
+// ใช้ข้อมูลจาก /api/symbols (ของโปรเจคคุณเอง) + วิเคราะห์ RSI/EMA/Trend + Cache
 
-const STQS = [
-  "https://stooq.com/t/s/us_nasdaq.csv",
-  "https://stooq.com/t/s/us_nyse.csv",
-];
 const CACHE_TTL_MS = 1000 * 60 * 30; // 30 นาที
 
 if (!globalThis.__AI_CACHE__)
-  globalThis.__AI_CACHE__ = { tickers: null, tickersAt: 0, chart: new Map(), aiPages: new Map() };
+  globalThis.__AI_CACHE__ = { symbols: null, symbolsAt: 0, chart: new Map(), aiPages: new Map() };
 const C = globalThis.__AI_CACHE__;
 
-// 🧩 CSV → หุ้น
-function csvToTickers(csv) {
-  const lines = csv.trim().split(/\r?\n/);
-  lines.shift();
-  const list = [];
-  for (const line of lines) {
-    const s = line.split(",")[0]?.trim();
-    if (s && /^[A-Z]{1,6}$/.test(s)) list.push(s);
-  }
-  return list;
-}
-
-// 🧩 โหลดหุ้นทั้งหมด
+// 🧩 โหลดหุ้นจาก /api/symbols (ใช้ cache ด้วย)
 async function fetchUniverse() {
   const now = Date.now();
-  if (C.tickers && now - C.tickersAt < CACHE_TTL_MS) return C.tickers;
+  if (C.symbols && now - C.symbolsAt < CACHE_TTL_MS) return C.symbols;
+
   try {
-    const csvs = await Promise.allSettled(STQS.map(u => fetch(u).then(r => r.text())));
-    const valid = csvs.filter(x => x.status === "fulfilled").map(x => x.value);
-    let tickers = Array.from(new Set(valid.flatMap(csvToTickers)));
-    tickers = tickers.slice(0, 7000);
-    if (!tickers.length) throw new Error("Empty stock list");
-    C.tickers = tickers;
-    C.tickersAt = now;
-    return tickers;
-  } catch {
+    const url = "https://expert-journey-five.vercel.app/api/symbols";
+    const r = await fetch(url);
+    const j = await r.json();
+    const symbols = j.symbols?.map((x) => x.symbol)?.filter(Boolean) || [];
+
+    if (!symbols.length) throw new Error("No stock list");
+
+    C.symbols = symbols;
+    C.symbolsAt = now;
+    return symbols;
+  } catch (err) {
+    console.error("❌ fetchUniverse error:", err);
     throw new Error("No stock list.");
   }
 }
 
-// 🧩 ดึงกราฟจาก Yahoo
+// 🧩 ดึงกราฟจาก Yahoo Finance
 async function fetchChart(sym) {
   try {
     if (C.chart.has(sym)) return C.chart.get(sym);
+
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=6mo&interval=1d`;
     const r = await fetch(url);
     if (!r.ok) throw new Error("Yahoo error");
+
     const j = await r.json();
     const d = j?.chart?.result?.[0];
     const q = d?.indicators?.quote?.[0];
-    if (!q?.close?.length) throw new Error("No data");
+    if (!q?.close?.length) throw new Error("No chart data");
+
     const closes = q.close.filter(Boolean);
     const data = { closes };
     C.chart.set(sym, data);
@@ -61,7 +52,7 @@ async function fetchChart(sym) {
   }
 }
 
-// 🧠 คำนวณ RSI + EMA + สัญญาณ
+// 🧠 ตัวคำนวณ RSI + EMA + สัญญาณ
 function ema(arr, p) {
   if (!arr.length) return 0;
   const k = 2 / (p + 1);
@@ -74,7 +65,8 @@ function rsi(c, p = 14) {
   let g = 0, l = 0;
   for (let i = 1; i <= p; i++) {
     const d = c[i] - c[i - 1];
-    if (d > 0) g += d; else l -= d;
+    if (d > 0) g += d;
+    else l -= d;
   }
   g /= p; l /= p;
   const rs = l === 0 ? 0 : g / l;
@@ -129,16 +121,30 @@ export default async function handler(req, res) {
     // ใช้ cache รายหน้า
     const hit = C.aiPages.get(key);
     if (hit && now - hit.at < CACHE_TTL_MS)
-      return res.status(200).json({ count: hit.results.length, results: hit.results, cached: true });
+      return res.status(200).json({
+        count: hit.results.length,
+        results: hit.results,
+        cached: true,
+      });
 
+    // ✅ โหลดหุ้นจาก /api/symbols
     const universe = await fetchUniverse();
     const batch = universe.slice(O, O + L);
+
+    // ✅ วิเคราะห์สัญญาณ
     const results = await analyzeBatch(batch);
     const sorted = results.sort((a, b) => b.score - a.score);
+
+    // ✅ เก็บ cache
     C.aiPages.set(key, { at: now, results: sorted });
 
-    res.status(200).json({ count: sorted.length, results: sorted, cached: false });
+    res.status(200).json({
+      count: sorted.length,
+      results: sorted,
+      cached: false,
+    });
   } catch (e) {
+    console.error("AI Picks Error:", e);
     res.status(500).json({ error: e.message || "Internal error" });
   }
-}
+     }
