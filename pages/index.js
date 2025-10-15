@@ -139,7 +139,7 @@ export default function Home() {
     );
   };
 
-  // ตารางหุ้น
+  // ✅ ตารางหุ้น (แก้ให้เต็มระบบ)
   const Table = ({ rows = [], compact }) => (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse text-center">
@@ -167,13 +167,27 @@ export default function Home() {
               if (!sym) return null;
               const isFav = favorites.includes(sym);
               const f = favoritePrices[sym];
-              const priceText = f?.price
-                ? `$${f.price.toFixed(2)}`
-                : r.lastClose
-                ? `$${r.lastClose.toFixed(2)}`
-                : "-";
-              const rsi = f?.rsi ?? r.rsi ?? "-";
-              const sig = f?.signal ?? r.signal ?? r.AI ?? "-";
+
+              // ✅ ปรับตรงนี้ให้รองรับ AI Picks (price, rsi, signal)
+              const priceText =
+                r.price
+                  ? `$${Number(r.price).toFixed(2)}`
+                  : f?.price
+                  ? `$${f.price.toFixed(2)}`
+                  : r.lastClose
+                  ? `$${r.lastClose.toFixed(2)}`
+                  : "-";
+
+              const rsi =
+                r.rsi !== undefined
+                  ? Number(r.rsi).toFixed(1)
+                  : f?.rsi !== undefined
+                  ? Number(f.rsi).toFixed(1)
+                  : "-";
+
+              const sig =
+                r.signal || f?.signal || r.AI || "-";
+
               const sigColor =
                 sig === "Buy"
                   ? "text-green-400"
@@ -196,7 +210,17 @@ export default function Home() {
                     <a href={`/analyze/${sym}`}>{sym}</a>
                   </td>
                   <td className="p-2 font-mono">{priceText}</td>
-                  <td className="p-2 text-gray-300">{rsi}</td>
+                  <td
+                    className={`p-2 font-mono ${
+                      rsi >= 70
+                        ? "text-red-400"
+                        : rsi <= 30
+                        ? "text-green-400"
+                        : "text-gray-300"
+                    }`}
+                  >
+                    {rsi}
+                  </td>
                   <td className={`p-2 font-semibold ${sigColor}`}>{sig}</td>
                 </tr>
               );
@@ -415,15 +439,4 @@ export default function Home() {
         </button>
         <button
           onClick={() => setActiveTab("menu")}
-          className={`py-2 flex flex-col items-center ${
-            activeTab === "menu" ? "text-blue-400" : "hover:text-blue-300"
-          }`}
-        >
-          <span className="text-[18px]">☰</span>
-          Menu
-        </button>
-      </nav>
-    </main>
-  );
-        }
-    
+          className={`py-
