@@ -571,27 +571,4 @@ function AlertSystem() {
   useEff(() => {
     const saved = localStorage.getItem("alerts");
     if (saved) setAlerts(JSON.parse(saved));
-
-         {/* Toast แจ้งเตือนของ AutoScan */}
-      <div className="fixed top-16 right-4 space-y-2 z-50">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className="bg-[#101827]/90 border border-cyan-400/40 text-cyan-100 px-3 py-2 rounded shadow"
-          >
-            {m.msg}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ---------------------------------------------------------
-   ✅ สรุปฟังก์ชันทั้งหมดในไฟล์
-   - Home()       → หน้าหลัก Market/Favorites/News/Alerts
-   - AlertSystem() → แจ้งเตือนราคาหุ้น/RSI/AI
-   - AutoMarketScan() → สแกนหุ้นอัตโนมัติทั้งตลาด (US)
---------------------------------------------------------- */
-
-// ✅ จบไฟล์
+       }
