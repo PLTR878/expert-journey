@@ -1,10 +1,17 @@
-// ✅ /pages/api/scan.js — AutoMarketScan Pro v3.0
+// ✅ /pages/api/scan.js — AutoMarketScan Pro v3.1 (Stable)
 const SYMBOL_SOURCE = "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX";
 
-function computeRSI14(closes) {
+// ===== RSI 14 วันแบบ fallback =====
+function computeRSI14(closes = []) {
   const n = 14;
   if (!closes || closes.length < n + 1) return null;
-  let gains = 0, losses = 0;
+
+  // ลบค่าที่เป็น null หรือ NaN
+  closes = closes.filter((v) => typeof v === "number" && !isNaN(v));
+  if (closes.length < n + 1) return null;
+
+  let gains = 0,
+    losses = 0;
   for (let i = 1; i <= n; i++) {
     const diff = closes[i] - closes[i - 1];
     if (diff >= 0) gains += diff;
@@ -12,6 +19,7 @@ function computeRSI14(closes) {
   }
   let avgGain = gains / n;
   let avgLoss = losses / n;
+
   for (let i = n + 1; i < closes.length; i++) {
     const diff = closes[i] - closes[i - 1];
     const gain = diff > 0 ? diff : 0;
@@ -19,27 +27,27 @@ function computeRSI14(closes) {
     avgGain = (avgGain * (n - 1) + gain) / n;
     avgLoss = (avgLoss * (n - 1) + loss) / n;
   }
+
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
   return 100 - 100 / (1 + rs);
 }
 
+// ===== AI สรุปสัญญาณจาก RSI =====
 function decideAISignal(rsi) {
-  if (rsi == null) return "Neutral";
+  if (rsi == null || isNaN(rsi)) return "Neutral";
   if (rsi >= 55) return "Buy";
   if (rsi <= 45) return "Sell";
   return "Neutral";
 }
 
+// ===== ตัวช่วย =====
 function within(v, lo, hi) {
   if (lo != null && v < lo) return false;
   if (hi != null && v > hi) return false;
   return true;
 }
-
-async function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function handler(req, res) {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -49,6 +57,7 @@ export default async function handler(req, res) {
   const write = (obj) => res.write(JSON.stringify(obj) + "\n");
 
   try {
+    // ===== ดึงค่าพารามิเตอร์จาก front-end =====
     const {
       mode = "Any",
       rsiMin = "0",
@@ -68,8 +77,9 @@ export default async function handler(req, res) {
     const LIMIT = Number(maxSymbols);
     const BATCH = Number(batchSize);
 
+    // ===== โหลดสัญลักษณ์ทั้งหมด =====
     const listResp = await fetch(SYMBOL_SOURCE, { cache: "no-store" });
-    if (!listResp.ok) throw new Error("Load symbol list failed");
+    if (!listResp.ok) throw new Error("โหลดรายชื่อหุ้นล้มเหลว ❌");
 
     const listJson = await listResp.json();
     let symbols = listJson.map((s) => s.ticker).filter(Boolean);
@@ -80,6 +90,7 @@ export default async function handler(req, res) {
 
     let found = 0;
 
+    // ===== สแกนเป็น batch =====
     for (let i = 0; i < total; i += BATCH) {
       const batch = symbols.slice(i, i + BATCH);
 
@@ -93,17 +104,44 @@ export default async function handler(req, res) {
             const result = data?.chart?.result?.[0];
             if (!result) return null;
 
-            const closes = result.indicators?.quote?.[0]?.close || [];
+            // ✅ ป้องกันไม่มี close
+            let closes =
+              result.indicators?.quote?.[0]?.close?.filter(
+                (v) => typeof v === "number" && !isNaN(v)
+              ) || [];
+            if (!closes?.length) return null;
+
             const meta = result.meta || {};
-            const price = meta.regularMarketPrice ?? closes.at(-1) ?? null;
-            const rsi = computeRSI14(closes);
-            const ai = decideAISignal(rsi);
-            if (!price || !rsi) return null;
+            const price =
+              meta.regularMarketPrice ??
+              closes.at(-1) ??
+              meta.previousClose ??
+              null;
+
+            // ✅ คำนวณ RSI พร้อม fallback
+            const rsi =
+              computeRSI14(closes) ??
+              computeRSI14(closes.slice(-20)) ??
+              computeRSI14(closes.slice(-10)) ??
+              null;
+
+            if (!price || !rsi || isNaN(rsi)) return null;
             if (!within(price, P_MIN, P_MAX)) return null;
             if (!within(rsi, RSI_MIN, RSI_MAX)) return null;
-            if (mode !== "Any" && ai !== mode) return null;
 
-            return { symbol, ai, rsi: +rsi.toFixed(2), price: +price.toFixed(2) };
+            const ai = decideAISignal(rsi);
+            if (
+              mode.toLowerCase() !== "any" &&
+              ai.toLowerCase() !== mode.toLowerCase()
+            )
+              return null;
+
+            return {
+              symbol,
+              ai,
+              rsi: +rsi.toFixed(2),
+              price: +price.toFixed(2),
+            };
           } catch {
             return null;
           }
@@ -116,19 +154,18 @@ export default async function handler(req, res) {
         write({ hit: r.value });
       }
 
-      const progress = Math.min(100, Math.round((i / total) * 100));
+      const progress = Math.min(100, Math.round(((i + BATCH) / total) * 100));
       write({ progress, log: `📊 กำลังสแกน... ${progress}%` });
-
       await sleep(300);
     }
 
     write({
       done: true,
-      log: `✅ สแกนครบแล้วทั้งหมด ${total} หุ้น — พบ ${found} หุ้นเข้าเงื่อนไข`,
+      log: `✅ สแกนครบแล้ว ${total} หุ้น — พบ ${found} หุ้นเข้าเงื่อนไข`,
     });
     res.end();
   } catch (err) {
     write({ error: err.message || String(err) });
     res.end();
   }
-}
+              }
