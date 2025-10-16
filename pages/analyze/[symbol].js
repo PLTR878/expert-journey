@@ -127,6 +127,33 @@ export default function Analyze() {
               <Info label="🤖 AI Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
               <Info label="📋 System Reason" value={sig.reason} className="col-span-2" />
             </div>
+
+            {/* ✅ เพิ่มส่วน AI Entry Zone */}
+            <section className="mt-5 bg-[#0f172a] rounded-2xl border border-white/10 p-4">
+              <h3 className="text-lg font-semibold text-emerald-400 mb-2">🎯 AI Entry Zone</h3>
+              {ind && ind.rsi ? (() => {
+                const rsi = ind.rsi;
+                const ai = sig.action;
+                const entryLow = (price * 0.98).toFixed(2);
+                const entryHigh = (price * 1.02).toFixed(2);
+
+                let color = "text-gray-400";
+                let msg = "⚪ รอสัญญาณยืนยัน — ยังไม่เข้าโซนซื้อ";
+
+                if (ai === "Buy" && rsi >= 45 && rsi <= 60) {
+                  color = "text-emerald-400";
+                  msg = `🟢 เข้าได้! โซนซื้อ AI (${entryLow} - ${entryHigh}) | RSI ${rsi.toFixed(1)}`;
+                } else if (rsi > 60 && rsi <= 70) {
+                  color = "text-yellow-400";
+                  msg = "🟡 Hold — รอดูแรงซื้อต่อเนื่องก่อน";
+                } else if (rsi > 70) {
+                  color = "text-red-400";
+                  msg = "🔴 Overbought — อย่าเพิ่งเข้า!";
+                }
+
+                return <div className={`${color} font-semibold text-sm`}>{msg}</div>;
+              })() : <p className="text-gray-500 text-sm">Loading Entry Zone...</p>}
+            </section>
           </section>
 
           {/* Indicators */}
@@ -184,7 +211,7 @@ export default function Analyze() {
   );
 }
 
-/* ✅ กล่อง Info — เวอร์ชันมืออาชีพ (จัดกลาง + แสงเงา) */
+/* ✅ กล่อง Info — เวอร์ชันมืออาชีพ */
 function Info({ label, value, className = '' }) {
   const color =
     value?.includes('%')
@@ -195,14 +222,14 @@ function Info({ label, value, className = '' }) {
 
   return (
     <div
-      className={`rounded-xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220] 
+      className={`rounded-xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220]
       p-4 flex flex-col items-center justify-center text-center
-      shadow-[inset_0_2px_6px_rgba(255,255,255,0.03)] hover:border-emerald-400/30 
+      shadow-[inset_0_2px_6px_rgba(255,255,255,0.03)] hover:border-emerald-400/30
       transition-all duration-300 ${className}`}
     >
       <div className="text-[11px] text-gray-400 tracking-wide mb-2">{label}</div>
       <div
-        className={`text-[17px] sm:text-[18px] font-bold font-[monospace] tracking-wide leading-tight ${color} 
+        className={`text-[17px] sm:text-[18px] font-bold font-[monospace] tracking-wide leading-tight ${color}
         drop-shadow-[0_0_6px_rgba(16,185,129,0.25)] bg-gradient-to-b from-white/90 to-gray-300/40 bg-clip-text text-transparent
         transition-all duration-300 hover:scale-[1.05] hover:opacity-90`}
       >
@@ -210,4 +237,4 @@ function Info({ label, value, className = '' }) {
       </div>
     </div>
   );
-    }
+          }
