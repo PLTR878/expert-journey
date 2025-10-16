@@ -923,4 +923,4 @@ function AutoMarketScan() {
       </div>
     </section>
   );
-  }
+         }
