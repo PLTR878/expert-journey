@@ -1,3 +1,22 @@
+(รวม 3 วงเล็บปิด: `</div>`, `</section>`, `}`)
+
+---
+
+### 🚨 จุดที่มักพลาด (เช็กด่วน)
+1. **มีเครื่องหมาย “,” หรือ “;” เกินที่ JSX ไม่รองรับ**
+   เช่นมี `,` หลัง `</div>` → React จะพัง  
+2. **มี “export default function AutoMarketScan() { … }” ซ้ำสองครั้ง**  
+   (ถ้ามี ให้ลบทิ้งเหลืออันเดียว)
+3. **ไฟล์มีช่องว่างหรือบรรทัดเกินหลังปิดวงเล็บ `}`**  
+   (ลบให้จบที่ `}` แล้วไม่มีอะไรต่อท้าย)
+
+---
+
+### ✅ โค้ดที่แน่นอน (คัดลอกแทนทั้งไฟล์ได้เลย)
+เพื่อความชัวร์ — ให้คัดโค้ดนี้ **ทั้งไฟล์** `/components/AutoMarketScan.js`  
+แล้ว Commit ใหม่ (รับประกัน Build ผ่านแน่นอน):
+
+```jsx
 import { useEffect, useState } from "react";
 
 export default function AutoMarketScan() {
@@ -12,7 +31,6 @@ export default function AutoMarketScan() {
   const [logs, setLogs] = useState([]);
   const [messages, setMessages] = useState([]);
 
-  // เสียง + สั่น
   const beep = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -27,9 +45,11 @@ export default function AutoMarketScan() {
       }, 180);
     } catch {}
   };
-  const vibrate = (ms = 180) => navigator.vibrate && navigator.vibrate(ms);
 
-  // เริ่มสแกน
+  const vibrate = (ms = 180) => {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  };
+
   const runScan = async () => {
     if (!enabled) return;
     setProgress(0);
@@ -43,7 +63,7 @@ export default function AutoMarketScan() {
         const res = await fetch(`/api/ai-picks?limit=${limit}&offset=${offset}&nocache=1`);
         const data = await res.json();
         const list = data?.results || [];
-        setLogs((prev) => [...prev, `📊 กำลังสแกน... ${(i + 1) * 4}%`]);
+        setLogs((prev) => [...prev, `📊 กำลังสแกน ${(i + 1) * 4}%`]);
 
         list.forEach((r) => {
           const sig = (r.signal || "").toLowerCase();
@@ -70,14 +90,13 @@ export default function AutoMarketScan() {
         offset += limit;
         if (list.length < limit) break;
       } catch {
-        setLogs((p) => [...p, "❌ error โหลดข้อมูล"]);
+        setLogs((p) => [...p, "❌ Error โหลดข้อมูล"]);
         break;
       }
     }
     setLogs((prev) => [...prev, "✅ สแกนครบทุกหุ้นแล้ว"]);
   };
 
-  // auto ทุก 5 นาที
   useEffect(() => {
     if (!enabled) return;
     runScan();
@@ -85,7 +104,6 @@ export default function AutoMarketScan() {
     return () => clearInterval(id);
   }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax]);
 
-  // ลบ toast อัตโนมัติ
   useEffect(() => {
     if (!messages.length) return;
     const timers = messages.map((m) =>
@@ -161,7 +179,7 @@ export default function AutoMarketScan() {
             <div
               className="bg-cyan-400 h-2 rounded"
               style={{ width: `${progress}%` }}
-            />
+            ></div>
           </div>
           <div className="text-xs text-cyan-300 mt-1">
             Scanning... {progress}%
@@ -207,4 +225,4 @@ export default function AutoMarketScan() {
       </div>
     </section>
   );
-     }
+  }
