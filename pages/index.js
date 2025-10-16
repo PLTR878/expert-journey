@@ -574,7 +574,7 @@ function AlertSystem() {
     localStorage.setItem("alerts", JSON.stringify(alerts));
   }, [alerts]);
 
-  // ตรวจทุก 1 นาที
+    // ตรวจทุก 1 นาที
   useEff(() => {
     const beep = () => {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -767,7 +767,7 @@ function AutoMarketScan() {
         for (const item of list) {
           if (match(item)) {
             const msg = `⚡ ${item.symbol} | AI=${item.signal} | RSI=${item.rsi} | $${item.price}`;
-            ifdivnd((f) => f.msg === msg)) {
+            if (!found.find((f) => f.msg === msg)) {
               found.push({ msg });
               setMessages((p) => [...p, { id: Date.now() + Math.random(), msg }]);
               beep();
@@ -884,4 +884,4 @@ function AutoMarketScan() {
       </div>
     </section>
   );
-          }
+}
