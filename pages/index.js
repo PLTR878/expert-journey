@@ -725,8 +725,8 @@ function AlertSystem() {
       setLogs((prev) => [...prev, "❌ เกิดข้อผิดพลาดในการสแกน"]);
     }
   };
-/* =========================
-   🛰️ AUTO SCAN ทั้งตลาด (AI) — FULL VERSION with Counter
+   /* =========================
+   🛰️ AUTO SCAN ทั้งตลาด (AI) — SAFE VERSION
 ========================= */
 function AutoMarketScan() {
   const [enabled, setEnabled] = useSt(false);
@@ -739,6 +739,8 @@ function AutoMarketScan() {
   const [logs, setLogs] = useSt([]);
   const [hits, setHits] = useSt([]);
   const [scannedCount, setScannedCount] = useSt(0);
+  const [totalStocks, setTotalStocks] = useSt(0);
+  const [foundCount, setFoundCount] = useSt(0);
 
   // 🔊 เสียงเตือน
   const beep = () => {
@@ -753,38 +755,43 @@ function AutoMarketScan() {
         osc.stop();
         ctx.close();
       }, 180);
-    } catch {}
+    } catch (err) {
+      console.error("Beep error:", err);
+    }
   };
 
-  // 📳 สั่นมือถือ
+  // 📳 สั่นมือถือ (ถ้ามี)
   const vibrate = (ms = 200) => {
-    if (navigator.vibrate) navigator.vibrate(ms);
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(ms);
+    }
   };
 
-  // 🚀 ฟังก์ชันสแกนตลาดหุ้น
+  // 🚀 เริ่มสแกน
   const runScan = async () => {
     if (!enabled) return;
+
     setLogs(["🚀 เริ่มสแกนตลาดหุ้นอเมริกา..."]);
     setProgress(0);
     setHits([]);
     setScannedCount(0);
+    setFoundCount(0);
 
     try {
-      const totalPages = 25; // 25 หน้า × 200 หุ้น = 5000 หุ้น
+      const totalPages = 25; // 25 หน้า x 200 หุ้น = 5000 หุ้น
       const limit = 200;
       const totalExpected = totalPages * limit;
+      setTotalStocks(totalExpected);
 
       for (let i = 0; i < totalPages; i++) {
         const res = await fetch(`/api/ai-picks?limit=${limit}&offset=${i * limit}&nocache=1`);
-        const data = await res.json();
-        const list = data?.results || [];
+        const data = await res.json().catch(() => ({}));
+        const list = Array.isArray(data?.results) ? data.results : [];
 
-        // ✅ ตัวนับหุ้น
         setScannedCount((prev) => prev + list.length);
 
-        // ✅ ตรวจแต่ละหุ้นตามเงื่อนไข
         for (const s of list) {
-          const sig = (s.signal || "").toLowerCase();
+          const sig = String(s.signal || "").toLowerCase();
           const rsi = s.rsi ?? 50;
           const price = s.price ?? 0;
 
@@ -797,22 +804,21 @@ function AutoMarketScan() {
           ) {
             const hit = { symbol: s.symbol, ai: s.signal, rsi, price };
             setHits((p) => [...p.slice(-25), hit]);
-            setLogs((p) => [...p.slice(-50), `⚡ พบ ${s.symbol} | ${s.signal} | RSI=${rsi}`]);
+            setLogs((p) => [...p.slice(-60), `⚡ พบ ${s.symbol} | ${s.signal} | RSI=${rsi}`]);
+            setFoundCount((prev) => prev + 1);
             beep();
             vibrate();
           }
         }
 
-        // ✅ อัปเดต progress
         setProgress(Math.round(((i + 1) / totalPages) * 100));
-        await new Promise((r) => setTimeout(r, 150));
+        await new Promise((r) => setTimeout(r, 120));
       }
 
       setLogs((p) => [...p, "✅ สแกนครบทุกหุ้นแล้ว"]);
       setProgress(100);
-      setScannedCount(totalExpected);
     } catch (err) {
-      console.error(err);
+      console.error("Scan error:", err);
       setLogs((p) => [...p, `❌ Error: ${err.message}`]);
     }
   };
@@ -827,10 +833,12 @@ function AutoMarketScan() {
 
   return (
     <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
-      <h2 className="text-cyan-300 text-lg font-semibold mb-2">🛰️ Auto Scan — US Stocks</h2>
+      <h2 className="text-cyan-300 text-lg font-semibold mb-2">
+        🛰️ Auto Scan — US Stocks
+      </h2>
 
-      {/* 🔧 Controls */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+      {/* 🧩 Control Panel */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
         <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
           <input
             type="checkbox"
@@ -883,25 +891,30 @@ function AutoMarketScan() {
         </button>
       </div>
 
-      {/* 🔄 Progress bar */}
+      {/* 📊 Progress */}
       <div className="w-full bg-[#1a2335] h-2 rounded mt-1">
         <div
           className="bg-cyan-400 h-2 rounded transition-all"
           style={{ width: `${progress}%` }}
-        ></div>
+        />
       </div>
       <div className="text-xs text-cyan-300 mt-1">
-        Scanning... {progress}% ({scannedCount.toLocaleString()} stocks)
+        Scanning... {progress}% ({scannedCount.toLocaleString()} /{" "}
+        {totalStocks.toLocaleString()} stocks)
       </div>
 
-      {/* 📜 Real-time Logs */}
+      <div className="text-xs text-emerald-300 mt-1">
+        ✅ พบทั้งหมด {foundCount} หุ้นเข้าเงื่อนไข
+      </div>
+
+      {/* 🧠 Log Panel */}
       <div className="bg-[#0d1423]/60 p-2 mt-3 rounded text-[12px] text-gray-300 h-28 overflow-y-auto font-mono">
         {logs.map((l, i) => (
           <div key={i}>{l}</div>
         ))}
       </div>
 
-      {/* ⚡ หุ้นที่เข้าเงื่อนไข */}
+      {/* ⚡ Results */}
       <div className="mt-3">
         <h3 className="text-cyan-200 text-sm font-semibold mb-1">
           Latest Matches ({hits.length})
@@ -923,4 +936,4 @@ function AutoMarketScan() {
       </div>
     </section>
   );
-         }
+  }
