@@ -710,7 +710,6 @@ function AlertSystem() {
     </section>
   );
 }
-(-40), `⚡ พบ ${s.symbol} | ${s.signal} | RSI=${rsi}`]);
             beep();
             vibrate();
           }
