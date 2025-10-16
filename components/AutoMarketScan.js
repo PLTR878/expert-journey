@@ -1,20 +1,18 @@
 /* =========================
-   🛰️ AUTO SCAN ทั้งตลาด (Realtime Stream)
+   🛰️ AUTO SCAN — Real-Time Log
 ========================= */
 function AutoMarketScan() {
   const [enabled, setEnabled] = useSt(false);
   const [aiSignal, setAiSignal] = useSt("Any");
-  const [rsiMin, setRsiMin] = useSt("35");
-  const [rsiMax, setRsiMax] = useSt("55");
-  const [priceMin, setPriceMin] = useSt("1");
-  const [priceMax, setPriceMax] = useSt("25");
-  const [progress, setProgress] = useSt(0);
+  const [rsiMin, setRsiMin] = useSt("");
+  const [rsiMax, setRsiMax] = useSt("");
+  const [priceMin, setPriceMin] = useSt("");
+  const [priceMax, setPriceMax] = useSt("");
+  const [scanProg, setScanProg] = useSt(0);
   const [hits, setHits] = useSt([]);
   const [messages, setMessages] = useSt([]);
   const [logs, setLogs] = useSt([]);
-  const [scanning, setScanning] = useSt(false);
 
-  // 🔊 เสียงแจ้งเตือน
   const beep = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -30,18 +28,16 @@ function AutoMarketScan() {
     } catch {}
   };
 
-  // 🚀 เริ่มสแกนแบบ Realtime Stream
   const runScan = async () => {
-    if (scanning) return;
-    setScanning(true);
+    if (!enabled) return;
+    setScanProg(0);
     setHits([]);
-    setLogs(["🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..."]);
-    setProgress(0);
+    setLogs(["🚀 เริ่มสแกนตลาดหุ้นอเมริกา..."]);
 
     try {
-      const url = `/api/scan?mode=${aiSignal}&rsiMin=${rsiMin}&rsiMax=${rsiMax}&priceMin=${priceMin}&priceMax=${priceMax}&maxSymbols=8000&batchSize=80`;
+      const url = `/api/scan?mode=${aiSignal}&rsiMin=${rsiMin}&rsiMax=${rsiMax}&priceMin=${priceMin}&priceMax=${priceMax}`;
       const res = await fetch(url);
-      if (!res.body) throw new Error("ไม่สามารถเชื่อมต่อสตรีมข้อมูลได้");
+      if (!res.body) throw new Error("ไม่สามารถเชื่อมต่อ API ได้");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
@@ -50,6 +46,7 @@ function AutoMarketScan() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split("\n");
         buffer = parts.pop();
@@ -59,56 +56,57 @@ function AutoMarketScan() {
           try {
             const data = JSON.parse(part);
 
-            if (data.log) setLogs((p) => [...p, data.log].slice(-80));
-            if (data.progress) setProgress(data.progress);
-
-            if (data.hit) {
-              const { symbol, ai, rsi, price } = data.hit;
-              const msg = `⚡ ${symbol} | ${ai} | RSI ${rsi} | $${price}`;
-              setHits((p) => [...p, { symbol, ai, rsi, price }]);
-              setMessages((p) => [...p, { id: Date.now() + Math.random(), msg }]);
-              beep();
+            if (data.log) {
+              setLogs((p) => [...p.slice(-50), data.log]);
             }
-
-            if (data.done) {
-              setLogs((p) => [...p, "✅ สแกนครบแล้ว"]);
-              setProgress(100);
+            if (data.progress) {
+              setScanProg(data.progress);
+            }
+            if (data.hit) {
+              setHits((p) => [...p.slice(-30), data.hit]);
+              beep();
+              setMessages((p) => [
+                ...p,
+                {
+                  id: Date.now(),
+                  msg: `⚡ ${data.hit.symbol} | ${data.hit.ai} | RSI=${data.hit.rsi} | $${data.hit.price}`,
+                },
+              ]);
             }
           } catch {}
         }
       }
+      setLogs((p) => [...p, "✅ สแกนเสร็จสมบูรณ์!"]);
+      setScanProg(100);
     } catch (err) {
       setLogs((p) => [...p, `❌ Error: ${err.message}`]);
-    } finally {
-      setScanning(false);
     }
   };
 
-  // 🔁 Auto Scan ทุก 10 นาที
+  // Auto run ทุก 5 นาที
   useEff(() => {
     if (!enabled) return;
     runScan();
-    const id = setInterval(runScan, 10 * 60 * 1000);
+    const id = setInterval(runScan, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax]);
 
-  // 🔔 Toast auto remove
+  // Toast auto remove
   useEff(() => {
     if (!messages.length) return;
     const timers = messages.map((m) =>
-      setTimeout(() => setMessages((p) => p.filter((x) => x.id !== m.id)), 5000)
+      setTimeout(() => {
+        setMessages((p) => p.filter((x) => x.id !== m.id));
+      }, 5000)
     );
     return () => timers.forEach(clearTimeout);
   }, [messages]);
 
   return (
     <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
-      <h2 className="text-cyan-300 text-lg font-semibold mb-2">
-        🛰️ Auto Scan — US Stocks (Realtime)
-      </h2>
+      <h2 className="text-cyan-300 text-lg font-semibold mb-2">🛰️ Auto Scan — US Stocks</h2>
 
-      {/* ตัวควบคุม */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
         <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
           <input
             type="checkbox"
@@ -153,57 +151,47 @@ function AutoMarketScan() {
           value={priceMax}
           onChange={(e) => setPriceMax(e.target.value)}
         />
-
         <button
           onClick={runScan}
-          disabled={scanning}
-          className={`rounded px-3 py-2 font-semibold border ${
-            scanning
-              ? "bg-gray-600/30 border-gray-500 text-gray-400"
-              : "bg-emerald-500/20 border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30"
-          }`}
+          className="bg-emerald-500/20 border border-emerald-400/40 rounded px-3 py-2 text-emerald-300 font-semibold"
         >
-          {scanning ? "🔍 Scanning..." : "▶️ Run Now"}
+          ▶️ Run Now
         </button>
       </div>
 
       {/* Progress */}
-      <div className="mt-3">
-        <div className="w-full bg-[#1a2335] h-2 rounded">
-          <div
-            className="bg-cyan-400 h-2 rounded transition-all"
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-        <div className="text-xs text-cyan-300 mt-1">
-          {scanning
-            ? `กำลังสแกน... ${progress}%`
-            : `สถานะ: ${enabled ? "Auto Enabled" : "Idle"}`}
-        </div>
+      <div className="w-full bg-[#1a2335] h-2 rounded mt-1">
+        <div
+          className="bg-cyan-400 h-2 rounded transition-all"
+          style={{ width: `${scanProg}%` }}
+        ></div>
+      </div>
+      <div className="text-xs text-cyan-300 mt-1">
+        Scanning... {scanProg}%
       </div>
 
-      {/* Logs */}
-      <div className="mt-3 bg-[#0d1423]/70 p-3 rounded-lg text-xs text-gray-300 h-32 overflow-y-auto font-mono">
+      {/* Real-time Log */}
+      <div className="bg-[#0d1423]/60 p-2 mt-3 rounded text-[12px] text-gray-300 h-28 overflow-y-auto font-mono">
         {logs.map((l, i) => (
           <div key={i}>{l}</div>
         ))}
       </div>
 
-      {/* Hits */}
-      <div className="mt-4">
-        <h3 className="text-cyan-200 text-sm font-semibold mb-2">
+      {/* Results */}
+      <div className="mt-3">
+        <h3 className="text-cyan-200 text-sm font-semibold mb-1">
           Latest Matches ({hits.length})
         </h3>
         {hits.length === 0 ? (
-          <div className="text-gray-400 text-sm">ยังไม่พบที่เข้าเงื่อนไข</div>
+          <div className="text-gray-400 text-sm">ยังไม่พบหุ้นเข้าเงื่อนไข</div>
         ) : (
           <ul className="space-y-1">
             {hits.map((h, i) => (
               <li
                 key={i}
-                className="text-sm text-emerald-200 bg-[#0e1628]/70 border border-white/10 rounded px-3 py-2"
+                className="text-sm text-emerald-200 bg-[#0e1628]/70 border border-white/10 rounded px-3 py-1.5"
               >
-                ⚡ {h.symbol} — {h.ai} | RSI={h.rsi} | ${h.price}
+                ⚡ {h.symbol} | {h.ai} | RSI={h.rsi} | ${h.price}
               </li>
             ))}
           </ul>
@@ -211,7 +199,7 @@ function AutoMarketScan() {
       </div>
 
       {/* Toast */}
-      <div className="fixed top-28 right-4 space-y-2 z-50">
+      <div className="fixed top-24 right-4 space-y-2 z-50">
         {messages.map((m) => (
           <div
             key={m.id}
@@ -223,4 +211,4 @@ function AutoMarketScan() {
       </div>
     </section>
   );
-    }
+               }
