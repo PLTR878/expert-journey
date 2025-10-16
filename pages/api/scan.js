@@ -1,4 +1,4 @@
-// ✅ /pages/api/scan.js — Visionary AutoMarketScan (SSE version)
+// ✅ /pages/api/scan.js — Visionary AutoMarketScan (Realtime SSE)
 const SYMBOL_SOURCE = "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX";
 
 function computeRSI14(closes) {
@@ -42,7 +42,6 @@ async function sleep(ms) {
 }
 
 export default async function handler(req, res) {
-  // ✅ SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
@@ -70,17 +69,16 @@ export default async function handler(req, res) {
     const BATCH = Number(batchSize);
 
     const listResp = await fetch(SYMBOL_SOURCE, { cache: "no-store" });
-    if (!listResp.ok) throw new Error("โหลดรายชื่อหุ้นไม่สำเร็จ");
+    if (!listResp.ok) throw new Error("โหลดรายชื่อหุ้นล้มเหลว");
 
     const listJson = await listResp.json();
     let symbols = listJson.map((s) => s.ticker).filter(Boolean);
     if (symbols.length > LIMIT) symbols = symbols.slice(0, LIMIT);
 
     const total = symbols.length;
-    send({ log: `🚀 เริ่มสแกนหุ้นทั้งหมด ${total} ตัว...` });
+    send({ log: `🚀 เริ่มสแกนทั้งหมด ${total} หุ้น...` });
 
     let found = 0;
-
     for (let i = 0; i < total; i += BATCH) {
       const batch = symbols.slice(i, i + BATCH);
 
@@ -122,10 +120,10 @@ export default async function handler(req, res) {
       await sleep(200);
     }
 
-    send({ done: true, log: `✅ สแกนครบแล้ว พบ ${found} หุ้นเข้าเงื่อนไข` });
+    send({ done: true, log: `✅ สแกนครบ ${total} หุ้น พบ ${found} หุ้นเข้าเงื่อนไข` });
     res.end();
   } catch (err) {
-    send({ error: err.message || String(err) });
+    send({ error: err.message });
     res.end();
   }
-}
+        }
