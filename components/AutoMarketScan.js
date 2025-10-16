@@ -1,5 +1,5 @@
 /* =========================
-   🛰️ AUTO SCAN — Real-Time Log
+   🛰️ AUTO SCAN — Real-Time Log + Sound + Vibrate
 ========================= */
 function AutoMarketScan() {
   const [enabled, setEnabled] = useSt(false);
@@ -13,21 +13,28 @@ function AutoMarketScan() {
   const [messages, setMessages] = useSt([]);
   const [logs, setLogs] = useSt([]);
 
+  // 🔊 เสียงเตือน
   const beep = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
-      osc.type = "square";
-      osc.frequency.value = 880;
+      osc.type = "sine";
+      osc.frequency.value = 900;
       osc.connect(ctx.destination);
       osc.start();
       setTimeout(() => {
         osc.stop();
         ctx.close();
-      }, 200);
+      }, 180);
     } catch {}
   };
 
+  // 📱 สั่นมือถือ
+  const vibrate = (ms = 300) => {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  };
+
+  // 🚀 ฟังก์ชันสแกนตลาด
   const runScan = async () => {
     if (!enabled) return;
     setScanProg(0);
@@ -46,7 +53,6 @@ function AutoMarketScan() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split("\n");
         buffer = parts.pop();
@@ -56,15 +62,14 @@ function AutoMarketScan() {
           try {
             const data = JSON.parse(part);
 
-            if (data.log) {
-              setLogs((p) => [...p.slice(-50), data.log]);
-            }
-            if (data.progress) {
+            if (data.log)
+              setLogs((p) => [...p.slice(-60), data.log]);
+            if (data.progress)
               setScanProg(data.progress);
-            }
             if (data.hit) {
               setHits((p) => [...p.slice(-30), data.hit]);
               beep();
+              vibrate();
               setMessages((p) => [
                 ...p,
                 {
@@ -76,7 +81,8 @@ function AutoMarketScan() {
           } catch {}
         }
       }
-      setLogs((p) => [...p, "✅ สแกนเสร็จสมบูรณ์!"]);
+
+      setLogs((p) => [...p, "✅ สแกนเสร็จสมบูรณ์"]);
       setScanProg(100);
     } catch (err) {
       setLogs((p) => [...p, `❌ Error: ${err.message}`]);
@@ -104,7 +110,9 @@ function AutoMarketScan() {
 
   return (
     <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
-      <h2 className="text-cyan-300 text-lg font-semibold mb-2">🛰️ Auto Scan — US Stocks</h2>
+      <h2 className="text-cyan-300 text-lg font-semibold mb-2">
+        🛰️ Auto Scan — US Stocks
+      </h2>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
         <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
@@ -166,18 +174,16 @@ function AutoMarketScan() {
           style={{ width: `${scanProg}%` }}
         ></div>
       </div>
-      <div className="text-xs text-cyan-300 mt-1">
-        Scanning... {scanProg}%
-      </div>
+      <div className="text-xs text-cyan-300 mt-1">Scanning... {scanProg}%</div>
 
-      {/* Real-time Log */}
+      {/* 📜 Real-time Log */}
       <div className="bg-[#0d1423]/60 p-2 mt-3 rounded text-[12px] text-gray-300 h-28 overflow-y-auto font-mono">
         {logs.map((l, i) => (
           <div key={i}>{l}</div>
         ))}
       </div>
 
-      {/* Results */}
+      {/* ⚡ Hits */}
       <div className="mt-3">
         <h3 className="text-cyan-200 text-sm font-semibold mb-1">
           Latest Matches ({hits.length})
@@ -198,7 +204,7 @@ function AutoMarketScan() {
         )}
       </div>
 
-      {/* Toast */}
+      {/* 🔔 Toast */}
       <div className="fixed top-24 right-4 space-y-2 z-50">
         {messages.map((m) => (
           <div
