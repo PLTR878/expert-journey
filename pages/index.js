@@ -710,79 +710,87 @@ function AlertSystem() {
     </section>
   );
 }
-
 /* =========================
-   🛰️ AUTO SCAN ทั้งตลาด (AI)
+   🛰️ AUTO SCAN ทั้งตลาด (AI) — VERSION 2
 ========================= */
 function AutoMarketScan() {
   const [enabled, setEnabled] = useSt(false);
   const [aiSignal, setAiSignal] = useSt("Any");
-  const [rsiMin, setRsiMin] = useSt("");
-  const [rsiMax, setRsiMax] = useSt("");
-  const [priceMin, setPriceMin] = useSt("");
-  const [priceMax, setPriceMax] = useSt("");
-  const [scanProg, setScanProg] = useSt(0);
+  const [rsiMin, setRsiMin] = useSt("25");
+  const [rsiMax, setRsiMax] = useSt("70");
+  const [priceMin, setPriceMin] = useSt("0.5");
+  const [priceMax, setPriceMax] = useSt("100");
+  const [progress, setProgress] = useSt(0);
+  const [logs, setLogs] = useSt([]);
   const [hits, setHits] = useSt([]);
-  const [messages, setMessages] = useSt([]);
 
   const beep = () => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = 880;
-    osc.connect(ctx.destination);
-    osc.start();
-    setTimeout(() => {
-      osc.stop();
-      ctx.close();
-    }, 200);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = 800;
+      osc.connect(ctx.destination);
+      osc.start();
+      setTimeout(() => {
+        osc.stop();
+        ctx.close();
+      }, 200);
+    } catch {}
   };
 
-  const match = (r) => {
-    const sig = String(r.signal || "").toLowerCase();
-    const price = r.price ?? r.lastClose ?? 0;
-    const rsi = r.rsi ?? 50;
-
-    if (aiSignal !== "Any" && sig !== aiSignal.toLowerCase()) return false;
-    if (rsiMin && rsi < Number(rsiMin)) return false;
-    if (rsiMax && rsi > Number(rsiMax)) return false;
-    if (priceMin && price < Number(priceMin)) return false;
-    if (priceMax && price > Number(priceMax)) return false;
-    return true;
-    };
+  const vibrate = (ms = 200) => {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  };
 
   const runScan = async () => {
     if (!enabled) return;
-    setScanProg(0);
+    setLogs(["🚀 เริ่มสแกนตลาดหุ้นอเมริกา..."]);
+    setProgress(0);
     setHits([]);
-    let found = [];
-    const limit = 200;
-    let off = 0;
-    for (let i = 0; i < 25; i++) {
-      try {
-        const r = await fetch(
-          `/api/ai-picks?limit=${limit}&offset=${off}&nocache=1`
-        ).then((x) => x.json());
-        const list = r?.results || [];
-        for (const item of list) {
-          if (match(item)) {
-            const msg = `⚡ ${item.symbol} | AI=${item.signal} | RSI=${item.rsi} | $${item.price}`;
-            if (!found.find((f) => f.msg === msg)) {
-              found.push({ msg });
-              setMessages((p) => [...p, { id: Date.now() + Math.random(), msg }]);
-              beep();
-            }
+
+    try {
+      const totalPages = 25;
+      for (let i = 0; i < totalPages; i++) {
+        const r = await fetch(`/api/ai-picks?limit=200&offset=${i * 200}&nocache=1`);
+        const data = await r.json();
+        const list = data?.results || [];
+        for (const s of list) {
+          const sig = (s.signal || "").toLowerCase();
+          const rsi = s.rsi ?? 50;
+          const price = s.price ?? 0;
+
+          if (
+            (aiSignal === "Any" || sig === aiSignal.toLowerCase()) &&
+            rsi >= Number(rsiMin) &&
+            rsi <= Number(rsiMax) &&
+            price >= Number(priceMin) &&
+            price <= Number(priceMax)
+          ) {
+            const hit = {
+              symbol: s.symbol,
+              ai: s.signal,
+              rsi,
+              price,
+            };
+            setHits((prev) => [...prev.slice(-20), hit]);
+            setLogs((prev) => [...prev.slice(-40), `⚡ พบ ${s.symbol} | ${s.signal} | RSI=${rsi}`]);
+            beep();
+            vibrate();
           }
         }
-        setScanProg(Math.round(((i + 1) / 25) * 100));
-        if (list.length < limit) break;
-        off += limit;
-      } catch {}
+        setProgress(Math.round(((i + 1) / totalPages) * 100));
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      setLogs((prev) => [...prev, "✅ สแกนครบทุกหุ้นแล้ว"]);
+    } catch (err) {
+      console.error(err);
+      setLogs((prev) => [...prev, "❌ เกิดข้อผิดพลาดในการสแกน"]);
     }
-    setHits(found.slice(0, 30));
   };
 
-  // Auto ทุก 5 นาที
+  // auto ทุก 5 นาที
   useEff(() => {
     if (!enabled) return;
     runScan();
@@ -794,7 +802,7 @@ function AutoMarketScan() {
     <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
       <h2 className="text-cyan-300 text-lg font-semibold mb-2">🛰️ Auto Scan — US Stocks</h2>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
         <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
           <input
             type="checkbox"
@@ -847,41 +855,39 @@ function AutoMarketScan() {
         </button>
       </div>
 
-      {enabled && (
-        <div className="mt-3">
-          <div className="w-full bg-[#1a2335] h-2 rounded">
-            <div className="bg-cyan-400 h-2 rounded" style={{ width: `${scanProg}%` }} />
-          </div>
-          <div className="text-xs text-cyan-300 mt-1">Scanning... {scanProg}%</div>
-        </div>
-      )}
+      <div className="w-full bg-[#1a2335] h-2 rounded mt-1">
+        <div
+          className="bg-cyan-400 h-2 rounded transition-all"
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+      <div className="text-xs text-cyan-300 mt-1">Scanning... {progress}%</div>
 
-      <div className="mt-4">
-        <h3 className="text-cyan-200 text-sm font-semibold mb-2">Latest Matches</h3>
+      <div className="bg-[#0d1423]/60 p-2 mt-3 rounded text-[12px] text-gray-300 h-28 overflow-y-auto font-mono">
+        {logs.map((l, i) => (
+          <div key={i}>{l}</div>
+        ))}
+      </div>
+
+      <div className="mt-3">
+        <h3 className="text-cyan-200 text-sm font-semibold mb-1">
+          Latest Matches ({hits.length})
+        </h3>
         {hits.length === 0 ? (
-          <div className="text-gray-400 text-sm">ยังไม่พบที่เข้าเงื่อนไข</div>
+          <div className="text-gray-400 text-sm">ยังไม่พบหุ้นเข้าเงื่อนไข</div>
         ) : (
           <ul className="space-y-1">
             {hits.map((h, i) => (
-              <li key={i} className="text-sm text-emerald-200 bg-[#0e1628]/70 border border-white/10 rounded px-3 py-2">
-                {h.msg}
+              <li
+                key={i}
+                className="text-sm text-emerald-200 bg-[#0e1628]/70 border border-white/10 rounded px-3 py-1.5"
+              >
+                ⚡ {h.symbol} | {h.ai} | RSI={h.rsi} | ${h.price}
               </li>
             ))}
           </ul>
         )}
       </div>
-
-      {/* Toast AutoScan */}
-      <div className="fixed top-28 right-4 space-y-2 z-50">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className="bg-[#101827]/90 border border-cyan-400/40 text-cyan-100 px-3 py-2 rounded shadow"
-          >
-            {m.msg}
-          </div>
-        ))}
-      </div>
     </section>
   );
-}
+          }
