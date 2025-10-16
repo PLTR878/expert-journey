@@ -126,4 +126,4 @@ export default async function handler(req, res) {
     send({ error: err.message });
     res.end();
   }
-        }
+}
