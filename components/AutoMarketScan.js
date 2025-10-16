@@ -1,20 +1,20 @@
-// ✅ /components/AutoMarketScan.js — ระบบสแกนหุ้นอเมริกาทั้งตลาด (AutoMarketScan Pro)
-import { useState, useEffect } from "react";
+/* =========================
+   🛰️ AUTO SCAN ทั้งตลาด (Realtime Stream)
+========================= */
+function AutoMarketScan() {
+  const [enabled, setEnabled] = useSt(false);
+  const [aiSignal, setAiSignal] = useSt("Any");
+  const [rsiMin, setRsiMin] = useSt("35");
+  const [rsiMax, setRsiMax] = useSt("55");
+  const [priceMin, setPriceMin] = useSt("1");
+  const [priceMax, setPriceMax] = useSt("25");
+  const [progress, setProgress] = useSt(0);
+  const [hits, setHits] = useSt([]);
+  const [messages, setMessages] = useSt([]);
+  const [logs, setLogs] = useSt([]);
+  const [scanning, setScanning] = useSt(false);
 
-export default function AutoMarketScan() {
-  const [enabled, setEnabled] = useState(false);
-  const [aiSignal, setAiSignal] = useState("Buy");
-  const [rsiMin, setRsiMin] = useState("30");
-  const [rsiMax, setRsiMax] = useState("70");
-  const [priceMin, setPriceMin] = useState("1");
-  const [priceMax, setPriceMax] = useState("1000");
-  const [progress, setProgress] = useState(0);
-  const [logs, setLogs] = useState([]);
-  const [hits, setHits] = useState([]);
-  const [scanning, setScanning] = useState(false);
-  const [messages, setMessages] = useState([]);
-
-  // 🔊 เสียงแจ้งเตือนเมื่อเจอหุ้นเข้าเงื่อนไข
+  // 🔊 เสียงแจ้งเตือน
   const beep = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -30,18 +30,18 @@ export default function AutoMarketScan() {
     } catch {}
   };
 
-  // 🚀 เริ่มสแกน
+  // 🚀 เริ่มสแกนแบบ Realtime Stream
   const runScan = async () => {
     if (scanning) return;
     setScanning(true);
-    setLogs(["🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..."]);
     setHits([]);
+    setLogs(["🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..."]);
     setProgress(0);
 
     try {
       const url = `/api/scan?mode=${aiSignal}&rsiMin=${rsiMin}&rsiMax=${rsiMax}&priceMin=${priceMin}&priceMax=${priceMax}&maxSymbols=8000&batchSize=80`;
       const res = await fetch(url);
-      if (!res.body) throw new Error("ไม่สามารถอ่านข้อมูลได้");
+      if (!res.body) throw new Error("ไม่สามารถเชื่อมต่อสตรีมข้อมูลได้");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
@@ -58,22 +58,20 @@ export default function AutoMarketScan() {
           if (!part.trim()) continue;
           try {
             const data = JSON.parse(part);
-            if (data.log)
-              setLogs((p) => [...p, data.log].slice(-100));
+
+            if (data.log) setLogs((p) => [...p, data.log].slice(-80));
             if (data.progress) setProgress(data.progress);
+
             if (data.hit) {
-              setHits((p) => [...p, data.hit]);
+              const { symbol, ai, rsi, price } = data.hit;
+              const msg = `⚡ ${symbol} | ${ai} | RSI ${rsi} | $${price}`;
+              setHits((p) => [...p, { symbol, ai, rsi, price }]);
+              setMessages((p) => [...p, { id: Date.now() + Math.random(), msg }]);
               beep();
-              setMessages((p) => [
-                ...p,
-                {
-                  id: Date.now(),
-                  msg: `⚡ ${data.hit.symbol} | ${data.hit.ai} | RSI ${data.hit.rsi}`,
-                },
-              ]);
             }
+
             if (data.done) {
-              setLogs((p) => [...p, "✅ สแกนครบแล้ว!"]);
+              setLogs((p) => [...p, "✅ สแกนครบแล้ว"]);
               setProgress(100);
             }
           } catch {}
@@ -86,16 +84,16 @@ export default function AutoMarketScan() {
     }
   };
 
-  // 🔁 Auto Scan ทุก 5 นาที
-  useEffect(() => {
+  // 🔁 Auto Scan ทุก 10 นาที
+  useEff(() => {
     if (!enabled) return;
     runScan();
-    const id = setInterval(runScan, 5 * 60 * 1000);
+    const id = setInterval(runScan, 10 * 60 * 1000);
     return () => clearInterval(id);
   }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax]);
 
-  // 🔔 Toast หายอัตโนมัติ
-  useEffect(() => {
+  // 🔔 Toast auto remove
+  useEff(() => {
     if (!messages.length) return;
     const timers = messages.map((m) =>
       setTimeout(() => setMessages((p) => p.filter((x) => x.id !== m.id)), 5000)
@@ -106,12 +104,12 @@ export default function AutoMarketScan() {
   return (
     <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
       <h2 className="text-cyan-300 text-lg font-semibold mb-2">
-        🛰️ Auto Scan — US Stocks
+        🛰️ Auto Scan — US Stocks (Realtime)
       </h2>
 
       {/* ตัวควบคุม */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-        <label className="flex items-center gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
           <input
             type="checkbox"
             checked={enabled}
@@ -170,14 +168,18 @@ export default function AutoMarketScan() {
       </div>
 
       {/* Progress */}
-      <div className="w-full bg-[#1a2335] h-2 rounded">
-        <div
-          className="bg-cyan-400 h-2 rounded transition-all"
-          style={{ width: `${progress}%` }}
-        ></div>
-      </div>
-      <div className="text-xs text-cyan-300 mt-1">
-        {scanning ? `กำลังสแกน... ${progress}%` : "✅ Idle"}
+      <div className="mt-3">
+        <div className="w-full bg-[#1a2335] h-2 rounded">
+          <div
+            className="bg-cyan-400 h-2 rounded transition-all"
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
+        <div className="text-xs text-cyan-300 mt-1">
+          {scanning
+            ? `กำลังสแกน... ${progress}%`
+            : `สถานะ: ${enabled ? "Auto Enabled" : "Idle"}`}
+        </div>
       </div>
 
       {/* Logs */}
@@ -187,7 +189,7 @@ export default function AutoMarketScan() {
         ))}
       </div>
 
-      {/* หุ้นที่เข้าเงื่อนไข */}
+      {/* Hits */}
       <div className="mt-4">
         <h3 className="text-cyan-200 text-sm font-semibold mb-2">
           Latest Matches ({hits.length})
@@ -208,8 +210,8 @@ export default function AutoMarketScan() {
         )}
       </div>
 
-      {/* Toast แจ้งเตือน */}
-      <div className="fixed top-16 right-4 space-y-2 z-50">
+      {/* Toast */}
+      <div className="fixed top-28 right-4 space-y-2 z-50">
         {messages.map((m) => (
           <div
             key={m.id}
@@ -221,4 +223,4 @@ export default function AutoMarketScan() {
       </div>
     </section>
   );
-            }
+    }
