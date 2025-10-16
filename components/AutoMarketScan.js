@@ -1,7 +1,7 @@
-// ✅ /pages/index.js — Visionary Stock Screener (AutoMarketScan Pro UI)
+// ✅ /components/AutoMarketScan.js — ระบบสแกนหุ้นอเมริกาทั้งตลาด (AutoMarketScan Pro)
 import { useState, useEffect } from "react";
 
-export default function Home() {
+export default function AutoMarketScan() {
   const [enabled, setEnabled] = useState(false);
   const [aiSignal, setAiSignal] = useState("Buy");
   const [rsiMin, setRsiMin] = useState("30");
@@ -14,7 +14,7 @@ export default function Home() {
   const [scanning, setScanning] = useState(false);
   const [messages, setMessages] = useState([]);
 
-  // 🔊 แจ้งเตือนเสียงเมื่อเจอหุ้นเข้าเงื่อนไข
+  // 🔊 เสียงแจ้งเตือนเมื่อเจอหุ้นเข้าเงื่อนไข
   const beep = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -30,7 +30,7 @@ export default function Home() {
     } catch {}
   };
 
-  // 🚀 ฟังก์ชันเริ่มสแกน
+  // 🚀 เริ่มสแกน
   const runScan = async () => {
     if (scanning) return;
     setScanning(true);
@@ -41,7 +41,7 @@ export default function Home() {
     try {
       const url = `/api/scan?mode=${aiSignal}&rsiMin=${rsiMin}&rsiMax=${rsiMax}&priceMin=${priceMin}&priceMax=${priceMax}&maxSymbols=8000&batchSize=80`;
       const res = await fetch(url);
-      if (!res.body) throw new Error("ไม่สามารถอ่านสตรีมข้อมูลได้");
+      if (!res.body) throw new Error("ไม่สามารถอ่านข้อมูลได้");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
@@ -59,7 +59,7 @@ export default function Home() {
           try {
             const data = JSON.parse(part);
             if (data.log)
-              setLogs((p) => [...p, data.log].slice(-100)); // เก็บ log ล่าสุด
+              setLogs((p) => [...p, data.log].slice(-100));
             if (data.progress) setProgress(data.progress);
             if (data.hit) {
               setHits((p) => [...p, data.hit]);
@@ -86,7 +86,7 @@ export default function Home() {
     }
   };
 
-  // 🔁 Auto-scan ทุก 5 นาที
+  // 🔁 Auto Scan ทุก 5 นาที
   useEffect(() => {
     if (!enabled) return;
     runScan();
@@ -94,7 +94,7 @@ export default function Home() {
     return () => clearInterval(id);
   }, [enabled, aiSignal, rsiMin, rsiMax, priceMin, priceMax]);
 
-  // 🔔 ลบข้อความแจ้งเตือนอัตโนมัติ
+  // 🔔 Toast หายอัตโนมัติ
   useEffect(() => {
     if (!messages.length) return;
     const timers = messages.map((m) =>
@@ -104,100 +104,96 @@ export default function Home() {
   }, [messages]);
 
   return (
-    <main className="min-h-screen bg-[#0b1221] text-gray-200 p-4 font-sans">
-      <h1 className="text-2xl font-bold text-cyan-300 mb-4 text-center">
-        🌎 Visionary Stock Screener
-      </h1>
+    <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
+      <h2 className="text-cyan-300 text-lg font-semibold mb-2">
+        🛰️ Auto Scan — US Stocks
+      </h2>
 
-      {/* 🔧 ตัวควบคุม */}
-      <div className="bg-[#101827]/80 rounded-xl p-4 border border-cyan-400/20 mb-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-            />
-            <span className="text-emerald-300 font-semibold">Auto Enable</span>
-          </label>
-
-          <select
-            className="bg-[#141b2d] px-2 py-1 rounded"
-            value={aiSignal}
-            onChange={(e) => setAiSignal(e.target.value)}
-          >
-            <option>Buy</option>
-            <option>Sell</option>
-            <option>Neutral</option>
-            <option>Any</option>
-          </select>
-
+      {/* ตัวควบคุม */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+        <label className="flex items-center gap-2">
           <input
-            className="bg-[#141b2d] px-2 py-1 rounded"
-            placeholder="RSI Min"
-            value={rsiMin}
-            onChange={(e) => setRsiMin(e.target.value)}
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
           />
-          <input
-            className="bg-[#141b2d] px-2 py-1 rounded"
-            placeholder="RSI Max"
-            value={rsiMax}
-            onChange={(e) => setRsiMax(e.target.value)}
-          />
-          <input
-            className="bg-[#141b2d] px-2 py-1 rounded"
-            placeholder="Price Min"
-            value={priceMin}
-            onChange={(e) => setPriceMin(e.target.value)}
-          />
-          <input
-            className="bg-[#141b2d] px-2 py-1 rounded"
-            placeholder="Price Max"
-            value={priceMax}
-            onChange={(e) => setPriceMax(e.target.value)}
-          />
+          <span className="text-emerald-300 font-semibold">Enable</span>
+        </label>
 
-          <button
-            onClick={runScan}
-            disabled={scanning}
-            className={`rounded px-3 py-2 font-semibold border ${
-              scanning
-                ? "bg-gray-600/30 border-gray-500 text-gray-400"
-                : "bg-emerald-500/20 border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30"
-            }`}
-          >
-            {scanning ? "🔍 Scanning..." : "▶️ Run Now"}
-          </button>
-        </div>
+        <select
+          className="bg-[#141b2d] px-2 py-1 rounded"
+          value={aiSignal}
+          onChange={(e) => setAiSignal(e.target.value)}
+        >
+          <option>Buy</option>
+          <option>Sell</option>
+          <option>Neutral</option>
+          <option>Any</option>
+        </select>
 
-        {/* Progress */}
-        <div className="w-full bg-[#1a2335] h-2 rounded mt-2">
-          <div
-            className="bg-cyan-400 h-2 rounded transition-all"
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-        <div className="text-xs text-cyan-300 mt-1">
-          {scanning
-            ? `กำลังสแกน... ${progress}%`
-            : `สถานะ: ${enabled ? "Auto Enabled" : "Idle"}`}
-        </div>
+        <input
+          className="bg-[#141b2d] px-2 py-1 rounded"
+          placeholder="RSI Min"
+          value={rsiMin}
+          onChange={(e) => setRsiMin(e.target.value)}
+        />
+        <input
+          className="bg-[#141b2d] px-2 py-1 rounded"
+          placeholder="RSI Max"
+          value={rsiMax}
+          onChange={(e) => setRsiMax(e.target.value)}
+        />
+        <input
+          className="bg-[#141b2d] px-2 py-1 rounded"
+          placeholder="Price Min"
+          value={priceMin}
+          onChange={(e) => setPriceMin(e.target.value)}
+        />
+        <input
+          className="bg-[#141b2d] px-2 py-1 rounded"
+          placeholder="Price Max"
+          value={priceMax}
+          onChange={(e) => setPriceMax(e.target.value)}
+        />
+
+        <button
+          onClick={runScan}
+          disabled={scanning}
+          className={`rounded px-3 py-2 font-semibold border ${
+            scanning
+              ? "bg-gray-600/30 border-gray-500 text-gray-400"
+              : "bg-emerald-500/20 border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30"
+          }`}
+        >
+          {scanning ? "🔍 Scanning..." : "▶️ Run Now"}
+        </button>
       </div>
 
-      {/* 📜 Log */}
-      <div className="bg-[#0d1423]/70 p-3 rounded-lg text-xs text-gray-300 h-40 overflow-y-auto font-mono">
+      {/* Progress */}
+      <div className="w-full bg-[#1a2335] h-2 rounded">
+        <div
+          className="bg-cyan-400 h-2 rounded transition-all"
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+      <div className="text-xs text-cyan-300 mt-1">
+        {scanning ? `กำลังสแกน... ${progress}%` : "✅ Idle"}
+      </div>
+
+      {/* Logs */}
+      <div className="mt-3 bg-[#0d1423]/70 p-3 rounded-lg text-xs text-gray-300 h-32 overflow-y-auto font-mono">
         {logs.map((l, i) => (
           <div key={i}>{l}</div>
         ))}
       </div>
 
-      {/* ⚡ หุ้นที่เข้าเงื่อนไข */}
+      {/* หุ้นที่เข้าเงื่อนไข */}
       <div className="mt-4">
-        <h2 className="text-cyan-200 text-sm font-semibold mb-2">
+        <h3 className="text-cyan-200 text-sm font-semibold mb-2">
           Latest Matches ({hits.length})
-        </h2>
+        </h3>
         {hits.length === 0 ? (
-          <div className="text-gray-400 text-sm">ยังไม่พบหุ้นเข้าเงื่อนไข</div>
+          <div className="text-gray-400 text-sm">ยังไม่พบที่เข้าเงื่อนไข</div>
         ) : (
           <ul className="space-y-1">
             {hits.map((h, i) => (
@@ -212,7 +208,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* 🔔 Toast */}
+      {/* Toast แจ้งเตือน */}
       <div className="fixed top-16 right-4 space-y-2 z-50">
         {messages.map((m) => (
           <div
@@ -223,6 +219,6 @@ export default function Home() {
           </div>
         ))}
       </div>
-    </main>
+    </section>
   );
-          }
+            }
