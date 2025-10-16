@@ -1,10 +1,6 @@
-// ✅ /pages/api/scan.js — ระบบสแกนหุ้นอเมริกาทั้งตลาด (NASDAQ + NYSE + AMEX)
-// สแกนด้วย RSI-14 + AI Signal (Buy / Sell / Neutral)
-// พร้อม Log ติดตาม Batch และป้องกัน Timeout
-
+// ✅ /pages/api/scan.js — ระบบสแกนหุ้นอเมริกาทั้งตลาด (Realtime Stream)
 const SYMBOL_SOURCE = "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX";
 
-// -------- Utilities --------
 function computeRSI14(closes) {
   const n = 14;
   if (!closes || closes.length < n + 1) return null;
@@ -40,12 +36,15 @@ function within(v, lo, hi) {
   return true;
 }
 
-async function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// -------- Handler --------
 export default async function handler(req, res) {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Transfer-Encoding", "chunked");
+
+  const write = (obj) => res.write(JSON.stringify(obj) + "\n");
+
   try {
     const {
       mode = "Any",
@@ -53,8 +52,8 @@ export default async function handler(req, res) {
       rsiMax = "100",
       priceMin = "0",
       priceMax = "100000",
-      maxSymbols = "500", // ลดลงเพื่อความเร็ว (3–5 นาที)
-      batchSize = "40", // batch ละ 40 ticker
+      maxSymbols = "500",
+      batchSize = "40",
       range = "3mo",
       interval = "1d",
     } = req.query;
@@ -66,22 +65,22 @@ export default async function handler(req, res) {
     const LIMIT = Number(maxSymbols);
     const BATCH = Number(batchSize);
 
-    console.log(`🚀 [SCAN] เริ่มสแกนตลาดอเมริกา — limit=${LIMIT}, batch=${BATCH}`);
-
-    // 1) โหลดรายชื่อหุ้นทั้งหมด
+    // --- โหลดรายชื่อหุ้น ---
     const listResp = await fetch(SYMBOL_SOURCE, { cache: "no-store" });
-    if (!listResp.ok) throw new Error("โหลดรายชื่อหุ้นไม่สำเร็จ");
     const listJson = await listResp.json();
     let symbols = listJson.map((s) => s.ticker).filter(Boolean);
     if (symbols.length > LIMIT) symbols = symbols.slice(0, LIMIT);
 
-    const matches = [];
+    const total = symbols.length;
+    write({ log: `🚀 เริ่มสแกนทั้งหมด ${total} หุ้น (batch=${BATCH})` });
+
+    let found = 0;
     let processed = 0;
 
-    // 2) สแกนเป็น batch
+    // --- สแกนเป็น batch ---
     for (let i = 0; i < symbols.length; i += BATCH) {
       const batch = symbols.slice(i, i + BATCH);
-      console.log(`[SCAN] Batch ${i + BATCH}/${symbols.length} → ${batch[0]}...`);
+      write({ log: `📦 Batch ${i + BATCH}/${total}: ${batch[0]}...` });
 
       const results = await Promise.allSettled(
         batch.map(async (symbol) => {
@@ -92,6 +91,7 @@ export default async function handler(req, res) {
             const data = await resp.json();
             const result = data?.chart?.result?.[0];
             if (!result) return null;
+
             const closes = result.indicators?.quote?.[0]?.close || [];
             const meta = result.meta || {};
             const price =
@@ -101,49 +101,35 @@ export default async function handler(req, res) {
               null;
             const rsi = computeRSI14(closes);
             const ai = decideAISignal(rsi);
+
             if (!price || !rsi) return null;
-            return {
-              symbol,
-              price: +price.toFixed(2),
-              rsi: +rsi.toFixed(2),
-              ai,
-            };
+            return { symbol, ai, rsi: +rsi.toFixed(2), price: +price.toFixed(2) };
           } catch {
             return null;
           }
         })
       );
 
-      // 3) กรองผลลัพธ์
       for (const r of results) {
         if (r.status !== "fulfilled" || !r.value) continue;
         const { symbol, price, rsi, ai } = r.value;
         if (!within(price, P_MIN, P_MAX)) continue;
         if (!within(rsi, RSI_MIN, RSI_MAX)) continue;
         if (mode !== "Any" && ai !== mode) continue;
-        matches.push({ symbol, ai, rsi, price });
+        found++;
+        write({ hit: { symbol, ai, rsi, price } });
       }
 
       processed += batch.length;
+      const progress = Math.round((processed / total) * 100);
+      write({ progress });
       await sleep(200);
     }
 
-    matches.sort(
-      (a, b) => (b.ai === "Buy") - (a.ai === "Buy") || b.rsi - a.rsi
-    );
-
-    console.log(`✅ [SCAN] เสร็จสิ้น — สแกน ${processed} ตัว, เจอ ${matches.length}`);
-
-    res.status(200).json({
-      ok: true,
-      scanned: processed,
-      found: matches.length,
-      items: matches,
-    });
+    write({ done: true, log: `✅ สแกนครบ ${processed} หุ้น พบ ${found} ตัวที่เข้าเงื่อนไข` });
+    res.end();
   } catch (err) {
-    console.error("[SCAN] ERROR:", err);
-    res
-      .status(500)
-      .json({ ok: false, error: String(err.message || err), items: [] });
+    write({ error: err.message });
+    res.end();
   }
 }
