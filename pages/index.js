@@ -710,71 +710,7 @@ function AlertSystem() {
     </section>
   );
 }
-/* =========================
-   🛰️ AUTO SCAN ทั้งตลาด (AI) — VERSION 2
-========================= */
-function AutoMarketScan() {
-  const [enabled, setEnabled] = useSt(false);
-  const [aiSignal, setAiSignal] = useSt("Any");
-  const [rsiMin, setRsiMin] = useSt("25");
-  const [rsiMax, setRsiMax] = useSt("70");
-  const [priceMin, setPriceMin] = useSt("0.5");
-  const [priceMax, setPriceMax] = useSt("100");
-  const [progress, setProgress] = useSt(0);
-  const [logs, setLogs] = useSt([]);
-  const [hits, setHits] = useSt([]);
-
-  const beep = () => {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.value = 800;
-      osc.connect(ctx.destination);
-      osc.start();
-      setTimeout(() => {
-        osc.stop();
-        ctx.close();
-      }, 200);
-    } catch {}
-  };
-
-  const vibrate = (ms = 200) => {
-    if (navigator.vibrate) navigator.vibrate(ms);
-  };
-
-  const runScan = async () => {
-    if (!enabled) return;
-    setLogs(["🚀 เริ่มสแกนตลาดหุ้นอเมริกา..."]);
-    setProgress(0);
-    setHits([]);
-
-    try {
-      const totalPages = 25;
-      for (let i = 0; i < totalPages; i++) {
-        const r = await fetch(`/api/ai-picks?limit=200&offset=${i * 200}&nocache=1`);
-        const data = await r.json();
-        const list = data?.results || [];
-        for (const s of list) {
-          const sig = (s.signal || "").toLowerCase();
-          const rsi = s.rsi ?? 50;
-          const price = s.price ?? 0;
-
-          if (
-            (aiSignal === "Any" || sig === aiSignal.toLowerCase()) &&
-            rsi >= Number(rsiMin) &&
-            rsi <= Number(rsiMax) &&
-            price >= Number(priceMin) &&
-            price <= Number(priceMax)
-          ) {
-            const hit = {
-              symbol: s.symbol,
-              ai: s.signal,
-              rsi,
-              price,
-            };
-            setHits((prev) => [...prev.slice(-20), hit]);
-            setLogs((prev) => [...prev.slice(-40), `⚡ พบ ${s.symbol} | ${s.signal} | RSI=${rsi}`]);
+(-40), `⚡ พบ ${s.symbol} | ${s.signal} | RSI=${rsi}`]);
             beep();
             vibrate();
           }
@@ -789,8 +725,99 @@ function AutoMarketScan() {
       setLogs((prev) => [...prev, "❌ เกิดข้อผิดพลาดในการสแกน"]);
     }
   };
+/* =========================
+   🛰️ AUTO SCAN ทั้งตลาด (AI) — FULL VERSION with Counter
+========================= */
+function AutoMarketScan() {
+  const [enabled, setEnabled] = useSt(false);
+  const [aiSignal, setAiSignal] = useSt("Any");
+  const [rsiMin, setRsiMin] = useSt("25");
+  const [rsiMax, setRsiMax] = useSt("70");
+  const [priceMin, setPriceMin] = useSt("0.5");
+  const [priceMax, setPriceMax] = useSt("100");
+  const [progress, setProgress] = useSt(0);
+  const [logs, setLogs] = useSt([]);
+  const [hits, setHits] = useSt([]);
+  const [scannedCount, setScannedCount] = useSt(0);
 
-  // auto ทุก 5 นาที
+  // 🔊 เสียงเตือน
+  const beep = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      osc.connect(ctx.destination);
+      osc.start();
+      setTimeout(() => {
+        osc.stop();
+        ctx.close();
+      }, 180);
+    } catch {}
+  };
+
+  // 📳 สั่นมือถือ
+  const vibrate = (ms = 200) => {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  };
+
+  // 🚀 ฟังก์ชันสแกนตลาดหุ้น
+  const runScan = async () => {
+    if (!enabled) return;
+    setLogs(["🚀 เริ่มสแกนตลาดหุ้นอเมริกา..."]);
+    setProgress(0);
+    setHits([]);
+    setScannedCount(0);
+
+    try {
+      const totalPages = 25; // 25 หน้า × 200 หุ้น = 5000 หุ้น
+      const limit = 200;
+      const totalExpected = totalPages * limit;
+
+      for (let i = 0; i < totalPages; i++) {
+        const res = await fetch(`/api/ai-picks?limit=${limit}&offset=${i * limit}&nocache=1`);
+        const data = await res.json();
+        const list = data?.results || [];
+
+        // ✅ ตัวนับหุ้น
+        setScannedCount((prev) => prev + list.length);
+
+        // ✅ ตรวจแต่ละหุ้นตามเงื่อนไข
+        for (const s of list) {
+          const sig = (s.signal || "").toLowerCase();
+          const rsi = s.rsi ?? 50;
+          const price = s.price ?? 0;
+
+          if (
+            (aiSignal === "Any" || sig === aiSignal.toLowerCase()) &&
+            rsi >= Number(rsiMin) &&
+            rsi <= Number(rsiMax) &&
+            price >= Number(priceMin) &&
+            price <= Number(priceMax)
+          ) {
+            const hit = { symbol: s.symbol, ai: s.signal, rsi, price };
+            setHits((p) => [...p.slice(-25), hit]);
+            setLogs((p) => [...p.slice(-50), `⚡ พบ ${s.symbol} | ${s.signal} | RSI=${rsi}`]);
+            beep();
+            vibrate();
+          }
+        }
+
+        // ✅ อัปเดต progress
+        setProgress(Math.round(((i + 1) / totalPages) * 100));
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      setLogs((p) => [...p, "✅ สแกนครบทุกหุ้นแล้ว"]);
+      setProgress(100);
+      setScannedCount(totalExpected);
+    } catch (err) {
+      console.error(err);
+      setLogs((p) => [...p, `❌ Error: ${err.message}`]);
+    }
+  };
+
+  // 🔁 Auto run ทุก 5 นาที
   useEff(() => {
     if (!enabled) return;
     runScan();
@@ -802,6 +829,7 @@ function AutoMarketScan() {
     <section className="bg-[#101827]/80 rounded-2xl p-4 mt-4 border border-cyan-400/30">
       <h2 className="text-cyan-300 text-lg font-semibold mb-2">🛰️ Auto Scan — US Stocks</h2>
 
+      {/* 🔧 Controls */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
         <label className="flex items-center gap-2 bg-[#141b2d] px-3 py-2 rounded">
           <input
@@ -855,20 +883,25 @@ function AutoMarketScan() {
         </button>
       </div>
 
+      {/* 🔄 Progress bar */}
       <div className="w-full bg-[#1a2335] h-2 rounded mt-1">
         <div
           className="bg-cyan-400 h-2 rounded transition-all"
           style={{ width: `${progress}%` }}
         ></div>
       </div>
-      <div className="text-xs text-cyan-300 mt-1">Scanning... {progress}%</div>
+      <div className="text-xs text-cyan-300 mt-1">
+        Scanning... {progress}% ({scannedCount.toLocaleString()} stocks)
+      </div>
 
+      {/* 📜 Real-time Logs */}
       <div className="bg-[#0d1423]/60 p-2 mt-3 rounded text-[12px] text-gray-300 h-28 overflow-y-auto font-mono">
         {logs.map((l, i) => (
           <div key={i}>{l}</div>
         ))}
       </div>
 
+      {/* ⚡ หุ้นที่เข้าเงื่อนไข */}
       <div className="mt-3">
         <h3 className="text-cyan-200 text-sm font-semibold mb-1">
           Latest Matches ({hits.length})
@@ -890,4 +923,4 @@ function AutoMarketScan() {
       </div>
     </section>
   );
-          }
+  }
