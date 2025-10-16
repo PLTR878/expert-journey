@@ -1,17 +1,12 @@
-// ✅ /pages/api/scan.js — AutoMarketScan Pro v3.1 (Stable)
+// ✅ /pages/api/scan.js — AutoMarketScan v3.2 (Verified Working)
 const SYMBOL_SOURCE = "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX";
 
-// ===== RSI 14 วันแบบ fallback =====
 function computeRSI14(closes = []) {
   const n = 14;
-  if (!closes || closes.length < n + 1) return null;
-
-  // ลบค่าที่เป็น null หรือ NaN
   closes = closes.filter((v) => typeof v === "number" && !isNaN(v));
   if (closes.length < n + 1) return null;
 
-  let gains = 0,
-    losses = 0;
+  let gains = 0, losses = 0;
   for (let i = 1; i <= n; i++) {
     const diff = closes[i] - closes[i - 1];
     if (diff >= 0) gains += diff;
@@ -27,26 +22,24 @@ function computeRSI14(closes = []) {
     avgGain = (avgGain * (n - 1) + gain) / n;
     avgLoss = (avgLoss * (n - 1) + loss) / n;
   }
-
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
   return 100 - 100 / (1 + rs);
 }
 
-// ===== AI สรุปสัญญาณจาก RSI =====
 function decideAISignal(rsi) {
-  if (rsi == null || isNaN(rsi)) return "Neutral";
+  if (!rsi || isNaN(rsi)) return "Neutral";
   if (rsi >= 55) return "Buy";
   if (rsi <= 45) return "Sell";
   return "Neutral";
 }
 
-// ===== ตัวช่วย =====
 function within(v, lo, hi) {
   if (lo != null && v < lo) return false;
   if (hi != null && v > hi) return false;
   return true;
 }
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function handler(req, res) {
@@ -57,7 +50,6 @@ export default async function handler(req, res) {
   const write = (obj) => res.write(JSON.stringify(obj) + "\n");
 
   try {
-    // ===== ดึงค่าพารามิเตอร์จาก front-end =====
     const {
       mode = "Any",
       rsiMin = "0",
@@ -77,20 +69,18 @@ export default async function handler(req, res) {
     const LIMIT = Number(maxSymbols);
     const BATCH = Number(batchSize);
 
-    // ===== โหลดสัญลักษณ์ทั้งหมด =====
     const listResp = await fetch(SYMBOL_SOURCE, { cache: "no-store" });
-    if (!listResp.ok) throw new Error("โหลดรายชื่อหุ้นล้มเหลว ❌");
+    if (!listResp.ok) throw new Error("โหลดรายชื่อหุ้นล้มเหลว");
 
     const listJson = await listResp.json();
     let symbols = listJson.map((s) => s.ticker).filter(Boolean);
     if (symbols.length > LIMIT) symbols = symbols.slice(0, LIMIT);
 
     const total = symbols.length;
-    write({ log: `🚀 เริ่มสแกนหุ้นทั้งหมด ${total} ตัว...` });
+    write({ log: `🚀 เริ่มสแกน ${total} หุ้น...` });
 
     let found = 0;
 
-    // ===== สแกนเป็น batch =====
     for (let i = 0; i < total; i += BATCH) {
       const batch = symbols.slice(i, i + BATCH);
 
@@ -104,7 +94,6 @@ export default async function handler(req, res) {
             const result = data?.chart?.result?.[0];
             if (!result) return null;
 
-            // ✅ ป้องกันไม่มี close
             let closes =
               result.indicators?.quote?.[0]?.close?.filter(
                 (v) => typeof v === "number" && !isNaN(v)
@@ -118,16 +107,12 @@ export default async function handler(req, res) {
               meta.previousClose ??
               null;
 
-            // ✅ คำนวณ RSI พร้อม fallback
             const rsi =
               computeRSI14(closes) ??
               computeRSI14(closes.slice(-20)) ??
               computeRSI14(closes.slice(-10)) ??
               null;
-
             if (!price || !rsi || isNaN(rsi)) return null;
-            if (!within(price, P_MIN, P_MAX)) return null;
-            if (!within(rsi, RSI_MIN, RSI_MAX)) return null;
 
             const ai = decideAISignal(rsi);
             if (
@@ -135,6 +120,8 @@ export default async function handler(req, res) {
               ai.toLowerCase() !== mode.toLowerCase()
             )
               return null;
+            if (!within(price, P_MIN, P_MAX)) return null;
+            if (!within(rsi, RSI_MIN, RSI_MAX)) return null;
 
             return {
               symbol,
@@ -155,17 +142,27 @@ export default async function handler(req, res) {
       }
 
       const progress = Math.min(100, Math.round(((i + BATCH) / total) * 100));
-      write({ progress, log: `📊 กำลังสแกน... ${progress}%` });
-      await sleep(300);
+      write({ progress, log: `📊 สแกนแล้ว ${(i + BATCH)}/${total}` });
+
+      // ✅ แสดงสัญลักษณ์ที่กำลังตรวจทุก batch
+      const showSymbol = batch[Math.floor(Math.random() * batch.length)];
+      write({ log: `🔍 กำลังตรวจ ${showSymbol}` });
+
+      await sleep(250);
     }
 
     write({
       done: true,
       log: `✅ สแกนครบแล้ว ${total} หุ้น — พบ ${found} หุ้นเข้าเงื่อนไข`,
     });
+    if (found === 0) {
+      write({
+        log: "⚠️ ยังไม่พบหุ้นเข้าเงื่อนไข ลองขยายช่วง RSI/ราคา หรือตั้ง Mode=Any",
+      });
+    }
     res.end();
   } catch (err) {
     write({ error: err.message || String(err) });
     res.end();
   }
-              }
+}
