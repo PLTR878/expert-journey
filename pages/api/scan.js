@@ -1,4 +1,4 @@
-// ✅ /pages/api/scan.js — Visionary AutoMarketScan (Realtime SSE)
+// ✅ /pages/api/scan.js — AutoMarketScan Pro (Realtime Stream)
 const SYMBOL_SOURCE = "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX";
 
 function computeRSI14(closes) {
@@ -7,11 +7,9 @@ function computeRSI14(closes) {
   let gains = 0, losses = 0;
   for (let i = 1; i <= n; i++) {
     const diff = closes[i] - closes[i - 1];
-    if (diff >= 0) gains += diff;
-    else losses -= diff;
+    if (diff >= 0) gains += diff; else losses -= diff;
   }
-  let avgGain = gains / n;
-  let avgLoss = losses / n;
+  let avgGain = gains / n, avgLoss = losses / n;
   for (let i = n + 1; i < closes.length; i++) {
     const diff = closes[i] - closes[i - 1];
     const gain = diff > 0 ? diff : 0;
@@ -23,64 +21,43 @@ function computeRSI14(closes) {
   const rs = avgGain / avgLoss;
   return 100 - 100 / (1 + rs);
 }
-
-function decideAISignal(rsi) {
-  if (rsi == null) return "Neutral";
-  if (rsi >= 55) return "Buy";
-  if (rsi <= 45) return "Sell";
-  return "Neutral";
-}
-
-function within(v, lo, hi) {
-  if (lo != null && v < lo) return false;
-  if (hi != null && v > hi) return false;
-  return true;
-}
-
-async function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+const decideAISignal = (rsi) => (rsi == null ? "Neutral" : rsi >= 55 ? "Buy" : rsi <= 45 ? "Sell" : "Neutral");
+const within = (v, lo, hi) => (lo != null && v < lo) ? false : (hi != null && v > hi) ? false : true;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 export default async function handler(req, res) {
-  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Transfer-Encoding", "chunked");
 
-  const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  const write = (obj) => res.write(JSON.stringify(obj) + "\n");
 
   try {
     const {
-      mode = "Any",
-      rsiMin = "0",
-      rsiMax = "100",
-      priceMin = "0",
-      priceMax = "100000",
-      maxSymbols = "5000",
-      batchSize = "50",
-      range = "3mo",
-      interval = "1d",
+      mode = "Any", rsiMin = "0", rsiMax = "100",
+      priceMin = "0", priceMax = "100000",
+      maxSymbols = "8000", batchSize = "80",
+      range = "3mo", interval = "1d",
     } = req.query;
 
-    const RSI_MIN = Number(rsiMin);
-    const RSI_MAX = Number(rsiMax);
-    const P_MIN = Number(priceMin);
-    const P_MAX = Number(priceMax);
-    const LIMIT = Number(maxSymbols);
-    const BATCH = Number(batchSize);
+    const RSI_MIN = Number(rsiMin), RSI_MAX = Number(rsiMax);
+    const P_MIN = Number(priceMin), P_MAX = Number(priceMax);
+    const LIMIT = Number(maxSymbols), BATCH = Number(batchSize);
 
+    write({ log: "🔁 กำลังโหลดรายชื่อหุ้น..." });
     const listResp = await fetch(SYMBOL_SOURCE, { cache: "no-store" });
-    if (!listResp.ok) throw new Error("โหลดรายชื่อหุ้นล้มเหลว");
-
+    if (!listResp.ok) throw new Error("Load symbol list failed");
     const listJson = await listResp.json();
-    let symbols = listJson.map((s) => s.ticker).filter(Boolean);
+    let symbols = listJson.map(s => s.ticker).filter(Boolean);
     if (symbols.length > LIMIT) symbols = symbols.slice(0, LIMIT);
-
     const total = symbols.length;
-    send({ log: `🚀 เริ่มสแกนทั้งหมด ${total} หุ้น...` });
+    write({ log: `🚀 เริ่มสแกนทั้งหมด ${total} หุ้น (batch=${BATCH})` });
 
     let found = 0;
+
     for (let i = 0; i < total; i += BATCH) {
       const batch = symbols.slice(i, i + BATCH);
+      write({ log: `📦 สแกนกลุ่ม: ${batch[0]} ... ${batch[batch.length - 1]}` });
 
       const results = await Promise.allSettled(
         batch.map(async (symbol) => {
@@ -94,36 +71,36 @@ export default async function handler(req, res) {
 
             const closes = result.indicators?.quote?.[0]?.close || [];
             const meta = result.meta || {};
-            const price = meta.regularMarketPrice ?? closes.at(-1) ?? null;
+            const price = meta.regularMarketPrice ?? closes.at(-1) ?? meta.previousClose ?? null;
             const rsi = computeRSI14(closes);
             const ai = decideAISignal(rsi);
+
             if (!price || !rsi) return null;
             if (!within(price, P_MIN, P_MAX)) return null;
             if (!within(rsi, RSI_MIN, RSI_MAX)) return null;
             if (mode !== "Any" && ai !== mode) return null;
 
             return { symbol, ai, rsi: +rsi.toFixed(2), price: +price.toFixed(2) };
-          } catch {
-            return null;
-          }
+          } catch { return null; }
         })
       );
 
       for (const r of results) {
-        if (r.status !== "fulfilled" || !r.value) continue;
-        found++;
-        send({ hit: r.value });
+        if (r.status === "fulfilled" && r.value) {
+          found++;
+          write({ hit: r.value });
+        }
       }
 
       const progress = Math.min(100, Math.round(((i + BATCH) / total) * 100));
-      send({ progress, log: `📊 กำลังสแกน... ${progress}%` });
-      await sleep(200);
+      write({ progress, log: `📊 ดำเนินการ ${progress}%` });
+      await sleep(250);
     }
 
-    send({ done: true, log: `✅ สแกนครบ ${total} หุ้น พบ ${found} หุ้นเข้าเงื่อนไข` });
+    write({ done: true, log: `✅ เสร็จสิ้น พบ ${found} หุ้นเข้าเงื่อนไข` });
     res.end();
   } catch (err) {
-    send({ error: err.message });
+    write({ error: err.message || String(err) });
     res.end();
   }
-}
+    }
