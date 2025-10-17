@@ -29,24 +29,24 @@ export default function Analyze() {
   const [ind, setInd] = useState(null);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState({ online: true, lastUpdate: null });
 
-  // ✅ ดึงข้อมูลจาก API ทั้งของเดิมและของใหม่ (news2)
+  // ✅ ดึงข้อมูลจาก /api/daily.js + /api/news2.js
   useEffect(() => {
     if (!symbol) return;
     (async () => {
       setLoading(true);
       try {
-        const [daily, n1, n2] = await Promise.all([
+        const [daily, n] = await Promise.all([
           fetch(`/api/daily?symbol=${symbol}`).then(r => r.json()),
-          fetch(`/api/news?symbol=${symbol}`).then(r => r.json()).catch(() => ({})),
-          fetch(`/api/news2?symbol=${symbol}`).then(r => r.json()).catch(() => ({}))
+          fetch(`/api/news2?symbol=${symbol}`).then(r => r.json()),
         ]);
-
         setInd(daily);
-        // ✅ ใช้ news2 ก่อน ถ้าไม่มีจะ fallback เป็น news
-        setNews(n2.results || n1.results || n1.items || []);
+        setNews(n.results || n.items || []);
+        setStatus({ online: true, lastUpdate: new Date().toLocaleTimeString() });
       } catch (e) {
         console.error(e);
+        setStatus({ online: false, lastUpdate: new Date().toLocaleTimeString() });
       } finally {
         setLoading(false);
       }
@@ -60,6 +60,19 @@ export default function Analyze() {
       .then(r => r.json())
       .then(h => setHist(h.rows || []))
       .catch(console.error);
+  }, [symbol]);
+
+  // ✅ Auto Refresh ทุก 60 วินาที
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (symbol) {
+        fetch(`/api/daily?symbol=${symbol}`)
+          .then(r => r.json())
+          .then(setInd)
+          .catch(console.error);
+      }
+    }, 60000);
+    return () => clearInterval(timer);
   }, [symbol]);
 
   const markers = useMemo(() => {
@@ -80,6 +93,19 @@ export default function Analyze() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+        {/* ===== SYSTEM STATUS ===== */}
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#141b2d] px-4 py-3">
+          <div className="text-sm text-gray-300">
+            ⚙️ System Status:{" "}
+            {status.online ? (
+              <span className="text-green-400 font-semibold">Online</span>
+            ) : (
+              <span className="text-red-400 font-semibold">Offline</span>
+            )}
+          </div>
+          <div className="text-xs text-gray-400">Last Update: {status.lastUpdate || '—'}</div>
+        </div>
 
         {/* ===== HEADER + CHART ===== */}
         <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] overflow-hidden border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.4)]">
@@ -131,15 +157,15 @@ function MarketNews({ news }) {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[18px] font-semibold tracking-wide text-white/90">Market News</h2>
       </div>
-      {!news?.length && <div className="text-sm text-gray-400">⏳ กำลังโหลดข่าว...</div>}
+      {!news?.length && <div className="text-sm text-gray-400">No recent news.</div>}
       <ul className="mt-3 space-y-2">
         {news?.slice(0, 12).map((n, i) => (
           <li key={i} className="rounded-xl p-3 bg-black/25 border border-white/10 hover:border-emerald-400/30 hover:bg-white/5 transition-all duration-300">
-            <a href={n.url} target="_blank" rel="noreferrer" className="block font-medium text-[15px] leading-snug hover:text-emerald-400 transition">
-              {n.title}
+            <a href={n.url || n.link} target="_blank" rel="noreferrer" className="block font-medium text-[15px] leading-snug hover:text-emerald-400 transition">
+              {n.title || n.headline}
             </a>
             <div className="text-xs text-gray-400 mt-1 border-t border-white/5 pt-1">
-              {n.source} • {n.date ? new Date(n.date).toLocaleString() : ''}
+              {(n.source || n.publisher || '').toString()} • {(n.date || n.publishedAt || '').toString()}
             </div>
           </li>
         ))}
@@ -148,32 +174,31 @@ function MarketNews({ news }) {
   );
 }
 
-/* ✅ AI ShortList — รองรับ screener2 */
+/* ✅ AI ShortList (อัปเกรดเรียลไทม์) */
 function AIShortList() {
   const [list, setList] = useState([]);
   useEffect(() => {
     const load = async () => {
       try {
-        const r1 = await fetch('/api/screener?horizon=short&limit=100');
-        const r2 = await fetch('/api/screener2').catch(() => null);
-        const j1 = await r1.json();
-        const j2 = r2 ? await r2.json() : {};
-        const top = ((j2.results || j1.results || []) || [])
+        const r = await fetch('/api/screener2');
+        const j = await r.json();
+        const top = (j.results || [])
           .filter(x => x.signal === 'Buy' && x.confidence > 0.6)
           .slice(0, 5);
         setList(top);
-      } catch (e) {
-        console.error(e);
+      } catch {
+        console.warn('Screener API unavailable');
       }
     };
     load();
-    const timer = setInterval(load, 30000);
+    const timer = setInterval(load, 60000);
     return () => clearInterval(timer);
   }, []);
 
   return (
     <section className="rounded-2xl border border-white/10 bg-[#0b1220] p-5 mt-10">
       <h2 className="text-lg font-semibold text-emerald-400 mb-3">🔥 AI Stocks To Watch</h2>
+      {!list.length && <div className="text-gray-400 text-sm">Loading AI signals...</div>}
       <ul className="space-y-2">
         {list.map((s, i) => (
           <li key={i} className="flex justify-between items-center border border-white/10 rounded-xl px-3 py-2 bg-[#141b2d]">
@@ -188,16 +213,39 @@ function AIShortList() {
   );
 }
 
-/* ✅ Galaxy Trend Map (เหมือนเดิม) */
+/* ✅ Galaxy Trend Map (อัปเกรดสุ่มจากข้อมูลจริงบางส่วน) */
 function AIGalaxyMap() {
+  const [data, setData] = useState([]);
+  useEffect(() => {
+    fetch('/api/screener2')
+      .then(r => r.json())
+      .then(j => {
+        const all = j.results || [];
+        const mapped = all.slice(0, 100).map((x, i) => ({
+          color:
+            x.signal === 'Buy'
+              ? '#22c55e'
+              : x.signal === 'Sell'
+              ? '#ef4444'
+              : '#facc15',
+        }));
+        setData(mapped);
+      })
+      .catch(() => {
+        // fallback ถ้า API ล่ม
+        setData(Array.from({ length: 100 }).map((_, i) => ({
+          color: i % 3 === 0 ? '#22c55e' : i % 3 === 1 ? '#facc15' : '#ef4444',
+        })));
+      });
+  }, []);
+
   return (
     <section className="mt-10 bg-[#141b2d] p-6 rounded-2xl border border-white/10">
       <h2 className="text-lg font-semibold text-emerald-400 mb-4 text-center">🌌 AI Galaxy Trend Map</h2>
       <div className="grid grid-cols-10 gap-[3px]">
-        {Array.from({ length: 100 }).map((_, i) => {
-          const c = i % 3 === 0 ? "#22c55e" : i % 3 === 1 ? "#facc15" : "#ef4444";
-          return <div key={i} className="w-5 h-5 rounded-sm" style={{ background: c, opacity: 0.85 }}></div>;
-        })}
+        {data.map((b, i) => (
+          <div key={i} className="w-5 h-5 rounded-sm" style={{ background: b.color, opacity: 0.9 }}></div>
+        ))}
       </div>
       <div className="flex justify-center gap-5 mt-3 text-xs text-gray-400">
         <div>🟢 Uptrend</div>
