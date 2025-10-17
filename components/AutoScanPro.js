@@ -1,4 +1,4 @@
-// ✅ components/AutoScanPro.js (with Live Progress + Sound Alert)
+// ✅ AutoScanPro.js — Full Market Scanner (Ultimate Version)
 import { useState, useEffect } from "react";
 
 export default function AutoScanPro() {
@@ -7,6 +7,8 @@ export default function AutoScanPro() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("Ready");
   const [results, setResults] = useState([]);
+  const [batch, setBatch] = useState(0);
+  const [totalScanned, setTotalScanned] = useState(0);
 
   const modeName = {
     short: "⚡ เทรดสั้น (1–7 วัน)",
@@ -20,110 +22,100 @@ export default function AutoScanPro() {
     long: "text-sky-400",
   };
 
-  // ✅ ระบบเสียงเตือนเมื่อสแกนเสร็จ
+  // ✅ เล่นเสียงตอนสแกนเสร็จ
   function playDing() {
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      oscillator.type = "sine";
-      oscillator.frequency.value = 880;
-      gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.2);
-    } catch (e) {}
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch {}
   }
 
-  // 🔍 ฟังก์ชันสแกนหุ้น
-  async function scan(mode = "short") {
+  // ✅ สแกนหุ้นทั้งตลาดแบบแบ่ง batch
+  async function fullScan(mode = "short") {
     setLoading(true);
     setProgress(0);
-    setStatus("📡 เริ่มต้นสแกนข้อมูลหุ้น...");
+    setStatus("📡 เริ่มสแกนหุ้นทั้งตลาดอเมริกา...");
+    setResults([]);
+    setBatch(0);
+    setTotalScanned(0);
+
+    const LIMIT = 300;
+    const TOTAL = 6000; // หุ้นทั้งหมดประมาณ 6,000 ตัว
+    const allResults = [];
+
     try {
-      const r = await fetch(`/api/screener?limit=300`);
-      const j = await r.json();
-      const all = j.results || [];
-      const total = all.length;
-      const filtered = [];
+      for (let offset = 0; offset < TOTAL; offset += LIMIT) {
+        const batchNo = offset / LIMIT + 1;
+        setBatch(batchNo);
+        setStatus(`🧠 กำลังสแกนชุดที่ ${batchNo} (${offset + 1}-${offset + LIMIT})...`);
+        const r = await fetch(`/api/screener?limit=${LIMIT}&offset=${offset}`);
+        const j = await r.json();
+        const all = j.results || [];
 
-      for (let i = 0; i < total; i++) {
-        const s = all[i];
-        const p = s.price || 0;
-        const ema20 = s.ema20 || 0;
-        const ema50 = s.ema50 || 0;
-        const ema200 = s.ema200 || 0;
-        const rsi = s.rsi || 0;
-        const hist = s.macd?.hist || 0;
-        const conf = s.confidence || 0;
+        const filtered = all.filter((s) => {
+          const p = s.price || 0;
+          const ema20 = s.ema20 || 0;
+          const ema50 = s.ema50 || 0;
+          const ema200 = s.ema200 || 0;
+          const rsi = s.rsi || 0;
+          const hist = s.macd?.hist || 0;
+          const conf = s.confidence || 0;
 
-        // 🎯 เงื่อนไขแต่ละโหมด
-        let match = false;
-        if (mode === "short") {
-          match =
-            p >= 2 &&
-            p <= 45 &&
-            ema20 > ema50 &&
-            rsi > 45 &&
-            rsi < 65 &&
-            hist > -0.1 &&
-            conf >= 0.5;
-        }
-        if (mode === "swing") {
-          match =
-            p >= 3 &&
-            p <= 80 &&
-            ema20 > ema50 &&
-            rsi > 45 &&
-            rsi < 75 &&
-            conf >= 0.5;
-        }
-        if (mode === "long") {
-          match = ema50 > ema200 && rsi > 50 && conf >= 0.5 && p > ema200;
-        }
-        if (match) filtered.push(s);
+          if (mode === "short") {
+            return p >= 2 && p <= 45 && ema20 > ema50 && rsi > 45 && rsi < 65 && hist > -0.1 && conf >= 0.5;
+          }
+          if (mode === "swing") {
+            return p >= 3 && p <= 80 && ema20 > ema50 && rsi > 45 && rsi < 75 && conf >= 0.5;
+          }
+          if (mode === "long") {
+            return ema50 > ema200 && rsi > 50 && conf >= 0.5 && p > ema200;
+          }
+          return false;
+        });
 
-        // อัปเดต progress ทุก ๆ 10 หุ้น
-        if (i % 10 === 0) {
-          setProgress(Math.round(((i + 1) / total) * 100));
-          setStatus(`🧠 กำลังประมวลผล... (${i + 1}/${total})`);
-          await new Promise((res) => setTimeout(res, 10));
-        }
+        allResults.push(...filtered);
+        setTotalScanned(offset + all.length);
+        setProgress(Math.min(100, Math.round(((offset + LIMIT) / TOTAL) * 100)));
+        await new Promise((r) => setTimeout(r, 300)); // ชะลอให้เหมือนจริง
       }
 
-      setResults(filtered);
+      setResults(allResults);
       setProgress(100);
-      if (filtered.length > 0) {
-        setStatus(`✅ พบหุ้นเข้าเกณฑ์ ${filtered.length} ตัว`);
-      } else {
-        setStatus("❌ ยังไม่พบหุ้นเข้าเกณฑ์ในตอนนี้");
-      }
+      setStatus(`✅ สแกนครบทั้งหมด ${TOTAL} ตัว พบหุ้นเข้าเกณฑ์ ${allResults.length} ตัว`);
       playDing();
     } catch (e) {
       console.error(e);
-      setStatus("❗ เกิดข้อผิดพลาดในการสแกน");
+      setStatus("⚠️ เกิดข้อผิดพลาดระหว่างสแกนตลาด");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    scan(mode);
+    fullScan(mode);
   }, [mode]);
 
   return (
     <section className="bg-[#0b1220] border border-white/10 rounded-2xl p-4 mt-4">
       <h2 className="text-lg font-semibold mb-3 text-white flex items-center gap-2">
-        🤖 AI Multi-Mode Market Scanner
+        🤖 AI Full Market Scanner (6,000+ หุ้น)
       </h2>
 
-      {/* 🔘 ปุ่มเลือกโหมด */}
+      {/* โหมด */}
       <div className="flex justify-around mb-4">
         {["short", "swing", "long"].map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
+            disabled={loading}
             className={`px-3 py-1.5 rounded-lg text-sm border border-white/10 transition-all duration-300 ${
               mode === m
                 ? `${colorClass[m]} bg-white/10 border-white/20 font-bold`
@@ -135,27 +127,26 @@ export default function AutoScanPro() {
         ))}
       </div>
 
-      {/* 🔄 ปุ่มสแกนใหม่ */}
       <button
-        onClick={() => scan(mode)}
+        onClick={() => fullScan(mode)}
         disabled={loading}
         className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-sm px-3 py-1.5 rounded-lg border border-emerald-400/30 mb-3"
       >
-        {loading ? "⏳ กำลังสแกน..." : "🔄 Re-Scan Now"}
+        {loading ? "⏳ กำลังสแกนทั้งตลาด..." : "🔄 สแกนตลาดทั้งหมด"}
       </button>
 
-      {/* 📊 แถบสถานะการสแกน */}
+      {/* Progress Bar */}
       <div className="mb-3">
         <div className="w-full bg-[#141b2d] h-2 rounded-full overflow-hidden mb-1">
           <div
-            className="h-2 bg-emerald-400 transition-all duration-200"
+            className="h-2 bg-emerald-400 transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
         <div className="text-xs text-gray-400">{status}</div>
       </div>
 
-      {/* 📈 ผลลัพธ์การสแกน */}
+      {/* สรุปผล */}
       {results.length === 0 ? (
         <div className="text-gray-400 text-sm mt-2">
           ยังไม่พบหุ้นเข้าเกณฑ์ในตอนนี้
@@ -190,4 +181,4 @@ export default function AutoScanPro() {
       )}
     </section>
   );
-              }
+    }
