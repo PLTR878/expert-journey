@@ -1,14 +1,12 @@
-// pages/api/news.js
+// ✅ /pages/api/news.js
 // Aggregates multiple free RSS feeds, dedupes, tags tickers, adds lightweight sentiment.
 
 const FEEDS = [
-  // แหล่งฟรีและเสถียร
   "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC,^IXIC,NVDA,TSLA,AMD,MSFT,AAPL,META&region=US&lang=en-US",
-  "https://www.cnbc.com/id/100003114/device/rss/rss.html", // CNBC Top News & Analysis
+  "https://www.cnbc.com/id/100003114/device/rss/rss.html",
   "https://www.marketwatch.com/rss/topstories"
 ];
 
-// คีย์เวิร์ดเชิงบวก/ลบแบบง่าย ๆ
 const POS = ["surge","soar","jump","beat","record","rally","gain","grow","bull","upgrade","approve","profitable","tops","better than"];
 const NEG = ["plunge","drop","fall","miss","slash","downgrade","lawsuit","probe","ban","shortfall","loss","cut","recall","worse than","bankrupt","default"];
 
@@ -36,7 +34,6 @@ const detectSentiment = (t="") => {
   return "Neutral";
 };
 const extractTickers = (title="") => {
-  // ดึง $NVDA / (NVDA) / NVDA: แบบง่าย
   const s = new Set();
   const r1 = [...title.matchAll(/\$([A-Z]{1,6})\b/g)].map(m=>m[1]);
   const r2 = [...title.matchAll(/\b([A-Z]{1,5})\b(?=\s+stock|\s+shares|\s+surges|\s+falls)/gi)].map(m=>m[1]);
@@ -46,7 +43,7 @@ const extractTickers = (title="") => {
 
 async function fetchRSS(url) {
   try {
-    const r = await fetch(url, { cache:"no-store" });
+    const r = await fetch(url, { cache:"no-store", headers: { "User-Agent": "Mozilla/5.0" } });
     const xml = await r.text();
     const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => {
       const block = m[1];
@@ -80,14 +77,11 @@ export default async function handler(req, res) {
     const chunks = await Promise.all(FEEDS.map(fetchRSS));
     let all = chunks.flat();
 
-    // จัดเรียงตามเวลาล่าสุด
     all.sort((a,b)=> new Date(b.date) - new Date(a.date));
 
-    // กรองคำค้น/สัญลักษณ์ถ้ามี
     if (q) all = all.filter(x => x.title.toLowerCase().includes(q));
     if (sym) all = all.filter(x => x.symbols.includes(sym));
 
-    // ตัดซ้ำตาม title + source
     all = uniqBy(all, x => `${x.title}|${x.source}`);
 
     res.status(200).json({ results: all.slice(0, limit) });
