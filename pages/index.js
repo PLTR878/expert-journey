@@ -182,7 +182,6 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-4 py-4">
         {active === "market" && (
           <>
-            <MarketSection title="🤖 AI Picks — Smart Buy Signals" rows={aiPicks} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
             <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
             <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
             <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
