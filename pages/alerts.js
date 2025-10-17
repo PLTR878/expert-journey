@@ -1,5 +1,5 @@
 // ✅ /pages/alerts.js
-// สแกนต่ออัตโนมัติ 800 หุ้นต่อรอบ มีเสียงเตือน + แถบเปอร์เซ็นต์
+// Auto Scan ต่อเนื่อง + เสียงเตือน + แถบเปอร์เซ็นต์ + แสดงหุ้นจริง
 
 import { useState } from "react";
 
@@ -28,9 +28,8 @@ export default function AlertsPage() {
 
     let cursor = 0;
     while (true) {
-      const res = await fetch(`/api/scan?cursor=${cursor}&rsiMin=35&rsiMax=55&priceMin=1&priceMax=50`);
+      const res = await fetch(`/api/scan?cursor=${cursor}&rsiMin=23&rsiMax=44&priceMin=1&priceMax=1000&mode=Buy`);
       const j = await res.json();
-
       if (!j.ok) break;
 
       if (j.matches?.length) {
@@ -54,7 +53,7 @@ export default function AlertsPage() {
 
   return (
     <div className="p-4 text-white bg-[#0b0f17] min-h-screen">
-      <h1 className="text-xl font-bold mb-3">🚀 Auto Scan — US Stocks (Full)</h1>
+      <h1 className="text-xl font-bold mb-3">🚀 Auto Scan — US Stocks (Full Market)</h1>
 
       <button
         onClick={runScan}
