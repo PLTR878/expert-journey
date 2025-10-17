@@ -1,36 +1,27 @@
 // /pages/api/scan.js
 
 const SYMBOLS = [
-  "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA",
-  "PLUG", "SMCI", "GWH", "SLDP", "AEHR", "BIO", "BIMI",
-  "ACU", "ACV", "ACWI", "ZIM", "XFOR", "NRGV", "LWLG"
+  "AAPL","MSFT","NVDA","AMZN","META","GOOGL","TSLA","PLUG","SMCI",
+  "GWH","SLDP","AEHR","BIO","BIMI","ACU","ACV","ACWI","ZIM","XFOR",
+  "NRGV","LWLG","BEEM","CHPT","IONQ","ENVX","VFS","NVTS","FREY","QS"
 ];
 
 const SLEEP_MS = 250;
 
 function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-// RSI (14) คำนวณจริง
 function calcRSI(values, period = 14) {
   if (!values || values.length < period + 1) return null;
-  let gain = 0, loss = 0;
+  let gains = 0, losses = 0;
   for (let i = 1; i <= period; i++) {
     const diff = values[i] - values[i - 1];
-    if (diff >= 0) gain += diff;
-    else loss -= diff;
+    if (diff > 0) gains += diff;
+    else losses -= diff;
   }
-  let avgGain = gain / period;
-  let avgLoss = loss / period;
-  for (let i = period + 1; i < values.length; i++) {
-    const diff = values[i] - values[i - 1];
-    const g = Math.max(diff, 0);
-    const l = Math.max(-diff, 0);
-    avgGain = (avgGain * (period - 1) + g) / period;
-    avgLoss = (avgLoss * (period - 1) + l) / period;
-  }
-  if (avgLoss === 0) return 100;
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
   const rs = avgGain / avgLoss;
   return 100 - 100 / (1 + rs);
 }
@@ -38,21 +29,16 @@ function calcRSI(values, period = 14) {
 export default async function handler(req, res) {
   try {
     const {
-      mode = "Any",
-      rsiMin: rsiMinStr = "",
-      rsiMax: rsiMaxStr = "",
-      priceMin: pMinStr = "",
-      priceMax: pMaxStr = "",
-      cursor: cursorStr = "0"
+      cursor: cursorStr = "0",
+      mode = "Buy",
+      rsiMin = "35",
+      rsiMax = "55",
+      priceMin = "1",
+      priceMax = "30",
     } = req.query;
 
-    const rsiMin = rsiMinStr ? Number(rsiMinStr) : null;
-    const rsiMax = rsiMaxStr ? Number(rsiMaxStr) : null;
-    const priceMin = pMinStr ? Number(pMinStr) : null;
-    const priceMax = pMaxStr ? Number(pMaxStr) : null;
-    const cursor = parseInt(cursorStr) || 0;
+    const cursor = parseInt(cursorStr);
     const batchSize = 10;
-
     const slice = SYMBOLS.slice(cursor, cursor + batchSize);
     const matches = [];
 
@@ -63,19 +49,19 @@ export default async function handler(req, res) {
       const q = j?.chart?.result?.[0]?.indicators?.quote?.[0];
       const closes = q?.close?.filter(Number.isFinite) || [];
       const price = j?.chart?.result?.[0]?.meta?.regularMarketPrice ?? closes.at(-1) ?? 0;
-      if (!price || closes.length < 15) continue;
+      if (!price) continue;
 
-      const R = calcRSI(closes);
-      const signal = R > 60 ? "Sell" : R < 40 ? "Buy" : "Hold";
+      const RSI = calcRSI(closes);
+      if (!RSI) continue;
 
-      if (rsiMin !== null && R < rsiMin) continue;
-      if (rsiMax !== null && R > rsiMax) continue;
-      if (priceMin !== null && price < priceMin) continue;
-      if (priceMax !== null && price > priceMax) continue;
+      const signal = RSI > 60 ? "Sell" : RSI < 40 ? "Buy" : "Hold";
+
       if (mode === "Buy" && signal !== "Buy") continue;
       if (mode === "Sell" && signal !== "Sell") continue;
+      if (price < Number(priceMin) || price > Number(priceMax)) continue;
+      if (RSI < Number(rsiMin) || RSI > Number(rsiMax)) continue;
 
-      matches.push({ symbol: sym, price, rsi: Number(R.toFixed(1)), signal });
+      matches.push({ symbol: sym, price, RSI: RSI.toFixed(1), signal });
       await sleep(SLEEP_MS);
     }
 
@@ -84,10 +70,10 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       ok: true,
+      matches,
       nextCursor: done ? null : nextCursor,
       done,
-      matches,
-      progress: Math.round((nextCursor / SYMBOLS.length) * 100),
+      progress: Math.min(100, Math.round((nextCursor / SYMBOLS.length) * 100)),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
