@@ -1,4 +1,4 @@
-// ✅ pages/index.js — Visionary Stock Screener (Galaxy + Auto Scan Edition)
+// ✅ pages/index.js — Visionary Stock Screener V4 (Galaxy + Auto Trade)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -22,6 +22,10 @@ export default function Home() {
   const [scannedCount, setScannedCount] = useState(0);
   const totalSymbols = 7000;
 
+  // =============== AUTO TRADE STATES ===============
+  const [autoTrades, setAutoTrades] = useState([]);
+  const [tradeRunning, setTradeRunning] = useState(false);
+
   async function runAutoScan() {
     if (running) return;
     setRunning(true);
@@ -36,6 +40,10 @@ export default function Home() {
         const data = await res.json();
 
         if (Array.isArray(data.results)) {
+          const found = data.results.filter((x) => x.signal === "Buy");
+          if (found.length > 0) {
+            new Audio("/ding.mp3").play();
+          }
           setMatches((prev) => [...prev, ...data.results]);
         }
 
@@ -49,8 +57,21 @@ export default function Home() {
 
     setRunning(false);
     setProgress(100);
-    const audio = new Audio("/ding.mp3");
-    audio.play();
+  }
+
+  async function runAutoTrade() {
+    if (tradeRunning) return;
+    setTradeRunning(true);
+    try {
+      const res = await fetch("/api/auto-trade");
+      const data = await res.json();
+      setAutoTrades(data.trades || []);
+      if (data.trades?.length > 0) new Audio("/ding.mp3").play();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTradeRunning(false);
+    }
   }
 
   // =============== FAVORITES ===============
@@ -137,7 +158,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — Galaxy Edition
+            🌍 Visionary Stock Screener — Galaxy + Auto Trade
           </b>
           <div className="relative w-full sm:w-64">
             <input
@@ -171,7 +192,7 @@ export default function Home() {
 
         {active === "favorites" && <Favorites data={favData} />}
 
-        {/* AUTO SCAN SECTION */}
+        {/* AUTO SCAN */}
         {active === "scan" && (
           <section className="text-sm text-gray-200">
             <h2 className="text-emerald-400 text-lg mb-2">📡 Auto Scan — US Stocks</h2>
@@ -179,16 +200,13 @@ export default function Home() {
               <button
                 onClick={runAutoScan}
                 disabled={running}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
               >
-                ▶ {running ? "Scanning..." : "Run Now"}
+                ▶ {running ? "Scanning..." : "Run Scan Now"}
               </button>
 
               <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
-                <div
-                  className="h-2 bg-emerald-500 transition-all"
-                  style={{ width: `${progress}%` }}
-                />
+                <div className="h-2 bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
               </div>
 
               <div className="text-xs text-gray-400 mb-2">
@@ -206,14 +224,43 @@ export default function Home() {
           </section>
         )}
 
+        {/* AUTO TRADE */}
+        {active === "trade" && (
+          <section className="text-sm text-gray-200 mt-4">
+            <h2 className="text-emerald-400 text-lg mb-2">🤖 Auto Trade — AI Contracts</h2>
+            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
+              <button
+                onClick={runAutoTrade}
+                disabled={tradeRunning}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
+              >
+                ⚡ {tradeRunning ? "Processing..." : "Run Auto Trade"}
+              </button>
+
+              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
+                {autoTrades.length === 0 ? (
+                  <li className="text-gray-400">ยังไม่มีสัญญาซื้อขาย...</li>
+                ) : (
+                  autoTrades.map((t, i) => (
+                    <li key={i}>
+                      {t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} <b>{t.symbol}</b> — ${t.price} | RSI {t.rsi} | Δ {t.change}%
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </section>
+        )}
+
+        {/* MENU */}
         {active === "menu" && (
           <section className="text-center text-gray-400 py-10">
             <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
-            <p>📡 Auto refresh lists on load</p>
+            <p>📡 Auto Scan + AI Trade Enabled</p>
             <p>💾 Favorites stored locally</p>
-            <p>🔔 Alerts check every 1 minute</p>
+            <p>🔔 Alerts with Sound</p>
             <div className="text-xs text-gray-500 mt-3">
-              Version 3.1 — Galaxy + Auto Scan Universe
+              Version 4.0 — Galaxy + Auto Trade Universe
             </div>
           </section>
         )}
@@ -224,15 +271,14 @@ export default function Home() {
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
-          { id: "scan", label: "Auto Scan", icon: "🔔" },
+          { id: "scan", label: "Auto Scan", icon: "📡" },
+          { id: "trade", label: "Auto Trade", icon: "🤖" },
           { id: "menu", label: "Menu", icon: "☰" },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`py-2 flex flex-col items-center ${
-              active === t.id ? "text-emerald-400" : ""
-            }`}
+            className={`py-2 flex flex-col items-center ${active === t.id ? "text-emerald-400" : ""}`}
           >
             <span className="text-[18px]">{t.icon}</span>
             {t.label}
