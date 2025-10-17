@@ -1,8 +1,12 @@
-// ✅ /pages/api/scan.js — Auto-Continue Full Market Scanner (Batch system)
+// ✅ /pages/api/scan.js — Full Auto Scan + Save Matches to /data/scan-latest.json
+
+import fs from "fs";
+import path from "path";
 import { ema, rsi, macd } from "../../lib/indicators.js";
 
-const BATCH_SIZE = 800; // หุ้นต่อรอบ
-const DELAY_MS = 150; // delay ป้องกันโดน block
+const BATCH_SIZE = 800; // หุ้นต่อ batch
+const DELAY_MS = 150; // หน่วงต่อหุ้น ป้องกันโดน block
+const SAVE_PATH = path.join(process.cwd(), "data", "scan-latest.json");
 
 export default async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -13,11 +17,9 @@ export default async function handler(req, res) {
   const send = (msg) => res.write(encoder.encode(`${JSON.stringify(msg)}\n`));
 
   try {
-    // อ่านค่าพารามิเตอร์ batch (เช่น batch=2)
     const batch = Number(req.query.batch || 1);
-
     if (batch === 1) send({ log: "🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..." });
-    send({ log: `📦 ดำเนินการ batch ${batch}` });
+    send({ log: `📦 Batch ${batch} กำลังเริ่มทำงาน...` });
 
     // โหลดรายชื่อหุ้นทั้งหมด
     const tickersRes = await fetch(
@@ -27,7 +29,7 @@ export default async function handler(req, res) {
     const symbols = tickers.map((x) => x.ticker);
     const total = symbols.length;
     const start = (batch - 1) * BATCH_SIZE;
-    const end = start + BATCH_SIZE;
+    const end = Math.min(start + BATCH_SIZE, total);
     const list = symbols.slice(start, end);
 
     if (list.length === 0) {
@@ -35,9 +37,14 @@ export default async function handler(req, res) {
       return res.end();
     }
 
-    send({ log: `🔍 สแกนหุ้นช่วง ${start + 1}-${end} จากทั้งหมด ${total}` });
+    const matches = fs.existsSync(SAVE_PATH)
+      ? JSON.parse(fs.readFileSync(SAVE_PATH, "utf8"))
+      : [];
 
-    const results = [];
+    send({
+      log: `🔍 สแกนหุ้นช่วง ${start + 1}-${end} จาก ${total} ตัว`,
+    });
+
     let count = 0;
 
     for (const symbol of list) {
@@ -75,47 +82,57 @@ export default async function handler(req, res) {
             ? "Downtrend"
             : "Sideway";
 
-        const stock = {
-          symbol,
-          lastClose: Number(lastClose.toFixed(2)),
-          rsi: Number(R.toFixed(1)),
-          trend,
-          signal,
-        };
-
         const percent = (((start + count) / total) * 100).toFixed(1);
+
         send({
-          log: `🔍 [${percent}%] ${symbol} — $${lastClose.toFixed(
+          log: `🔎 [${percent}%] ${symbol} — $${lastClose.toFixed(
             2
           )} | RSI ${R.toFixed(1)} | ${signal}`,
           progress: percent,
         });
 
-        if (signal !== "Hold")
+        // บันทึกหุ้นที่เข้าเงื่อนไข Buy / Sell
+        if (signal !== "Hold") {
+          const item = {
+            symbol,
+            price: Number(lastClose.toFixed(2)),
+            rsi: Number(R.toFixed(1)),
+            signal,
+            trend,
+            date: new Date().toISOString(),
+          };
+          matches.push(item);
+          fs.writeFileSync(SAVE_PATH, JSON.stringify(matches, null, 2));
           send({
             alert: `🎯 ${signal} — ${symbol} $${lastClose.toFixed(
               2
             )} | RSI ${R.toFixed(1)}`,
           });
+        }
 
-        results.push(stock);
         await new Promise((r) => setTimeout(r, DELAY_MS));
       } catch (err) {
         send({ log: `⚠️ ${symbol} error: ${err.message}` });
       }
     }
 
-    // ✅ batch ถัดไป (ถ้ามี)
+    // เรียก batch ถัดไปอัตโนมัติ
     const next = batch + 1;
     const nextStart = (next - 1) * BATCH_SIZE;
+
     if (nextStart < total) {
-      send({
-        log: `➡️ ดำเนินการต่อ batch ${next}`,
-        nextBatch: `/api/scan?batch=${next}`,
-      });
+      send({ log: `➡️ ดำเนินการต่อ batch ${next} ...`, nextBatch: true });
+      setTimeout(async () => {
+        await fetch(
+          `${process.env.VERCEL_URL
+            ? "https://" + process.env.VERCEL_URL
+            : "http://localhost:3000"
+          }/api/scan?batch=${next}`
+        );
+      }, 2000);
     } else {
       send({
-        log: `✅ สแกนครบทั้งหมด ${total} ตัว`,
+        log: `✅ สแกนครบทั้งหมด ${total} ตัวเรียบร้อย!`,
         done: true,
       });
     }
@@ -125,4 +142,4 @@ export default async function handler(req, res) {
     send({ error: err.message });
     res.end();
   }
-}
+                 }
