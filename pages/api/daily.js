@@ -7,8 +7,11 @@ export default async function handler(req, res) {
   if (!symbol) return res.status(400).json({ error: "Missing symbol" });
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
-    const r = await fetch(url);
+    // 🧠 ป้องกัน Too Many Requests ด้วยการหน่วง + Proxy ปลอดภัย
+    await new Promise((r) => setTimeout(r, 600)); // หน่วง 0.6 วิ ป้องกันยิงถี่
+    const proxyUrl = `https://r.jina.ai/https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
+
+    const r = await fetch(proxyUrl);
     const j = await r.json();
     const data = j?.chart?.result?.[0];
     if (!data) throw new Error("No data for symbol");
@@ -108,4 +111,4 @@ export default async function handler(req, res) {
       message: "เกิดข้อผิดพลาดในการวิเคราะห์",
     });
   }
-        }
+}
