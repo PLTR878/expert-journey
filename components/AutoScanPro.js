@@ -1,4 +1,4 @@
-// ✅ AutoScanPro.js — Full Market Scanner (Ultimate Version)
+// ✅ AutoScanPro.js — Full Market Scanner (Ultimate Hybrid Galaxy Edition)
 import { useState, useEffect } from "react";
 
 export default function AutoScanPro() {
@@ -7,8 +7,6 @@ export default function AutoScanPro() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("Ready");
   const [results, setResults] = useState([]);
-  const [batch, setBatch] = useState(0);
-  const [totalScanned, setTotalScanned] = useState(0);
 
   const modeName = {
     short: "⚡ เทรดสั้น (1–7 วัน)",
@@ -22,7 +20,7 @@ export default function AutoScanPro() {
     long: "text-sky-400",
   };
 
-  // ✅ เล่นเสียงตอนสแกนเสร็จ
+  // 🔔 เสียงเตือนเมื่อสแกนเสร็จ
   function playDing() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -38,58 +36,42 @@ export default function AutoScanPro() {
     } catch {}
   }
 
-  // ✅ สแกนหุ้นทั้งตลาดแบบแบ่ง batch
+  // 🚀 ฟังก์ชันสแกนหุ้นทั้งตลาด (ต่อกับ screener-hybrid.js)
   async function fullScan(mode = "short") {
     setLoading(true);
     setProgress(0);
     setStatus("📡 เริ่มสแกนหุ้นทั้งตลาดอเมริกา...");
     setResults([]);
-    setBatch(0);
-    setTotalScanned(0);
-
-    const LIMIT = 300;
-    const TOTAL = 6000; // หุ้นทั้งหมดประมาณ 6,000 ตัว
-    const allResults = [];
 
     try {
-      for (let offset = 0; offset < TOTAL; offset += LIMIT) {
-        const batchNo = offset / LIMIT + 1;
-        setBatch(batchNo);
-        setStatus(`🧠 กำลังสแกนชุดที่ ${batchNo} (${offset + 1}-${offset + LIMIT})...`);
-        const r = await fetch(`/api/screener?limit=${LIMIT}&offset=${offset}`);
-        const j = await r.json();
-        const all = j.results || [];
+      const r = await fetch(`/api/screener-hybrid?mode=${mode}`);
+      if (!r.ok) throw new Error("API error");
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let text = "";
 
-        const filtered = all.filter((s) => {
-          const p = s.price || 0;
-          const ema20 = s.ema20 || 0;
-          const ema50 = s.ema50 || 0;
-          const ema200 = s.ema200 || 0;
-          const rsi = s.rsi || 0;
-          const hist = s.macd?.hist || 0;
-          const conf = s.confidence || 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        text += chunk;
 
-          if (mode === "short") {
-            return p >= 2 && p <= 45 && ema20 > ema50 && rsi > 45 && rsi < 65 && hist > -0.1 && conf >= 0.5;
+        // ✅ อัปเดตสถานะตาม log ที่ API ส่งมา (แบบ streaming)
+        const lines = chunk.split("\n").filter(Boolean);
+        for (let line of lines) {
+          try {
+            const msg = JSON.parse(line);
+            if (msg.progress) setProgress(msg.progress);
+            if (msg.log) setStatus(msg.log);
+            if (msg.results) setResults(msg.results);
+          } catch {
+            // ถ้าไม่ใช่ JSON ให้ข้าม
           }
-          if (mode === "swing") {
-            return p >= 3 && p <= 80 && ema20 > ema50 && rsi > 45 && rsi < 75 && conf >= 0.5;
-          }
-          if (mode === "long") {
-            return ema50 > ema200 && rsi > 50 && conf >= 0.5 && p > ema200;
-          }
-          return false;
-        });
-
-        allResults.push(...filtered);
-        setTotalScanned(offset + all.length);
-        setProgress(Math.min(100, Math.round(((offset + LIMIT) / TOTAL) * 100)));
-        await new Promise((r) => setTimeout(r, 300)); // ชะลอให้เหมือนจริง
+        }
       }
 
-      setResults(allResults);
+      setStatus("✅ สแกนเสร็จสมบูรณ์ — ข้อมูลอัปเดตจากตลาดจริง");
       setProgress(100);
-      setStatus(`✅ สแกนครบทั้งหมด ${TOTAL} ตัว พบหุ้นเข้าเกณฑ์ ${allResults.length} ตัว`);
       playDing();
     } catch (e) {
       console.error(e);
@@ -109,7 +91,7 @@ export default function AutoScanPro() {
         🤖 AI Full Market Scanner (6,000+ หุ้น)
       </h2>
 
-      {/* โหมด */}
+      {/* ปุ่มเลือกโหมด */}
       <div className="flex justify-around mb-4">
         {["short", "swing", "long"].map((m) => (
           <button
@@ -135,7 +117,7 @@ export default function AutoScanPro() {
         {loading ? "⏳ กำลังสแกนทั้งตลาด..." : "🔄 สแกนตลาดทั้งหมด"}
       </button>
 
-      {/* Progress Bar */}
+      {/* Progress */}
       <div className="mb-3">
         <div className="w-full bg-[#141b2d] h-2 rounded-full overflow-hidden mb-1">
           <div
@@ -146,7 +128,7 @@ export default function AutoScanPro() {
         <div className="text-xs text-gray-400">{status}</div>
       </div>
 
-      {/* สรุปผล */}
+      {/* ผลลัพธ์ */}
       {results.length === 0 ? (
         <div className="text-gray-400 text-sm mt-2">
           ยังไม่พบหุ้นเข้าเกณฑ์ในตอนนี้
@@ -159,7 +141,9 @@ export default function AutoScanPro() {
               className="flex justify-between items-center border border-white/10 rounded-xl px-3 py-2 bg-[#141b2d] hover:border-emerald-400/30 transition"
             >
               <span className="text-white font-semibold">{s.symbol}</span>
-              <span className="text-gray-300">${s.price?.toFixed(2) || "-"}</span>
+              <span className="text-gray-300">
+                ${s.price?.toFixed?.(2) || "-"}
+              </span>
               <span
                 className={`font-bold text-sm ${
                   mode === "short"
@@ -181,4 +165,4 @@ export default function AutoScanPro() {
       )}
     </section>
   );
-    }
+          }
