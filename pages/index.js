@@ -201,7 +201,6 @@ export default function Home() {
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
-          { id: "news", label: "News", icon: "🧠" },
           { id: "alerts", label: "Alerts", icon: "🔔" },
           { id: "menu", label: "Menu", icon: "☰" },
         ].map((t) => (
