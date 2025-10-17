@@ -1,11 +1,8 @@
 // ✅ pages/index.js — Visionary Stock Screener (Galaxy + Hybrid AI Scanner)
 import { useEffect, useState } from "react";
-import AutoMarketScan from "../components/AutoMarketScan";
-import AlertSystem from "../components/AlertSystem";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import NewsFeedPro from "../components/NewsFeedPro";
-import AutoScanPro from "../components/AutoScanPro"; // ✅ Full Market Scanner
 
 export default function Home() {
   const [favorites, setFavorites] = useState([]);
@@ -53,31 +50,26 @@ export default function Home() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // ✅ AI Picks
         const pick = await fetch(`/api/ai-picks?limit=150&offset=0&nocache=1`)
           .then((r) => r.json())
           .catch(() => ({ results: [] }));
         setAiPicks(pick.results || []);
 
-        // ✅ Fast Movers (short-term)
         const s1 = await fetch(`/api/screener-hybrid?mode=short`)
           .then((r) => r.json())
           .catch(() => ({ results: [] }));
         setFast(s1.results || []);
 
-        // ✅ Emerging Trends (swing)
         const s2 = await fetch(`/api/screener-hybrid?mode=swing`)
           .then((r) => r.json())
           .catch(() => ({ results: [] }));
         setEmerging(s2.results || []);
 
-        // ✅ Future Leaders (long-term)
         const s3 = await fetch(`/api/screener-hybrid?mode=long`)
           .then((r) => r.json())
           .catch(() => ({ results: [] }));
         setFuture(s3.results || []);
 
-        // ✅ Hidden Gems (สแกนเพิ่ม)
         const hid = await fetch(`/api/screener-hybrid?mode=swing`)
           .then((r) => r.json())
           .catch(() => ({ results: [] }));
@@ -172,15 +164,8 @@ export default function Home() {
         )}
 
         {active === "favorites" && <Favorites data={favData} />}
-        {active === "news" && <NewsFeedPro />} {/* ✅ ข่าว */}
-        {active === "alerts" && (
-          <>
-            <AlertSystem />
-            <div className="mt-4" />
-            <AutoMarketScan />
-            <AutoScanPro /> {/* ✅ Full Market Scanner */}
-          </>
-        )}
+        {active === "news" && <NewsFeedPro />}
+
         {active === "menu" && (
           <section className="text-center text-gray-400 py-10">
             <h2 className="text-emerald-400 text-xl mb-3 font-semibold">
@@ -201,7 +186,7 @@ export default function Home() {
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
-          { id: "alerts", label: "Alerts", icon: "🔔" },
+          { id: "news", label: "News", icon: "📰" },
           { id: "menu", label: "Menu", icon: "☰" },
         ].map((t) => (
           <button
@@ -218,4 +203,4 @@ export default function Home() {
       </nav>
     </main>
   );
-      }
+         }
