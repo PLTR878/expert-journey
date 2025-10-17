@@ -1,10 +1,11 @@
-// ✅ pages/index.js — Visionary Stock Screener (Galaxy Edition)
+// ✅ pages/index.js — Visionary Stock Screener (Galaxy + Multi-Mode)
 import { useEffect, useState } from "react";
 import AutoMarketScan from "../components/AutoMarketScan";
 import AlertSystem from "../components/AlertSystem";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
-import NewsFeedPro from "../components/NewsFeedPro"; // ← ใช้ตัวใหม่ที่มี AI วิเคราะห์ข่าว
+import NewsFeedPro from "../components/NewsFeedPro";
+import AutoScanPro from "../components/AutoScanPro"; // ✅ เพิ่มสแกน 3 โหมด
 
 export default function Home() {
   const [favorites, setFavorites] = useState([]);
@@ -17,7 +18,7 @@ export default function Home() {
   const [active, setActive] = useState("market");
   const [search, setSearch] = useState("");
 
-  // Favorites keep
+  // ----- Favorites -----
   useEffect(() => {
     const s = localStorage.getItem("favorites");
     if (s) setFavorites(JSON.parse(s));
@@ -37,12 +38,7 @@ export default function Home() {
       const j = await r.json();
       setFavoritePrices((p) => ({
         ...p,
-        [sym]: {
-          symbol: sym,
-          price: j.price,
-          rsi: j.rsi,
-          signal: j.signal,
-        },
+        [sym]: { symbol: sym, price: j.price, rsi: j.rsi, signal: j.signal },
       }));
     } catch {}
   }
@@ -50,12 +46,10 @@ export default function Home() {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // load lists
+  // ----- Load lists -----
   useEffect(() => {
     const f = async () => {
-      const pick = await fetch(
-        `/api/ai-picks?limit=150&offset=0&nocache=1`
-      )
+      const pick = await fetch(`/api/ai-picks?limit=150&offset=0&nocache=1`)
         .then((r) => r.json())
         .catch(() => ({ results: [] }));
       setAiPicks(pick.results || []);
@@ -94,12 +88,14 @@ export default function Home() {
     ...(favoritePrices[s] || {}),
   }));
 
+  // ----- UI -----
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
+      {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener
+            🌍 Visionary Stock Screener — Galaxy Edition
           </b>
           <div className="relative w-full sm:w-64">
             <input
@@ -119,6 +115,7 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-4">
         {active === "market" && (
           <>
@@ -161,12 +158,13 @@ export default function Home() {
         )}
 
         {active === "favorites" && <Favorites data={favData} />}
-        {active === "news" && <NewsFeedPro />} {/* ✅ ใช้หน้า News ใหม่ */}
+        {active === "news" && <NewsFeedPro />} {/* ✅ AI ข่าว */}
         {active === "alerts" && (
           <>
             <AlertSystem />
             <div className="mt-4" />
             <AutoMarketScan />
+            <AutoScanPro /> {/* ✅ เพิ่มสแกน 3 โหมด */}
           </>
         )}
         {active === "menu" && (
@@ -177,7 +175,9 @@ export default function Home() {
             <p>📡 Auto refresh lists on load</p>
             <p>💾 Favorites stored locally</p>
             <p>🔔 Alerts check every 1 minute</p>
-            <div className="text-xs text-gray-500 mt-3">Version 2.0 Galaxy Edition</div>
+            <div className="text-xs text-gray-500 mt-3">
+              Version 2.5 Galaxy Edition + AI Multi-Mode
+            </div>
           </section>
         )}
       </div>
