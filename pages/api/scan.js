@@ -1,5 +1,8 @@
-// ✅ /pages/api/scan.js — Full Market Scan with Live Progress + Alerts
+// ✅ /pages/api/scan.js — Auto-Continue Full Market Scanner (Batch system)
 import { ema, rsi, macd } from "../../lib/indicators.js";
+
+const BATCH_SIZE = 800; // หุ้นต่อรอบ
+const DELAY_MS = 150; // delay ป้องกันโดน block
 
 export default async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -10,24 +13,35 @@ export default async function handler(req, res) {
   const send = (msg) => res.write(encoder.encode(`${JSON.stringify(msg)}\n`));
 
   try {
-    send({ log: "🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..." });
-    send({ log: "📦 กำลังโหลดรายชื่อหุ้นทั้งหมด..." });
+    // อ่านค่าพารามิเตอร์ batch (เช่น batch=2)
+    const batch = Number(req.query.batch || 1);
 
-    // ✅ โหลดรายชื่อหุ้นทั้งหมดจาก 3 ตลาด
+    if (batch === 1) send({ log: "🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..." });
+    send({ log: `📦 ดำเนินการ batch ${batch}` });
+
+    // โหลดรายชื่อหุ้นทั้งหมด
     const tickersRes = await fetch(
       "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX"
     );
     const tickers = await tickersRes.json();
-    const symbols = tickers.map((x) => x.ticker).slice(0, 6000);
-    send({ log: `✅ โหลดรายชื่อหุ้นทั้งหมด ${symbols.length} ตัวสำเร็จ` });
+    const symbols = tickers.map((x) => x.ticker);
+    const total = symbols.length;
+    const start = (batch - 1) * BATCH_SIZE;
+    const end = start + BATCH_SIZE;
+    const list = symbols.slice(start, end);
+
+    if (list.length === 0) {
+      send({ log: "✅ สแกนครบทุก batch แล้ว!", done: true });
+      return res.end();
+    }
+
+    send({ log: `🔍 สแกนหุ้นช่วง ${start + 1}-${end} จากทั้งหมด ${total}` });
 
     const results = [];
     let count = 0;
-    const total = symbols.length;
 
-    for (const symbol of symbols) {
+    for (const symbol of list) {
       count++;
-
       try {
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
         const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
@@ -69,17 +83,7 @@ export default async function handler(req, res) {
           signal,
         };
 
-        // ✅ แจ้งเตือนเมื่อเข้าเงื่อนไข (Buy หรือ Sell)
-        if (signal !== "Hold") {
-          send({
-            alert: `🎯 ${signal} — ${symbol} $${lastClose.toFixed(2)} | RSI ${R.toFixed(
-              1
-            )}`,
-          });
-        }
-
-        // ✅ แสดงหุ้นที่กำลังสแกน
-        const percent = ((count / total) * 100).toFixed(1);
+        const percent = (((start + count) / total) * 100).toFixed(1);
         send({
           log: `🔍 [${percent}%] ${symbol} — $${lastClose.toFixed(
             2
@@ -87,24 +91,38 @@ export default async function handler(req, res) {
           progress: percent,
         });
 
+        if (signal !== "Hold")
+          send({
+            alert: `🎯 ${signal} — ${symbol} $${lastClose.toFixed(
+              2
+            )} | RSI ${R.toFixed(1)}`,
+          });
+
         results.push(stock);
-        await new Promise((r) => setTimeout(r, 150)); // ป้องกันโดน block
+        await new Promise((r) => setTimeout(r, DELAY_MS));
       } catch (err) {
         send({ log: `⚠️ ${symbol} error: ${err.message}` });
       }
     }
 
-    // ✅ สรุปสุดท้าย
-    const found = results.filter((x) => x.signal !== "Hold");
-    send({
-      log: `✅ สแกนเสร็จสิ้นทั้งหมด ${results.length} ตัว | พบหุ้นเข้าเงื่อนไข ${found.length} ตัว`,
-      found: found.length,
-      results: found,
-    });
+    // ✅ batch ถัดไป (ถ้ามี)
+    const next = batch + 1;
+    const nextStart = (next - 1) * BATCH_SIZE;
+    if (nextStart < total) {
+      send({
+        log: `➡️ ดำเนินการต่อ batch ${next}`,
+        nextBatch: `/api/scan?batch=${next}`,
+      });
+    } else {
+      send({
+        log: `✅ สแกนครบทั้งหมด ${total} ตัว`,
+        done: true,
+      });
+    }
 
     res.end();
   } catch (err) {
     send({ error: err.message });
     res.end();
   }
-      }
+}
