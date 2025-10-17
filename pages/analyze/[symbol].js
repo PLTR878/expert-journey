@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 const Chart = dynamic(() => import('../../components/Chart'), { ssr: false });
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : '-');
@@ -29,7 +30,7 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ ดึงข้อมูลจาก API ใหม่ (daily.js)
+  // ✅ ดึงข้อมูลจาก /api/daily.js
   useEffect(() => {
     if (!symbol) return;
     (async () => {
@@ -49,7 +50,7 @@ export default function Analyze() {
     })();
   }, [symbol]);
 
-  // ✅ กราฟแท่งเทียน (ใช้ historical data เดิม)
+  // ✅ ดึงกราฟแท่งเทียน
   useEffect(() => {
     if (!symbol) return;
     fetch(`/api/history?symbol=${symbol}&range=6mo&interval=1d`)
@@ -120,102 +121,21 @@ export default function Analyze() {
         </div>
 
         {/* ===== AI SIGNAL + TECHNICAL ===== */}
-        <div className="grid md:grid-cols-2 gap-6">
-
-          {/* AI Signal */}
-          <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[18px] font-semibold tracking-wide text-white/90">AI Trade Signal</h2>
-              <span className={`text-base font-bold ${colorAction}`}>{actionLabel}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Info label="🎯 Target Price" value={`$${fmt(ind?.targetPrice ?? price * 1.08, 2)}`} />
-              <Info label="🤖 AI Confidence" value={`${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`} />
-              <Info label="📋 System Reason" value={ind?.trend || sig.reason} className="col-span-2" />
-            </div>
-
-            {/* ✅ Confidence Meter */}
-            <div className="mt-4">
-              <div className="text-xs text-gray-400 mb-1">
-                Confidence Level ({fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%)
-              </div>
-              <div className="w-full bg-[#111827] h-2 rounded-full overflow-hidden">
-                <div
-                  className="h-2 transition-all duration-500"
-                  style={{
-                    width: `${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`,
-                    background: ind?.confidenceColor || '#00ff95',
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* ✅ Entry Zone */}
-            <section className="mt-5 bg-[#0f172a] rounded-2xl border border-white/10 p-4">
-              <h3 className="text-lg font-semibold text-emerald-400 mb-2">🎯 AI Entry Zone</h3>
-              <div className="text-sm font-semibold text-gray-300">
-                {ind?.entryZone || 'Loading Entry Zone...'}
-              </div>
-            </section>
-          </section>
-
-          {/* Indicators */}
-          <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
-            <h2 className="text-[18px] font-semibold tracking-wide text-white/90 mb-3">Technical Overview</h2>
-            {!ind ? (
-              <div className="text-sm text-gray-400">Loading data...</div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
-                <Info label="RSI (14)" value={fmt(ind.rsi, 1)} />
-                <Info label="EMA 20" value={fmt(ind.ema20)} />
-                <Info label="EMA 50" value={fmt(ind.ema50)} />
-                <Info label="EMA 200" value={fmt(ind.ema200)} />
-                <Info label="MACD Line" value={fmt(ind.macd?.line)} />
-                <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
-                <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
-                <Info label="ATR (14)" value={fmt(ind.atr14, 3)} />
-                <Info label="Status" value={loading ? 'Updating…' : ind?.status || 'Realtime'} />
-              </div>
-            )}
-          </section>
-        </div>
+        <AISignalSection ind={ind} sig={sig} price={price} loading={loading} />
 
         {/* ===== MARKET NEWS ===== */}
-        <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[18px] font-semibold tracking-wide text-white/90">Market News</h2>
-            <button
-              onClick={() => location.reload()}
-              className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition"
-            >
-              🔄 Refresh
-            </button>
-          </div>
-          {!news?.length && <div className="text-sm text-gray-400">No recent news.</div>}
-          <ul className="mt-3 space-y-2">
-            {news?.slice(0, 12).map((n, i) => (
-              <li
-                key={i}
-                className="rounded-xl p-3 bg-black/25 border border-white/10 hover:border-emerald-400/30 hover:bg-white/5 transition-all duration-300"
-              >
-                <a href={n.url || n.link} target="_blank" rel="noreferrer" className="block font-medium text-[15px] leading-snug hover:text-emerald-400 transition">
-                  {n.title || n.headline}
-                </a>
-                <div className="text-xs text-gray-400 mt-1 border-t border-white/5 pt-1">
-                  {(n.source || n.publisher || '').toString()} • {(n.publishedAt || n.time || '').toString()}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <MarketNews news={news} />
+
+        {/* ===== REALTIME SCAN + GALAXY MAP ===== */}
+        <AIShortList />
+        <AIGalaxyMap />
+
       </div>
     </main>
   );
 }
 
-/* ✅ กล่อง Info — มืออาชีพ */
+/* ✅ Info Component */
 function Info({ label, value, className = '' }) {
   const color =
     value?.includes('%')
@@ -223,7 +143,6 @@ function Info({ label, value, className = '' }) {
         ? 'text-red-400'
         : 'text-emerald-400'
       : 'text-gray-100';
-
   return (
     <div
       className={`rounded-xl border border-white/10 bg-gradient-to-b from-[#141b2d] to-[#0b1220]
@@ -242,3 +161,123 @@ function Info({ label, value, className = '' }) {
     </div>
   );
 }
+
+/* ✅ AI Signal Section */
+function AISignalSection({ ind, sig, price, loading }) {
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[18px] font-semibold tracking-wide text-white/90">AI Trade Signal</h2>
+          <span className="text-base font-bold text-emerald-400">
+            {sig.action === 'Buy' ? 'ซื้อ (Buy)' : sig.action === 'Sell' ? 'ขาย (Sell)' : 'ถือ (Hold)'}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Info label="🎯 Target Price" value={`$${fmt(ind?.targetPrice ?? price * 1.08, 2)}`} />
+          <Info label="🤖 AI Confidence" value={`${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`} />
+          <Info label="📋 System Reason" value={ind?.trend || sig.reason} className="col-span-2" />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
+        <h2 className="text-[18px] font-semibold tracking-wide text-white/90 mb-3">Technical Overview</h2>
+        {!ind ? (
+          <div className="text-sm text-gray-400">Loading data...</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
+            <Info label="RSI (14)" value={fmt(ind.rsi, 1)} />
+            <Info label="EMA 20" value={fmt(ind.ema20)} />
+            <Info label="EMA 50" value={fmt(ind.ema50)} />
+            <Info label="EMA 200" value={fmt(ind.ema200)} />
+            <Info label="MACD Line" value={fmt(ind.macd?.line)} />
+            <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
+            <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
+            <Info label="ATR (14)" value={fmt(ind.atr14, 3)} />
+            <Info label="Status" value={loading ? 'Updating…' : ind?.status || 'Realtime'} />
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/* ✅ Market News */
+function MarketNews({ news }) {
+  return (
+    <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[18px] font-semibold tracking-wide text-white/90">Market News</h2>
+      </div>
+      {!news?.length && <div className="text-sm text-gray-400">No recent news.</div>}
+      <ul className="mt-3 space-y-2">
+        {news?.slice(0, 12).map((n, i) => (
+          <li
+            key={i}
+            className="rounded-xl p-3 bg-black/25 border border-white/10 hover:border-emerald-400/30 hover:bg-white/5 transition-all duration-300"
+          >
+            <a href={n.url || n.link} target="_blank" rel="noreferrer" className="block font-medium text-[15px] leading-snug hover:text-emerald-400 transition">
+              {n.title || n.headline}
+            </a>
+            <div className="text-xs text-gray-400 mt-1 border-t border-white/5 pt-1">
+              {(n.source || n.publisher || '').toString()} • {(n.publishedAt || n.time || '').toString()}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ✅ AI ShortList Realtime */
+function AIShortList() {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    const load = async () => {
+      const r = await fetch('/api/screener?horizon=short&limit=100');
+      const j = await r.json();
+      const top = (j.results || [])
+        .filter(x => x.signal === 'Buy' && x.confidence > 0.6)
+        .slice(0, 5);
+      setList(top);
+    };
+    load();
+    const timer = setInterval(load, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <section className="rounded-2xl border border-white/10 bg-[#0b1220] p-5 mt-10">
+      <h2 className="text-lg font-semibold text-emerald-400 mb-3">🔥 AI Stocks To Watch</h2>
+      <ul className="space-y-2">
+        {list.map((s, i) => (
+          <li key={i} className="flex justify-between items-center border border-white/10 rounded-xl px-3 py-2 bg-[#141b2d]">
+            <Link href={`/analyze/${s.symbol}`} className="text-white font-bold">
+              {s.symbol}
+            </Link>
+            <span className="text-gray-400 text-sm">Conf: {(s.confidence * 100).toFixed(0)}%</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ✅ Galaxy Trend Map */
+function AIGalaxyMap() {
+  return (
+    <section className="mt-10 bg-[#141b2d] p-6 rounded-2xl border border-white/10">
+      <h2 className="text-lg font-semibold text-emerald-400 mb-4 text-center">🌌 AI Galaxy Trend Map</h2>
+      <div className="grid grid-cols-10 gap-[3px]">
+        {Array.from({ length: 100 }).map((_, i) => {
+          const c = i % 3 === 0 ? "#22c55e" : i % 3 === 1 ? "#facc15" : "#ef4444";
+          return <div key={i} className="w-5 h-5 rounded-sm" style={{ background: c, opacity: 0.85 }}></div>;
+        })}
+      </div>
+      <div className="flex justify-center gap-5 mt-3 text-xs text-gray-400">
+        <div>🟢 Uptrend</div><div>🟡 Sideway</div><div>🔴 Downtrend</div>
+      </div>
+    </section>
+  );
+    }
