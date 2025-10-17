@@ -1,35 +1,34 @@
+// ✅ /pages/alerts.js
+// สแกนต่ออัตโนมัติ 800 หุ้นต่อรอบ มีเสียงเตือน + แถบเปอร์เซ็นต์
+
 import { useState } from "react";
 
 export default function AlertsPage() {
+  const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [matches, setMatches] = useState([]);
-  const [running, setRunning] = useState(false);
   const [batch, setBatch] = useState(1);
-  const [scanned, setScanned] = useState(0);
 
   function playSound(type) {
-    const soundMap = {
+    const sounds = {
       Buy: "https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg",
       Sell: "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
-      Hold: "https://actions.google.com/sounds/v1/cartoon/pop.ogg",
       Done: "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
     };
-    const audio = new Audio(soundMap[type] || soundMap.Hold);
+    const audio = new Audio(sounds[type] || sounds.Buy);
     audio.play().catch(() => {});
   }
 
   async function runScan() {
     if (running) return;
     setRunning(true);
-    setMatches([]);
     setProgress(0);
+    setMatches([]);
     setBatch(1);
-    setScanned(0);
 
     let cursor = 0;
-
     while (true) {
-      const res = await fetch(`/api/scan?cursor=${cursor}&mode=Buy&rsiMin=35&rsiMax=55&priceMin=1&priceMax=30`);
+      const res = await fetch(`/api/scan?cursor=${cursor}&rsiMin=35&rsiMax=55&priceMin=1&priceMax=50`);
       const j = await res.json();
 
       if (!j.ok) break;
@@ -41,7 +40,6 @@ export default function AlertsPage() {
 
       setProgress(j.progress);
       setBatch(Math.ceil(cursor / 800) + 1);
-      setScanned(cursor + 800);
       cursor = j.nextCursor ?? 0;
 
       if (j.done) {
@@ -50,13 +48,13 @@ export default function AlertsPage() {
         break;
       }
 
-      await new Promise((r) => setTimeout(r, 500)); // เว้นจังหวะ batch
+      await new Promise((r) => setTimeout(r, 500));
     }
   }
 
   return (
     <div className="p-4 text-white bg-[#0b0f17] min-h-screen">
-      <h1 className="text-xl font-bold mb-3">🚀 Auto Scan — US Stocks (Full Market)</h1>
+      <h1 className="text-xl font-bold mb-3">🚀 Auto Scan — US Stocks (Full)</h1>
 
       <button
         onClick={runScan}
@@ -67,7 +65,7 @@ export default function AlertsPage() {
       </button>
 
       <div className="mt-3 text-sm text-gray-300">
-        Scanning... {progress}% | Batch {batch} | Scanned {scanned.toLocaleString()} stocks
+        Scanning... {progress}% | Batch {batch}
       </div>
 
       <div className="h-2 bg-black/40 rounded-full overflow-hidden mt-1">
@@ -90,4 +88,4 @@ export default function AlertsPage() {
       )}
     </div>
   );
-          }
+}
