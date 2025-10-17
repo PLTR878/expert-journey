@@ -1,77 +1,64 @@
-// /pages/api/scan.js
-// ✅ Auto Scan ทั้งตลาดอเมริกา (6000+ หุ้น) ฟรี ไม่มี API key
-// ✅ สแกนทีละ 800 ตัว ต่อ batch อัตโนมัติ
-// ✅ มีระบบต่อเนื่องจนจบทั้งหมด
+// ✅ /pages/api/scan.js
+// Auto Scan ฟรี 100% — ไม่มี API key
+// ใช้ Jina.ai proxy → ไม่โดนบล็อก
 
-const BATCH_SIZE = 800;
 const SYMBOLS = [
-  // รายชื่อหุ้นหลัก (คุณสามารถเพิ่มได้เอง)
-  "AAPL","MSFT","NVDA","GOOGL","META","AMZN","TSLA","AMD","INTC","PLUG",
-  "GWH","SLDP","AEHR","BIO","BIMI","ACU","ACV","ACWI","ZIM","XFOR","NRGV",
-  "LWLG","BEEM","CHPT","IONQ","ENVX","VFS","NVTS","FREY","QS",
-  // mock หุ้นอื่น ๆ เพื่อจำลองการสแกน 6000 ตัว
-  ...Array.from({ length: 5970 }, (_, i) => "SYM" + (i + 30))
+  "AAPL","MSFT","NVDA","AMZN","META","GOOGL","TSLA","PLUG","SLDP","GWH",
+  "AEHR","BEEM","CHPT","IONQ","ENVX","VFS","NRGV","LWLG","QS","FREY",
+  ...Array.from({ length: 4000 }, (_, i) => "SYM" + (i + 1))
 ];
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function calcSignal(rsi) {
-  if (rsi > 60) return "Sell";
-  if (rsi < 40) return "Buy";
-  return "Hold";
-}
-
 export default async function handler(req, res) {
-  const {
-    cursor: cursorStr = "0",
-    mode = "Buy",
-    rsiMin = "35",
-    rsiMax = "55",
-    priceMin = "1",
-    priceMax = "30",
-  } = req.query;
+  try {
+    const {
+      cursor: cursorStr = "0",
+      rsiMin = "35",
+      rsiMax = "55",
+      priceMin = "1",
+      priceMax = "50",
+    } = req.query;
 
-  const cursor = parseInt(cursorStr);
-  const slice = SYMBOLS.slice(cursor, cursor + BATCH_SIZE);
-  const matches = [];
+    const cursor = parseInt(cursorStr);
+    const batchSize = 800;
+    const slice = SYMBOLS.slice(cursor, cursor + batchSize);
+    const results = [];
 
-  for (const sym of slice) {
-    try {
-      const url = `https://r.jina.ai/https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=3mo`;
-      const response = await fetch(url);
-      const data = await response.json();
+    for (const sym of slice) {
+      try {
+        const url = `https://r.jina.ai/https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1mo`;
+        const r = await fetch(url);
+        const j = await r.json();
 
-      const meta = data?.chart?.result?.[0]?.meta;
-      const price = meta?.regularMarketPrice || meta?.previousClose || 0;
+        const meta = j?.chart?.result?.[0]?.meta;
+        const price = meta?.regularMarketPrice || meta?.previousClose || 0;
+        if (!price) continue;
 
-      if (!price) continue;
+        // จำลอง RSI เพื่อให้เห็นผล
+        const rsi = Math.floor(Math.random() * 40) + 30;
+        if (rsi < rsiMin || rsi > rsiMax) continue;
+        if (price < priceMin || price > priceMax) continue;
 
-      // mock RSI (คุณสามารถเชื่อม AI RSI จริงได้ภายหลัง)
-      const rsi = Math.floor(Math.random() * 40) + 30;
-      const signal = calcSignal(rsi);
-
-      if (mode === "Buy" && signal !== "Buy") continue;
-      if (mode === "Sell" && signal !== "Sell") continue;
-      if (price < priceMin || price > priceMax) continue;
-      if (rsi < rsiMin || rsi > rsiMax) continue;
-
-      matches.push({ symbol: sym, price, rsi, signal });
-      await sleep(50); // ป้องกัน block
-    } catch (err) {
-      continue;
+        const signal = rsi > 60 ? "Sell" : rsi < 40 ? "Buy" : "Hold";
+        results.push({ symbol: sym, price, rsi, signal });
+        await sleep(30);
+      } catch {}
     }
+
+    const nextCursor = cursor + batchSize;
+    const done = nextCursor >= SYMBOLS.length;
+
+    res.status(200).json({
+      ok: true,
+      matches: results,
+      done,
+      nextCursor: done ? null : nextCursor,
+      progress: Math.min(100, Math.round((nextCursor / SYMBOLS.length) * 100)),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
-
-  const nextCursor = cursor + BATCH_SIZE;
-  const done = nextCursor >= SYMBOLS.length;
-
-  res.status(200).json({
-    ok: true,
-    matches,
-    nextCursor: done ? null : nextCursor,
-    done,
-    progress: Math.min(100, Math.round((nextCursor / SYMBOLS.length) * 100)),
-  });
-        }
+}
