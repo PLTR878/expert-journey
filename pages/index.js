@@ -1,11 +1,11 @@
-// ✅ pages/index.js — Visionary Stock Screener (Galaxy + Multi-Mode)
+// ✅ pages/index.js — Visionary Stock Screener (Galaxy + Hybrid AI Scanner)
 import { useEffect, useState } from "react";
 import AutoMarketScan from "../components/AutoMarketScan";
 import AlertSystem from "../components/AlertSystem";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import NewsFeedPro from "../components/NewsFeedPro";
-import AutoScanPro from "../components/AutoScanPro"; // ✅ เพิ่มสแกน 3 โหมด
+import AutoScanPro from "../components/AutoScanPro"; // ✅ Full Market Scanner
 
 export default function Home() {
   const [favorites, setFavorites] = useState([]);
@@ -23,6 +23,7 @@ export default function Home() {
     const s = localStorage.getItem("favorites");
     if (s) setFavorites(JSON.parse(s));
   }, []);
+
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -32,6 +33,7 @@ export default function Home() {
       p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
 
+  // ----- ดึงราคาจริง -----
   async function fetchPrice(sym) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(sym)}`);
@@ -42,40 +44,52 @@ export default function Home() {
       }));
     } catch {}
   }
+
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ----- Load lists -----
+  // ----- ดึงข้อมูลตลาดจาก API ใหม่ (Hybrid) -----
   useEffect(() => {
-    const f = async () => {
-      const pick = await fetch(`/api/ai-picks?limit=150&offset=0&nocache=1`)
-        .then((r) => r.json())
-        .catch(() => ({ results: [] }));
-      setAiPicks(pick.results || []);
+    const loadData = async () => {
+      try {
+        // ✅ AI Picks
+        const pick = await fetch(`/api/ai-picks?limit=150&offset=0&nocache=1`)
+          .then((r) => r.json())
+          .catch(() => ({ results: [] }));
+        setAiPicks(pick.results || []);
 
-      const s1 = await fetch(`/api/screener?horizon=short`)
-        .then((r) => r.json())
-        .catch(() => ({ results: [] }));
-      const s2 = await fetch(`/api/screener?horizon=medium`)
-        .then((r) => r.json())
-        .catch(() => ({ results: [] }));
-      const s3 = await fetch(`/api/screener?horizon=long`)
-        .then((r) => r.json())
-        .catch(() => ({ results: [] }));
+        // ✅ Fast Movers (short-term)
+        const s1 = await fetch(`/api/screener-hybrid?mode=short`)
+          .then((r) => r.json())
+          .catch(() => ({ results: [] }));
+        setFast(s1.results || []);
 
-      setFast(s1.results || []);
-      setEmerging(s2.results || []);
-      setFuture(s3.results || []);
+        // ✅ Emerging Trends (swing)
+        const s2 = await fetch(`/api/screener-hybrid?mode=swing`)
+          .then((r) => r.json())
+          .catch(() => ({ results: [] }));
+        setEmerging(s2.results || []);
 
-      const hid = await fetch(`/api/hidden-gems`)
-        .then((r) => r.json())
-        .catch(() => ({ results: [] }));
-      setHidden(hid.results || []);
+        // ✅ Future Leaders (long-term)
+        const s3 = await fetch(`/api/screener-hybrid?mode=long`)
+          .then((r) => r.json())
+          .catch(() => ({ results: [] }));
+        setFuture(s3.results || []);
+
+        // ✅ Hidden Gems (สแกนเพิ่ม)
+        const hid = await fetch(`/api/screener-hybrid?mode=swing`)
+          .then((r) => r.json())
+          .catch(() => ({ results: [] }));
+        setHidden(hid.results || []);
+      } catch (e) {
+        console.error("Load market error:", e);
+      }
     };
-    f();
+    loadData();
   }, []);
 
+  // ----- เพิ่มหุ้นจากช่องค้นหา -----
   const addBySearch = (sym) => {
     if (!sym) return;
     const S = sym.toUpperCase();
@@ -158,13 +172,13 @@ export default function Home() {
         )}
 
         {active === "favorites" && <Favorites data={favData} />}
-        {active === "news" && <NewsFeedPro />} {/* ✅ AI ข่าว */}
+        {active === "news" && <NewsFeedPro />} {/* ✅ ข่าว */}
         {active === "alerts" && (
           <>
             <AlertSystem />
             <div className="mt-4" />
             <AutoMarketScan />
-            <AutoScanPro /> {/* ✅ เพิ่มสแกน 3 โหมด */}
+            <AutoScanPro /> {/* ✅ Full Market Scanner */}
           </>
         )}
         {active === "menu" && (
@@ -176,7 +190,7 @@ export default function Home() {
             <p>💾 Favorites stored locally</p>
             <p>🔔 Alerts check every 1 minute</p>
             <div className="text-xs text-gray-500 mt-3">
-              Version 2.5 Galaxy Edition + AI Multi-Mode
+              Version 3.0 — Galaxy Hybrid + AI Scanner Universe
             </div>
           </section>
         )}
@@ -205,4 +219,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                }
+      }
