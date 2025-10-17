@@ -30,18 +30,21 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ ดึงข้อมูลจาก API ใหม่ (daily + news2)
+  // ✅ ดึงข้อมูลจาก API ทั้งของเดิมและของใหม่ (news2)
   useEffect(() => {
     if (!symbol) return;
     (async () => {
       setLoading(true);
       try {
-        const [daily, n] = await Promise.all([
+        const [daily, n1, n2] = await Promise.all([
           fetch(`/api/daily?symbol=${symbol}`).then(r => r.json()),
-          fetch(`/api/news2?symbol=${symbol}`).then(r => r.json()),
+          fetch(`/api/news?symbol=${symbol}`).then(r => r.json()).catch(() => ({})),
+          fetch(`/api/news2?symbol=${symbol}`).then(r => r.json()).catch(() => ({}))
         ]);
+
         setInd(daily);
-        setNews(n.results || []);
+        // ✅ ใช้ news2 ก่อน ถ้าไม่มีจะ fallback เป็น news
+        setNews(n2.results || n1.results || n1.items || []);
       } catch (e) {
         console.error(e);
       } finally {
@@ -77,10 +80,33 @@ export default function Analyze() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
         {/* ===== HEADER + CHART ===== */}
-        <Header symbol={symbol} price={price} push={push} />
-        <div className="relative z-0 pt-14">
-          <Chart candles={hist} markers={markers} />
+        <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] overflow-hidden border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.4)]">
+          <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_2px_10px_rgba(255,255,255,0.05),inset_0_-6px_15px_rgba(0,0,0,0.7)]"></div>
+
+          <div className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between text-gray-200 select-none">
+            <button
+              onClick={() => push('/')}
+              className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition"
+            >
+              <span className="text-lg leading-none">←</span>
+              <span>ย้อนกลับ</span>
+            </button>
+
+            <div className="flex-1 text-center">
+              <span className="text-[18px] font-bold tracking-wide text-white">{symbol || '—'}</span>
+              <span className="ml-1 text-[14px] text-gray-400 font-light">— การวิเคราะห์เรียลไทม์</span>
+            </div>
+
+            <div className="text-right text-[15px] font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-lg border border-emerald-400/20 shadow-[0_0_6px_rgba(16,185,129,0.3)]">
+              ${fmt(price, 2)}
+            </div>
+          </div>
+
+          <div className="relative z-0 pt-14">
+            <Chart candles={hist} markers={markers} />
+          </div>
         </div>
 
         {/* ===== AI SIGNAL + TECHNICAL ===== */}
@@ -92,40 +118,20 @@ export default function Analyze() {
         {/* ===== REALTIME SCAN + GALAXY MAP ===== */}
         <AIShortList />
         <AIGalaxyMap />
+
       </div>
     </main>
   );
 }
 
-function Header({ symbol, price, push }) {
-  return (
-    <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] overflow-hidden border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.4)]">
-      <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_2px_10px_rgba(255,255,255,0.05),inset_0_-6px_15px_rgba(0,0,0,0.7)]"></div>
-      <div className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between text-gray-200 select-none">
-        <button onClick={() => push('/')} className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition">
-          <span className="text-lg leading-none">←</span>
-          <span>ย้อนกลับ</span>
-        </button>
-        <div className="flex-1 text-center">
-          <span className="text-[18px] font-bold tracking-wide text-white">{symbol || '—'}</span>
-          <span className="ml-1 text-[14px] text-gray-400 font-light">— การวิเคราะห์เรียลไทม์</span>
-        </div>
-        <div className="text-right text-[15px] font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-lg border border-emerald-400/20 shadow-[0_0_6px_rgba(16,185,129,0.3)]">
-          ${fmt(price, 2)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ✅ Market News (ใช้ API ใหม่ news2) */
+/* ✅ Market News */
 function MarketNews({ news }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[18px] font-semibold tracking-wide text-white/90">Market News</h2>
       </div>
-      {!news?.length && <div className="text-sm text-gray-400">⏳ กำลังดึงข่าวล่าสุด...</div>}
+      {!news?.length && <div className="text-sm text-gray-400">⏳ กำลังโหลดข่าว...</div>}
       <ul className="mt-3 space-y-2">
         {news?.slice(0, 12).map((n, i) => (
           <li key={i} className="rounded-xl p-3 bg-black/25 border border-white/10 hover:border-emerald-400/30 hover:bg-white/5 transition-all duration-300">
@@ -133,7 +139,7 @@ function MarketNews({ news }) {
               {n.title}
             </a>
             <div className="text-xs text-gray-400 mt-1 border-t border-white/5 pt-1">
-              {n.source} • {new Date(n.date).toLocaleString()}
+              {n.source} • {n.date ? new Date(n.date).toLocaleString() : ''}
             </div>
           </li>
         ))}
@@ -142,15 +148,23 @@ function MarketNews({ news }) {
   );
 }
 
-/* ✅ AI Stocks ใช้ API ใหม่ screener2 */
+/* ✅ AI ShortList — รองรับ screener2 */
 function AIShortList() {
   const [list, setList] = useState([]);
   useEffect(() => {
     const load = async () => {
-      const r = await fetch('/api/screener2');
-      const j = await r.json();
-      const top = (j.results || []).filter(x => x.signal === 'Buy').slice(0, 5);
-      setList(top);
+      try {
+        const r1 = await fetch('/api/screener?horizon=short&limit=100');
+        const r2 = await fetch('/api/screener2').catch(() => null);
+        const j1 = await r1.json();
+        const j2 = r2 ? await r2.json() : {};
+        const top = ((j2.results || j1.results || []) || [])
+          .filter(x => x.signal === 'Buy' && x.confidence > 0.6)
+          .slice(0, 5);
+        setList(top);
+      } catch (e) {
+        console.error(e);
+      }
     };
     load();
     const timer = setInterval(load, 30000);
@@ -163,7 +177,9 @@ function AIShortList() {
       <ul className="space-y-2">
         {list.map((s, i) => (
           <li key={i} className="flex justify-between items-center border border-white/10 rounded-xl px-3 py-2 bg-[#141b2d]">
-            <Link href={`/analyze/${s.symbol}`} className="text-white font-bold">{s.symbol}</Link>
+            <Link href={`/analyze/${s.symbol}`} className="text-white font-bold">
+              {s.symbol}
+            </Link>
             <span className="text-gray-400 text-sm">Conf: {(s.confidence * 100).toFixed(0)}%</span>
           </li>
         ))}
@@ -172,7 +188,7 @@ function AIShortList() {
   );
 }
 
-/* ✅ Galaxy Trend Map (ยังคงเดิมไม่แตะของคุณเลย) */
+/* ✅ Galaxy Trend Map (เหมือนเดิม) */
 function AIGalaxyMap() {
   return (
     <section className="mt-10 bg-[#141b2d] p-6 rounded-2xl border border-white/10">
@@ -190,4 +206,4 @@ function AIGalaxyMap() {
       </div>
     </section>
   );
-    }
+                }
