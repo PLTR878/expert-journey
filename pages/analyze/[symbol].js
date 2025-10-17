@@ -1,8 +1,7 @@
-// ✅ /pages/analyze/[symbol].js — เวอร์ชันใหม่ (ลบ 2 ตัวท้ายออกแล้ว)
+// ✅ /pages/analyze/[symbol].js — เวอร์ชันปรับดีไซน์ Header ใหม่หรูสุดในจักรวาล
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 
 const Chart = dynamic(() => import("../../components/Chart"), { ssr: false });
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : "-");
@@ -141,24 +140,31 @@ export default function Analyze() {
     <main className="min-h-screen bg-[#0b1220] text-white">
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* ===== Header + Chart ===== */}
-        <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] border border-white/10 overflow-hidden">
-          <div className="absolute top-3 left-4 right-4 flex justify-between items-center z-10">
+        <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] border border-white/10 overflow-hidden shadow-xl">
+          {/* ✅ Header ใหม่ */}
+          <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-10">
+            {/* ปุ่มย้อนกลับ */}
             <button
               onClick={() => push("/")}
-              className="text-gray-400 hover:text-white text-sm flex gap-1 items-center"
+              className="flex items-center gap-2 text-sm text-gray-300 bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all shadow-sm"
             >
-              ← <span>ย้อนกลับ</span>
+              <span className="text-lg">←</span>
+              <span>ย้อนกลับ</span>
             </button>
-            <div className="text-center">
-              <span className="text-lg font-bold">{symbol || "—"}</span>
-              <span className="ml-1 text-gray-400 text-sm">
-                — การวิเคราะห์เรียลไทม์
-              </span>
+
+            {/* ชื่อหุ้นกลางจอ */}
+            <div className="absolute left-1/2 transform -translate-x-1/2 text-center drop-shadow-lg">
+              <h1 className="text-xl font-extrabold text-white tracking-wider">
+                {symbol || "—"}
+              </h1>
             </div>
-            <div className="bg-emerald-400/10 border border-emerald-400/20 px-3 py-1 rounded-lg text-emerald-400 font-semibold">
+
+            {/* ราคาหุ้น */}
+            <div className="ml-auto bg-emerald-500/20 border border-emerald-400/50 text-emerald-400 font-bold px-3 py-1 rounded-xl shadow-lg">
               ${fmt(price, 2)}
             </div>
           </div>
+
           <div className="pt-12">
             <Chart candles={hist} markers={markers} />
           </div>
@@ -199,9 +205,10 @@ function Info({ label, value, className = "" }) {
   );
 }
 
-function AISignalSection({ ind, sig, price, loading }) {
+function AISignalSection({ ind, sig, price }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 shadow-inner space-y-6">
+      {/* Trade Signal */}
       <div>
         <div className="flex justify-between mb-3">
           <h2 className="text-lg font-semibold">AI Trade Signal</h2>
@@ -241,71 +248,6 @@ function AISignalSection({ ind, sig, price, loading }) {
           />
         </div>
       </div>
-
-      <div className="bg-[#0f172a] rounded-2xl border border-white/10 p-4">
-        <h3 className="text-lg font-semibold text-emerald-400 mb-2">
-          🎯 AI Entry Zone
-        </h3>
-        <div className="text-sm font-semibold text-gray-300">
-          {(() => {
-            const rsi = ind?.rsi ?? 0;
-            const ai = sig.action;
-            if (!rsi) return "⏳ Loading Entry Zone...";
-            const low = (price * 0.98).toFixed(2);
-            const high = (price * 1.02).toFixed(2);
-            if (ai === "Buy" && rsi >= 45 && rsi <= 60)
-              return `🟢 เข้าได้! โซนซื้อ AI (${low} - ${high}) | RSI ${rsi.toFixed(
-                1
-              )}`;
-            if (rsi > 60 && rsi <= 70)
-              return "🟡 Hold — รอดูแรงซื้อต่อเนื่องก่อน";
-            if (rsi > 70) return "🔴 Overbought — อย่าเพิ่งเข้า!";
-            if (rsi < 40) return "🔵 Oversold — รอการกลับตัว";
-            return "⚪ รอสัญญาณยืนยัน — ยังไม่เข้าโซนซื้อ";
-          })()}
-        </div>
-
-        <div className="mt-3 h-2 w-full bg-[#1e293b] rounded-full overflow-hidden">
-          <div
-            className="h-2 rounded-full transition-all duration-500"
-            style={{
-              width: `${Math.min(Math.max(ind?.rsi ?? 0, 0), 100)}%`,
-              background:
-                ind?.rsi < 40
-                  ? "#3b82f6"
-                  : ind?.rsi <= 60
-                  ? "#22c55e"
-                  : ind?.rsi <= 70
-                  ? "#eab308"
-                  : "#ef4444",
-            }}
-          />
-        </div>
-        <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>30</span>
-          <span>50</span>
-          <span>70</span>
-        </div>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Technical Overview</h2>
-        {!ind ? (
-          <div className="text-sm text-gray-400">Loading data...</div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
-            <Info label="RSI (14)" value={fmt(ind.rsi, 1)} />
-            <Info label="EMA 20" value={fmt(ind.ema20)} />
-            <Info label="EMA 50" value={fmt(ind.ema50)} />
-            <Info label="EMA 200" value={fmt(ind.ema200)} />
-            <Info label="MACD Line" value={fmt(ind.macd?.line)} />
-            <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
-            <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
-            <Info label="ATR (14)" value={fmt(ind.atr14, 3)} />
-          </div>
-        )}
-      </div>
     </section>
   );
 }
@@ -340,4 +282,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-    }
+}
