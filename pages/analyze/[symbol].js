@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — เวอร์ชันปรับดีไซน์ Header ใหม่หรูสุดในจักรวาล
+// ✅ /pages/analyze/[symbol].js — Final AI Dashboard Edition ⚡️
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -142,25 +142,25 @@ export default function Analyze() {
         {/* ===== Header + Chart ===== */}
         <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] border border-white/10 overflow-hidden shadow-xl">
           {/* ✅ Header ใหม่ */}
-          <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-10">
+          <div className="absolute top-3 left-0 right-0 flex justify-between items-center px-4 z-10">
             {/* ปุ่มย้อนกลับ */}
             <button
               onClick={() => push("/")}
-              className="flex items-center gap-2 text-sm text-gray-300 bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all shadow-sm"
+              className="flex items-center gap-1 text-sm text-gray-300 bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all shadow-sm"
             >
               <span className="text-lg">←</span>
               <span>ย้อนกลับ</span>
             </button>
 
             {/* ชื่อหุ้นกลางจอ */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 text-center drop-shadow-lg">
-              <h1 className="text-xl font-extrabold text-white tracking-wider">
+            <div className="absolute left-1/2 transform -translate-x-1/2 text-center">
+              <h1 className="text-xl font-extrabold text-white tracking-widest drop-shadow-[0_0_8px_rgba(16,255,194,0.5)]">
                 {symbol || "—"}
               </h1>
             </div>
 
             {/* ราคาหุ้น */}
-            <div className="ml-auto bg-emerald-500/20 border border-emerald-400/50 text-emerald-400 font-bold px-3 py-1 rounded-xl shadow-lg">
+            <div className="ml-auto bg-emerald-500/25 border border-emerald-400/50 text-emerald-400 font-bold px-3 py-1 rounded-xl shadow-lg">
               ${fmt(price, 2)}
             </div>
           </div>
@@ -205,7 +205,7 @@ function Info({ label, value, className = "" }) {
   );
 }
 
-function AISignalSection({ ind, sig, price }) {
+function AISignalSection({ ind, sig, price, loading }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 shadow-inner space-y-6">
       {/* Trade Signal */}
@@ -248,6 +248,54 @@ function AISignalSection({ ind, sig, price }) {
           />
         </div>
       </div>
+
+      {/* ===== AI Entry Zone ===== */}
+      <div className="bg-[#0f172a] rounded-2xl border border-white/10 p-4 mt-6">
+        <h3 className="text-lg font-semibold text-emerald-400 mb-2">
+          🎯 AI Entry Zone
+        </h3>
+        <div className="text-sm font-semibold text-gray-300">
+          {(() => {
+            const rsi = ind?.rsi ?? 0;
+            const ai = sig.action;
+            const low = (price * 0.98).toFixed(2);
+            const high = (price * 1.02).toFixed(2);
+            if (!rsi) return "⏳ กำลังโหลดข้อมูล...";
+            if (ai === "Buy" && rsi >= 45 && rsi <= 60)
+              return `🟢 โซนเข้าซื้อแนะนำ (${low} - ${high}) | RSI ${rsi.toFixed(
+                1
+              )}`;
+            if (rsi > 60 && rsi <= 70)
+              return "🟡 ถือรอดูต่อเนื่อง (แรงซื้อต่อเนื่อง)";
+            if (rsi > 70) return "🔴 Overbought — อย่าเพิ่งเข้า!";
+            if (rsi < 40) return "🔵 Oversold — รอการกลับตัว";
+            return "⚪ รอสัญญาณยืนยันเพิ่มเติม";
+          })()}
+        </div>
+
+        {/* RSI Progress */}
+        <div className="mt-3 h-2 w-full bg-[#1e293b] rounded-full overflow-hidden">
+          <div
+            className="h-2 rounded-full transition-all duration-500"
+            style={{
+              width: `${Math.min(Math.max(ind?.rsi ?? 0, 0), 100)}%`,
+              background:
+                ind?.rsi < 40
+                  ? "#3b82f6"
+                  : ind?.rsi <= 60
+                  ? "#22c55e"
+                  : ind?.rsi <= 70
+                  ? "#eab308"
+                  : "#ef4444",
+            }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+          <span>30</span>
+          <span>50</span>
+          <span>70</span>
+        </div>
+      </div>
     </section>
   );
 }
@@ -282,4 +330,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-}
+    }
