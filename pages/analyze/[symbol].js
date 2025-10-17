@@ -281,3 +281,108 @@ function AIGalaxyMap() {
     </section>
   );
     }
+/* ✅ AI Signal Section — พร้อม AI Entry Zone ที่คำนวณอัตโนมัติ */
+function AISignalSection({ ind, sig, price, loading }) {
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      {/* ===== AI Signal ===== */}
+      <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[18px] font-semibold tracking-wide text-white/90">AI Trade Signal</h2>
+          <span className="text-base font-bold text-emerald-400">
+            {sig.action === 'Buy' ? 'ซื้อ (Buy)' : sig.action === 'Sell' ? 'ขาย (Sell)' : 'ถือ (Hold)'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Info label="🎯 Target Price" value={`$${fmt(ind?.targetPrice ?? price * 1.08, 2)}`} />
+          <Info label="🤖 AI Confidence" value={`${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`} />
+          <Info label="📋 System Reason" value={ind?.trend || sig.reason} className="col-span-2" />
+        </div>
+
+        {/* ✅ Confidence Bar */}
+        <div className="mt-4">
+          <div className="text-xs text-gray-400 mb-1">
+            Confidence Level ({fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%)
+          </div>
+          <div className="w-full bg-[#111827] h-2 rounded-full overflow-hidden">
+            <div
+              className="h-2 transition-all duration-500"
+              style={{
+                width: `${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`,
+                background: ind?.confidenceColor || (sig.action === 'Buy' ? '#22c55e' : sig.action === 'Sell' ? '#ef4444' : '#facc15'),
+              }}
+            />
+          </div>
+        </div>
+
+        {/* ✅ AI Entry Zone — ปรับใหม่ให้โชว์แบบอัจฉริยะ */}
+        <section className="mt-5 bg-[#0f172a] rounded-2xl border border-white/10 p-4">
+          <h3 className="text-lg font-semibold text-emerald-400 mb-2">🎯 AI Entry Zone</h3>
+          <div className="text-sm font-semibold text-gray-300">
+            {(() => {
+              const rsi = ind?.rsi ?? 0;
+              const ai = sig.action;
+              if (!rsi) return "⏳ Loading Entry Zone...";
+              const low = (price * 0.98).toFixed(2);
+              const high = (price * 1.02).toFixed(2);
+              if (ai === "Buy" && rsi >= 45 && rsi <= 60)
+                return `🟢 เข้าได้! โซนซื้อ AI (${low} - ${high}) | RSI ${rsi.toFixed(1)}`;
+              if (rsi > 60 && rsi <= 70)
+                return "🟡 Hold — รอดูแรงซื้อต่อเนื่องก่อน";
+              if (rsi > 70)
+                return "🔴 Overbought — อย่าเพิ่งเข้า!";
+              if (rsi < 40)
+                return "🔵 Oversold — รอการกลับตัว";
+              return "⚪ รอสัญญาณยืนยัน — ยังไม่เข้าโซนซื้อ";
+            })()}
+          </div>
+
+          {/* ✅ Visual RSI Zone Bar */}
+          <div className="mt-3 h-2 w-full bg-[#1e293b] rounded-full overflow-hidden">
+            <div
+              className="h-2 rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(Math.max(ind?.rsi ?? 0, 0), 100)}%`,
+                background:
+                  ind?.rsi < 40
+                    ? '#3b82f6'
+                    : ind?.rsi <= 60
+                    ? '#22c55e'
+                    : ind?.rsi <= 70
+                    ? '#eab308'
+                    : '#ef4444',
+              }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+            <span>30</span>
+            <span>50</span>
+            <span>70</span>
+          </div>
+        </section>
+      </section>
+
+      {/* ===== Technical Overview ===== */}
+      <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
+        <h2 className="text-[18px] font-semibold tracking-wide text-white/90 mb-3">Technical Overview</h2>
+        {!ind ? (
+          <div className="text-sm text-gray-400">Loading data...</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
+            <Info label="RSI (14)" value={fmt(ind.rsi, 1)} />
+            <Info label="EMA 20" value={fmt(ind.ema20)} />
+            <Info label="EMA 50" value={fmt(ind.ema50)} />
+            <Info label="EMA 200" value={fmt(ind.ema200)} />
+            <Info label="MACD Line" value={fmt(ind.macd?.line)} />
+            <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
+            <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
+            <Info label="ATR (14)" value={fmt(ind.atr14, 3)} />
+            <Info label="Status" value={loading ? 'Updating…' : ind?.status || 'Realtime'} />
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
