@@ -1,35 +1,39 @@
-// ✅ /pages/api/scan.js — Full Market Auto Scanner (US Stocks)
-// ทำงานได้จริง สแกนหุ้นทั้งตลาด NASDAQ, NYSE, AMEX
-// ใช้ server เดิม (ไม่ต้อง proxy พิเศษ)
+// ✅ /pages/api/scan.js
+// Version: Hybrid Stable — สแกนหุ้นทั้งตลาด + แสดง progress เหมือนเวอร์ชันเก่า
 
 import { ema, rsi, macd } from "../../lib/indicators.js";
 
 export default async function handler(req, res) {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Transfer-Encoding", "chunked");
+
+  const encoder = new TextEncoder();
+  const send = (msg) => res.write(encoder.encode(`${JSON.stringify(msg)}\n`));
+
   try {
-    const {
-      rsiMin = 0,
-      rsiMax = 100,
-      priceMin = 0,
-      priceMax = 10000,
-    } = req.query;
+    send({ log: "🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..." });
 
-    // 🧩 โหลดรายชื่อหุ้นทั้งตลาด (NASDAQ + NYSE + AMEX)
-    const allTickers = await fetch(
+    // โหลดชื่อหุ้นทั้งหมด
+    send({ log: "📦 กำลังโหลดรายชื่อหุ้นทั้งหมด..." });
+    const tickersRes = await fetch(
       "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX"
-    ).then((r) => r.json());
+    );
+    const tickers = await tickersRes.json();
+    const symbols = tickers.map((x) => x.ticker).slice(0, 6000);
+    send({ log: `✅ โหลดรายชื่อหุ้นทั้งหมด ${symbols.length} ตัวสำเร็จ` });
 
-    // จำกัดชั่วคราวที่ 6000 ตัว (พอๆ กับทั้งตลาด)
-    const symbols = allTickers.map((s) => s.ticker).slice(0, 6000);
     const results = [];
-
-    console.log(`🛰️ เริ่มสแกนหุ้นทั้งหมด ${symbols.length} ตัว...`);
+    let count = 0;
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
+      count++;
+
       try {
-        // Yahoo API (ผ่าน Jina proxy เพื่อเสถียร)
+        // fetch ข้อมูลราคาจาก Yahoo
         const url = `https://r.jina.ai/https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
-        const r = await fetch(url, { cache: "no-store" });
+        const r = await fetch(url);
         const j = await r.json();
         const data = j?.chart?.result?.[0];
         if (!data) continue;
@@ -39,8 +43,6 @@ export default async function handler(req, res) {
         if (c.length < 30) continue;
 
         const lastClose = c.at(-1);
-        if (lastClose < priceMin || lastClose > priceMax) continue;
-
         const R = rsi(c, 14)?.at(-1) ?? 50;
         const M = macd(c, 12, 26, 9);
         const macdHist = M?.hist?.at(-1) ?? 0;
@@ -48,7 +50,9 @@ export default async function handler(req, res) {
         const ema50 = ema(c, 50)?.at(-1);
         const ema200 = ema(c, 200)?.at(-1);
 
-        if (R < rsiMin || R > rsiMax) continue;
+        let signal = "Hold";
+        if (R < 35 && macdHist > 0) signal = "Buy";
+        else if (R > 65 && macdHist < 0) signal = "Sell";
 
         const trend =
           ema20 > ema50 && ema50 > ema200
@@ -57,30 +61,36 @@ export default async function handler(req, res) {
             ? "Downtrend"
             : "Sideway";
 
-        let signal = "Hold";
-        if (R < 35 && macdHist > 0) signal = "Buy";
-        else if (R > 65 && macdHist < 0) signal = "Sell";
-
         results.push({
           symbol,
           lastClose: Number(lastClose.toFixed(2)),
           rsi: Number(R.toFixed(1)),
           trend,
           signal,
-          confidence: Math.round(Math.abs(R - 50) / 50 * 100),
         });
 
+        // แสดง progress ทุกๆ 50 ตัว
+        if (count % 50 === 0) {
+          const percent = ((count / symbols.length) * 100).toFixed(1);
+          send({ progress: `${percent}%`, log: `📊 ดำเนินการ ${percent}%` });
+        }
+
         // ป้องกันโดน block
-        await new Promise((r) => setTimeout(r, 250));
+        await new Promise((r) => setTimeout(r, 200));
       } catch (err) {
-        console.error(`❌ ${symbol}:`, err.message);
+        send({ log: `⚠️ ${symbol} error: ${err.message}` });
       }
     }
 
-    console.log(`✅ สแกนเสร็จทั้งหมด ${results.length} ตัว`);
-    res.status(200).json({ total: results.length, results });
+    send({
+      log: `✅ สแกนเสร็จทั้งหมด ${results.length} ตัว`,
+      total: results.length,
+      results,
+    });
+
+    res.end();
   } catch (err) {
-    console.error("Scan error:", err.message);
-    res.status(500).json({ error: err.message });
+    send({ error: err.message });
+    res.end();
   }
-                                 }
+          }
