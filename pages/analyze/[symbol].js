@@ -31,7 +31,7 @@ export default function Analyze() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState({ online: true, lastUpdate: null });
 
-  // ✅ ดึงข้อมูลจาก /api/daily.js + /api/news2.js
+  // ✅ ดึงข้อมูลจาก /api/daily.js + /api/news.js
   useEffect(() => {
     if (!symbol) return;
     (async () => {
@@ -39,7 +39,7 @@ export default function Analyze() {
       try {
         const [daily, n] = await Promise.all([
           fetch(`/api/daily?symbol=${symbol}`).then(r => r.json()),
-          fetch(`/api/news2?symbol=${symbol}`).then(r => r.json()),
+          fetch(`/api/news?symbol=${symbol}`).then(r => r.json()),
         ]);
         setInd(daily);
         setNews(n.results || n.items || []);
@@ -62,7 +62,7 @@ export default function Analyze() {
       .catch(console.error);
   }, [symbol]);
 
-  // ✅ Auto Refresh ทุก 60 วินาที
+  // ✅ Auto Refresh ทุก 60 วิ
   useEffect(() => {
     const timer = setInterval(() => {
       if (symbol) {
@@ -74,18 +74,6 @@ export default function Analyze() {
     }, 60000);
     return () => clearInterval(timer);
   }, [symbol]);
-
-  const markers = useMemo(() => {
-    if (!ind || !hist?.length) return [];
-    const last = hist.at(-1)?.t;
-    const t = Math.floor((last || Date.now()) / 1000);
-    const sig = computeSignal(ind);
-    if (sig.action === 'Buy')
-      return [{ time: t, position: 'belowBar', color: '#22c55e', shape: 'arrowUp', text: `BUY ${symbol}` }];
-    if (sig.action === 'Sell')
-      return [{ time: t, position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: `SELL ${symbol}` }];
-    return [{ time: t, position: 'inBar', color: '#facc15', shape: 'circle', text: `HOLD ${symbol}` }];
-  }, [JSON.stringify(ind), hist?.length]);
 
   const sig = computeSignal(ind || {});
   const price = ind?.lastClose || hist?.at(-1)?.c || 0;
@@ -131,20 +119,15 @@ export default function Analyze() {
           </div>
 
           <div className="relative z-0 pt-14">
-            <Chart candles={hist} markers={markers} />
+            <Chart candles={hist} />
           </div>
         </div>
 
-        {/* ===== AI SIGNAL + TECHNICAL ===== */}
+        {/* ===== SIGNAL + NEWS + AI MAP ===== */}
         <AISignalSection ind={ind} sig={sig} price={price} loading={loading} />
-
-        {/* ===== MARKET NEWS ===== */}
         <MarketNews news={news} />
-
-        {/* ===== REALTIME SCAN + GALAXY MAP ===== */}
         <AIShortList />
         <AIGalaxyMap />
-
       </div>
     </main>
   );
@@ -154,18 +137,16 @@ export default function Analyze() {
 function MarketNews({ news }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-5 shadow-inner">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[18px] font-semibold tracking-wide text-white/90">Market News</h2>
-      </div>
+      <h2 className="text-[18px] font-semibold tracking-wide text-white/90 mb-3">Market News</h2>
       {!news?.length && <div className="text-sm text-gray-400">No recent news.</div>}
-      <ul className="mt-3 space-y-2">
+      <ul className="space-y-2">
         {news?.slice(0, 12).map((n, i) => (
           <li key={i} className="rounded-xl p-3 bg-black/25 border border-white/10 hover:border-emerald-400/30 hover:bg-white/5 transition-all duration-300">
             <a href={n.url || n.link} target="_blank" rel="noreferrer" className="block font-medium text-[15px] leading-snug hover:text-emerald-400 transition">
               {n.title || n.headline}
             </a>
             <div className="text-xs text-gray-400 mt-1 border-t border-white/5 pt-1">
-              {(n.source || n.publisher || '').toString()} • {(n.date || n.publishedAt || '').toString()}
+              {(n.source || '').toString()} • {(n.date || '').toString()}
             </div>
           </li>
         ))}
@@ -174,31 +155,30 @@ function MarketNews({ news }) {
   );
 }
 
-/* ✅ AI ShortList (อัปเกรดเรียลไทม์) */
+/* ✅ AI Stocks To Watch */
 function AIShortList() {
   const [list, setList] = useState([]);
   useEffect(() => {
     const load = async () => {
       try {
-        const r = await fetch('/api/screener2');
+        const r = await fetch('/api/screener-hybrid');
         const j = await r.json();
         const top = (j.results || [])
           .filter(x => x.signal === 'Buy' && x.confidence > 0.6)
           .slice(0, 5);
         setList(top);
       } catch {
-        console.warn('Screener API unavailable');
+        console.warn('Screener offline');
       }
     };
     load();
     const timer = setInterval(load, 60000);
     return () => clearInterval(timer);
   }, []);
-
   return (
     <section className="rounded-2xl border border-white/10 bg-[#0b1220] p-5 mt-10">
       <h2 className="text-lg font-semibold text-emerald-400 mb-3">🔥 AI Stocks To Watch</h2>
-      {!list.length && <div className="text-gray-400 text-sm">Loading AI signals...</div>}
+      {!list.length && <div className="text-gray-400 text-sm">Loading signals...</div>}
       <ul className="space-y-2">
         {list.map((s, i) => (
           <li key={i} className="flex justify-between items-center border border-white/10 rounded-xl px-3 py-2 bg-[#141b2d]">
@@ -213,11 +193,11 @@ function AIShortList() {
   );
 }
 
-/* ✅ Galaxy Trend Map (อัปเกรดสุ่มจากข้อมูลจริงบางส่วน) */
+/* ✅ AI Galaxy Trend Map */
 function AIGalaxyMap() {
   const [data, setData] = useState([]);
   useEffect(() => {
-    fetch('/api/screener2')
+    fetch('/api/screener-hybrid')
       .then(r => r.json())
       .then(j => {
         const all = j.results || [];
@@ -232,13 +212,11 @@ function AIGalaxyMap() {
         setData(mapped);
       })
       .catch(() => {
-        // fallback ถ้า API ล่ม
         setData(Array.from({ length: 100 }).map((_, i) => ({
           color: i % 3 === 0 ? '#22c55e' : i % 3 === 1 ? '#facc15' : '#ef4444',
         })));
       });
   }, []);
-
   return (
     <section className="mt-10 bg-[#141b2d] p-6 rounded-2xl border border-white/10">
       <h2 className="text-lg font-semibold text-emerald-400 mb-4 text-center">🌌 AI Galaxy Trend Map</h2>
@@ -254,4 +232,4 @@ function AIGalaxyMap() {
       </div>
     </section>
   );
-                }
+              }
