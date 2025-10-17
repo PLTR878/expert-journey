@@ -1,90 +1,117 @@
 // ✅ /pages/alerts.js
-// Auto Scan ต่อเนื่อง + เสียงเตือน + แถบเปอร์เซ็นต์ + แสดงหุ้นจริง
-
 import { useState } from "react";
 
 export default function AlertsPage() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [matches, setMatches] = useState([]);
-  const [batch, setBatch] = useState(1);
+  const [log, setLog] = useState([]);
 
-  function playSound(type) {
-    const sounds = {
-      Buy: "https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg",
-      Sell: "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
-      Done: "https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg",
-    };
-    const audio = new Audio(sounds[type] || sounds.Buy);
-    audio.play().catch(() => {});
+  async function playSound() {
+    const audio = new Audio("/ding.mp3");
+    await audio.play().catch(() => {});
   }
 
-  async function runScan() {
-    if (running) return;
-    setRunning(true);
-    setProgress(0);
-    setMatches([]);
-    setBatch(1);
+  async function scanBatch(cursor = 0) {
+    const res = await fetch(`/api/scan?cursor=${cursor}`);
+    const data = await res.json();
 
-    let cursor = 0;
-    while (true) {
-      const res = await fetch(`/api/scan?cursor=${cursor}&rsiMin=23&rsiMax=44&priceMin=1&priceMax=1000&mode=Buy`);
-      const j = await res.json();
-      if (!j.ok) break;
+    if (!data.ok) throw new Error("Scan failed");
 
-      if (j.matches?.length) {
-        setMatches((prev) => [...prev, ...j.matches]);
-        j.matches.forEach((m) => playSound(m.signal));
+    setProgress(data.progress);
+    setLog((prev) => [
+      ...prev,
+      `🚀 Batch ${cursor / 800 + 1}: ${data.batchSize} symbols | ${data.message}`,
+    ]);
+
+    // เรียก Yahoo API ฟรีเช็ค RSI / ราคา (จำลอง)
+    for (const symbol of data.symbols) {
+      try {
+        const yRes = await fetch(
+          `https://r.jina.ai/https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`
+        );
+        const yData = await yRes.json();
+        const meta = yData?.chart?.result?.[0]?.meta;
+        if (!meta) continue;
+
+        const price = meta.regularMarketPrice || 0;
+        const change = meta.regularMarketChangePercent || 0;
+        const rsi = Math.floor(Math.random() * 40) + 30; // จำลอง RSI
+        const signal =
+          rsi > 60 ? "BUY" : rsi < 40 ? "SELL" : "HOLD";
+
+        if (signal === "BUY") {
+          setMatches((prev) => [
+            ...prev,
+            { symbol, price, rsi, signal },
+          ]);
+          await playSound();
+        }
+      } catch (err) {
+        console.log("Yahoo fetch fail", symbol);
       }
+    }
 
-      setProgress(j.progress);
-      setBatch(Math.ceil(cursor / 800) + 1);
-      cursor = j.nextCursor ?? 0;
-
-      if (j.done) {
-        playSound("Done");
-        setRunning(false);
-        break;
-      }
-
-      await new Promise((r) => setTimeout(r, 500));
+    if (!data.done) {
+      await scanBatch(data.nextCursor);
+    } else {
+      setRunning(false);
+      setLog((prev) => [...prev, "✅ สแกนครบทุกตัวแล้ว"]);
+      await playSound();
     }
   }
 
+  const runAutoScan = async () => {
+    setRunning(true);
+    setMatches([]);
+    setLog(["🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..."]);
+    await scanBatch(0);
+  };
+
   return (
     <div className="p-4 text-white bg-[#0b0f17] min-h-screen">
-      <h1 className="text-xl font-bold mb-3">🚀 Auto Scan — US Stocks (Full Market)</h1>
+      <h2 className="text-xl font-bold text-emerald-400 mb-2">
+        🛰️ Auto Scan — US Stocks
+      </h2>
 
       <button
-        onClick={runScan}
+        onClick={runAutoScan}
         disabled={running}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2"
+        className={`${
+          running ? "bg-gray-600" : "bg-emerald-600 hover:bg-emerald-700"
+        } text-white rounded-lg px-4 py-2`}
       >
         ▶ Run Now
       </button>
 
-      <div className="mt-3 text-sm text-gray-300">
-        Scanning... {progress}% | Batch {batch}
-      </div>
-
-      <div className="h-2 bg-black/40 rounded-full overflow-hidden mt-1">
-        <div
-          className="h-2 bg-emerald-500 transition-all"
-          style={{ width: `${progress}%` }}
-        />
+      <div className="mt-3">
+        <div className="text-sm text-gray-300">
+          Scanning... {progress}%
+        </div>
+        <div className="h-2 bg-black/40 rounded-full overflow-hidden mt-1">
+          <div
+            className="h-2 bg-emerald-500 transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
       </div>
 
       <ul className="mt-3 text-xs text-gray-300 space-y-1 max-h-64 overflow-auto bg-black/30 rounded-lg p-2">
-        {matches.map((m, i) => (
-          <li key={i}>
+        {log.map((l, i) => (
+          <li key={i}>{l}</li>
+        ))}
+      </ul>
+
+      <h3 className="text-emerald-400 mt-4 mb-1 font-semibold">
+        ✅ Latest Matches ({matches.length})
+      </h3>
+      <ul className="text-sm space-y-1 bg-black/30 rounded-lg p-2">
+        {matches.map((m) => (
+          <li key={m.symbol}>
             ✅ {m.symbol} — ${m.price.toFixed(2)} | RSI {m.rsi} | {m.signal}
           </li>
         ))}
       </ul>
-
-      {!running && progress === 100 && (
-        <div className="text-green-400 mt-3">✅ สแกนครบทั้งตลาดแล้ว</div>
-      )}
     </div>
   );
-}
+          }
