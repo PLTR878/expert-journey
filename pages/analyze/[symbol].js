@@ -29,18 +29,17 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ✅ ดึงข้อมูลจาก API ใหม่ (daily.js)
   useEffect(() => {
     if (!symbol) return;
     (async () => {
       setLoading(true);
       try {
-        const [h, i, n] = await Promise.all([
-          fetch(`/api/history?symbol=${symbol}&range=6mo&interval=1d`).then(r => r.json()),
-          fetch(`/api/indicators?symbol=${symbol}`).then(r => r.json()),
+        const [daily, n] = await Promise.all([
+          fetch(`/api/daily?symbol=${symbol}`).then(r => r.json()),
           fetch(`/api/news?symbol=${symbol}`).then(r => r.json()),
         ]);
-        setHist(h.rows || []);
-        setInd(i || {});
+        setInd(daily);
         setNews(n.items || []);
       } catch (e) {
         console.error(e);
@@ -48,6 +47,15 @@ export default function Analyze() {
         setLoading(false);
       }
     })();
+  }, [symbol]);
+
+  // ✅ กราฟแท่งเทียน (ใช้ historical data เดิม)
+  useEffect(() => {
+    if (!symbol) return;
+    fetch(`/api/history?symbol=${symbol}&range=6mo&interval=1d`)
+      .then(r => r.json())
+      .then(h => setHist(h.rows || []))
+      .catch(console.error);
   }, [symbol]);
 
   const markers = useMemo(() => {
@@ -87,7 +95,6 @@ export default function Analyze() {
         <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] overflow-hidden border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.4)]">
           <div className="absolute inset-0 pointer-events-none rounded-2xl shadow-[inset_0_2px_10px_rgba(255,255,255,0.05),inset_0_-6px_15px_rgba(0,0,0,0.7)]"></div>
 
-          {/* Header */}
           <div className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between text-gray-200 select-none">
             <button
               onClick={() => push('/')}
@@ -123,36 +130,33 @@ export default function Analyze() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Info label="🎯 Target Price" value={`$${fmt(price * 1.08, 2)}`} />
-              <Info label="🤖 AI Confidence" value={`${fmt(sig.confidence * 100, 0)}%`} />
-              <Info label="📋 System Reason" value={sig.reason} className="col-span-2" />
+              <Info label="🎯 Target Price" value={`$${fmt(ind?.targetPrice ?? price * 1.08, 2)}`} />
+              <Info label="🤖 AI Confidence" value={`${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`} />
+              <Info label="📋 System Reason" value={ind?.trend || sig.reason} className="col-span-2" />
             </div>
 
-            {/* ✅ เพิ่มส่วน AI Entry Zone */}
+            {/* ✅ Confidence Meter */}
+            <div className="mt-4">
+              <div className="text-xs text-gray-400 mb-1">
+                Confidence Level ({fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%)
+              </div>
+              <div className="w-full bg-[#111827] h-2 rounded-full overflow-hidden">
+                <div
+                  className="h-2 transition-all duration-500"
+                  style={{
+                    width: `${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`,
+                    background: ind?.confidenceColor || '#00ff95',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* ✅ Entry Zone */}
             <section className="mt-5 bg-[#0f172a] rounded-2xl border border-white/10 p-4">
               <h3 className="text-lg font-semibold text-emerald-400 mb-2">🎯 AI Entry Zone</h3>
-              {ind && ind.rsi ? (() => {
-                const rsi = ind.rsi;
-                const ai = sig.action;
-                const entryLow = (price * 0.98).toFixed(2);
-                const entryHigh = (price * 1.02).toFixed(2);
-
-                let color = "text-gray-400";
-                let msg = "⚪ รอสัญญาณยืนยัน — ยังไม่เข้าโซนซื้อ";
-
-                if (ai === "Buy" && rsi >= 45 && rsi <= 60) {
-                  color = "text-emerald-400";
-                  msg = `🟢 เข้าได้! โซนซื้อ AI (${entryLow} - ${entryHigh}) | RSI ${rsi.toFixed(1)}`;
-                } else if (rsi > 60 && rsi <= 70) {
-                  color = "text-yellow-400";
-                  msg = "🟡 Hold — รอดูแรงซื้อต่อเนื่องก่อน";
-                } else if (rsi > 70) {
-                  color = "text-red-400";
-                  msg = "🔴 Overbought — อย่าเพิ่งเข้า!";
-                }
-
-                return <div className={`${color} font-semibold text-sm`}>{msg}</div>;
-              })() : <p className="text-gray-500 text-sm">Loading Entry Zone...</p>}
+              <div className="text-sm font-semibold text-gray-300">
+                {ind?.entryZone || 'Loading Entry Zone...'}
+              </div>
             </section>
           </section>
 
@@ -171,8 +175,8 @@ export default function Analyze() {
                 <Info label="MACD Line" value={fmt(ind.macd?.line)} />
                 <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
                 <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
-                <Info label="ATR (14)" value={fmt(ind.atr, 3)} />
-                <Info label="Status" value={loading ? 'Updating…' : 'Realtime'} />
+                <Info label="ATR (14)" value={fmt(ind.atr14, 3)} />
+                <Info label="Status" value={loading ? 'Updating…' : ind?.status || 'Realtime'} />
               </div>
             )}
           </section>
@@ -211,7 +215,7 @@ export default function Analyze() {
   );
 }
 
-/* ✅ กล่อง Info — เวอร์ชันมืออาชีพ */
+/* ✅ กล่อง Info — มืออาชีพ */
 function Info({ label, value, className = '' }) {
   const color =
     value?.includes('%')
@@ -237,4 +241,4 @@ function Info({ label, value, className = '' }) {
       </div>
     </div>
   );
-          }
+}
