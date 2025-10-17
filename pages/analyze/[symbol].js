@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Ultra Clean Fixed Layout + EMA Restored
+// ✅ /pages/analyze/[symbol].js — Final Balanced UI (Minimal Header + Stable Layout)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -35,7 +35,6 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ โหลดข้อมูลหลัก
   useEffect(() => {
     if (!symbol) return;
     (async () => {
@@ -55,7 +54,6 @@ export default function Analyze() {
     })();
   }, [symbol]);
 
-  // ✅ โหลดกราฟแท่งเทียน
   useEffect(() => {
     if (!symbol) return;
     fetch(`/api/history?symbol=${symbol}&range=6mo&interval=1d`)
@@ -82,26 +80,26 @@ export default function Analyze() {
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* ===== Header + Chart ===== */}
         <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] border border-white/10 overflow-hidden shadow-xl">
-          {/* ===== Header ===== */}
-          <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-3 pt-3 z-10">
+          {/* ===== Header (balanced) ===== */}
+          <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-3 pt-2 z-10">
             {/* ปุ่มย้อนกลับ */}
             <button
               onClick={() => push("/")}
-              className="flex items-center gap-1 text-sm text-gray-300 bg-white/10 border border-white/20 rounded-xl px-3 py-1 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all shadow-sm"
+              className="flex items-center gap-1 text-[13px] text-gray-300 bg-white/5 border border-white/10 rounded-md px-2.5 py-1 hover:bg-emerald-500/10 hover:text-emerald-300 transition-all"
             >
-              <span className="text-lg">←</span>
+              <span className="text-base">←</span>
               <span>ย้อนกลับ</span>
             </button>
 
             {/* ชื่อหุ้นกลาง */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 mt-1 text-center">
-              <h1 className="text-xl font-extrabold text-white tracking-widest drop-shadow-[0_0_8px_rgba(16,255,194,0.5)]">
+            <div className="absolute left-1/2 transform -translate-x-1/2 mt-0.5 text-center">
+              <h1 className="text-lg font-bold text-white tracking-widest">
                 {symbol || "—"}
               </h1>
             </div>
 
             {/* ราคาหุ้น */}
-            <div className="ml-auto bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 font-bold px-3 py-1 rounded-xl shadow-md mt-[-2px]">
+            <div className="ml-auto bg-transparent border border-emerald-400/30 text-emerald-400 font-semibold text-[14px] px-2.5 py-0.5 rounded-md">
               ${fmt(price, 2)}
             </div>
           </div>
@@ -111,10 +109,10 @@ export default function Analyze() {
           </div>
         </div>
 
-        {/* ===== AI SIGNAL + AI ZONE + TECHNICAL ===== */}
+        {/* ===== AI SIGNAL + ENTRY ZONE + TECHNICAL ===== */}
         <AISignalSection ind={ind} sig={sig} price={price} loading={loading} />
 
-        {/* ===== ข่าวตลาด ===== */}
+        {/* ===== Market News ===== */}
         <MarketNews news={news} />
       </div>
     </main>
@@ -129,9 +127,7 @@ function Info({ label, value, className = "" }) {
       : "text-emerald-400"
     : "text-gray-100";
   return (
-    <div
-      className={`rounded-xl border border-white/10 bg-[#141b2d] p-4 text-center ${className}`}
-    >
+    <div className={`rounded-xl border border-white/10 bg-[#141b2d] p-4 text-center ${className}`}>
       <div className="text-xs text-gray-400 mb-1">{label}</div>
       <div className={`text-lg font-bold ${color}`}>{value}</div>
     </div>
@@ -168,7 +164,7 @@ function AISignalSection({ ind, sig, price }) {
         </div>
       </div>
 
-      {/* ===== AI ENTRY ZONE ===== */}
+      {/* AI Entry Zone */}
       <div className="bg-[#0f172a] rounded-2xl border border-white/10 p-4 mt-4">
         <h3 className="text-lg font-semibold text-emerald-400 mb-2">🎯 AI Entry Zone</h3>
         <div className="text-sm font-semibold text-gray-300">
@@ -187,7 +183,6 @@ function AISignalSection({ ind, sig, price }) {
           })()}
         </div>
 
-        {/* RSI Progress */}
         <div className="mt-3 h-2 w-full bg-[#1e293b] rounded-full overflow-hidden">
           <div
             className="h-2 rounded-full transition-all duration-500"
@@ -211,7 +206,7 @@ function AISignalSection({ ind, sig, price }) {
         </div>
       </div>
 
-      {/* ===== Technical Overview ===== */}
+      {/* Technical Overview */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Technical Overview</h2>
         {!ind ? (
@@ -254,4 +249,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-}
+    }
