@@ -1,7 +1,4 @@
-// ✅ /pages/api/scan.js (Stable Market Scanner)
-// ใช้ Yahoo Finance API ตรง + ป้องกัน JSON error
-// แสดง progress / log แบบเวอร์ชันเก่า
-
+// ✅ /pages/api/scan.js — Full Market Scan with Live Progress + Alerts
 import { ema, rsi, macd } from "../../lib/indicators.js";
 
 export default async function handler(req, res) {
@@ -14,9 +11,9 @@ export default async function handler(req, res) {
 
   try {
     send({ log: "🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..." });
-
-    // โหลดรายชื่อหุ้นทั้งหมด
     send({ log: "📦 กำลังโหลดรายชื่อหุ้นทั้งหมด..." });
+
+    // ✅ โหลดรายชื่อหุ้นทั้งหมดจาก 3 ตลาด
     const tickersRes = await fetch(
       "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX"
     );
@@ -26,20 +23,16 @@ export default async function handler(req, res) {
 
     const results = [];
     let count = 0;
+    const total = symbols.length;
 
     for (const symbol of symbols) {
       count++;
+
       try {
-        // ใช้ Yahoo API โดยตรง
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
         const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
         const text = await r.text();
-
-        // ตรวจว่าเป็น JSON จริงไหม
-        if (!text.startsWith("{")) {
-          send({ log: `⚠️ ${symbol} — response ไม่ใช่ JSON, ข้าม` });
-          continue;
-        }
+        if (!text.startsWith("{")) continue;
 
         const j = JSON.parse(text);
         const data = j?.chart?.result?.[0];
@@ -68,31 +61,45 @@ export default async function handler(req, res) {
             ? "Downtrend"
             : "Sideway";
 
-        results.push({
+        const stock = {
           symbol,
           lastClose: Number(lastClose.toFixed(2)),
           rsi: Number(R.toFixed(1)),
           trend,
           signal,
-        });
+        };
 
-        // แสดง progress ทุกๆ 50 หุ้น
-        if (count % 50 === 0) {
-          const percent = ((count / symbols.length) * 100).toFixed(1);
-          send({ progress: `${percent}%`, log: `📊 ดำเนินการ ${percent}%` });
+        // ✅ แจ้งเตือนเมื่อเข้าเงื่อนไข (Buy หรือ Sell)
+        if (signal !== "Hold") {
+          send({
+            alert: `🎯 ${signal} — ${symbol} $${lastClose.toFixed(2)} | RSI ${R.toFixed(
+              1
+            )}`,
+          });
         }
 
-        // delay เล็กน้อยป้องกัน block
-        await new Promise((r) => setTimeout(r, 200));
+        // ✅ แสดงหุ้นที่กำลังสแกน
+        const percent = ((count / total) * 100).toFixed(1);
+        send({
+          log: `🔍 [${percent}%] ${symbol} — $${lastClose.toFixed(
+            2
+          )} | RSI ${R.toFixed(1)} | ${signal}`,
+          progress: percent,
+        });
+
+        results.push(stock);
+        await new Promise((r) => setTimeout(r, 150)); // ป้องกันโดน block
       } catch (err) {
         send({ log: `⚠️ ${symbol} error: ${err.message}` });
       }
     }
 
+    // ✅ สรุปสุดท้าย
+    const found = results.filter((x) => x.signal !== "Hold");
     send({
-      log: `✅ สแกนเสร็จทั้งหมด ${results.length} ตัว`,
-      total: results.length,
-      results,
+      log: `✅ สแกนเสร็จสิ้นทั้งหมด ${results.length} ตัว | พบหุ้นเข้าเงื่อนไข ${found.length} ตัว`,
+      found: found.length,
+      results: found,
     });
 
     res.end();
@@ -100,4 +107,4 @@ export default async function handler(req, res) {
     send({ error: err.message });
     res.end();
   }
-    }
+      }
