@@ -1,3 +1,4 @@
+// ✅ /pages/analyze/[symbol].js — เวอร์ชันใหม่ (ลบ 2 ตัวท้ายออกแล้ว)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -169,12 +170,6 @@ export default function Analyze() {
         {/* ===== Market News ===== */}
         <MarketNews news={news} />
 
-        {/* ===== AI ShortList ===== */}
-        <AIShortList />
-
-        {/* ===== Galaxy Trend Map ===== */}
-        <AIGalaxyMap />
-
         {/* ===== Scan Summary ===== */}
         {scanSummary && (
           <div className="text-center text-sm text-gray-400 mt-4">
@@ -207,7 +202,6 @@ function Info({ label, value, className = "" }) {
 function AISignalSection({ ind, sig, price, loading }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 shadow-inner space-y-6">
-      {/* Trade Signal */}
       <div>
         <div className="flex justify-between mb-3">
           <h2 className="text-lg font-semibold">AI Trade Signal</h2>
@@ -248,7 +242,6 @@ function AISignalSection({ ind, sig, price, loading }) {
         </div>
       </div>
 
-      {/* Entry Zone */}
       <div className="bg-[#0f172a] rounded-2xl border border-white/10 p-4">
         <h3 className="text-lg font-semibold text-emerald-400 mb-2">
           🎯 AI Entry Zone
@@ -295,7 +288,6 @@ function AISignalSection({ ind, sig, price, loading }) {
         </div>
       </div>
 
-      {/* Technical */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Technical Overview</h2>
         {!ind ? (
@@ -348,4 +340,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-}
+    }
