@@ -1,5 +1,6 @@
-// ✅ /pages/api/scan.js
-// Version: Hybrid Stable — สแกนหุ้นทั้งตลาด + แสดง progress เหมือนเวอร์ชันเก่า
+// ✅ /pages/api/scan.js (Stable Market Scanner)
+// ใช้ Yahoo Finance API ตรง + ป้องกัน JSON error
+// แสดง progress / log แบบเวอร์ชันเก่า
 
 import { ema, rsi, macd } from "../../lib/indicators.js";
 
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
   try {
     send({ log: "🚀 เริ่มสแกนตลาดหุ้นสหรัฐ..." });
 
-    // โหลดชื่อหุ้นทั้งหมด
+    // โหลดรายชื่อหุ้นทั้งหมด
     send({ log: "📦 กำลังโหลดรายชื่อหุ้นทั้งหมด..." });
     const tickersRes = await fetch(
       "https://dumbstockapi.com/stock?exchanges=NASDAQ,NYSE,AMEX"
@@ -26,15 +27,21 @@ export default async function handler(req, res) {
     const results = [];
     let count = 0;
 
-    for (let i = 0; i < symbols.length; i++) {
-      const symbol = symbols[i];
+    for (const symbol of symbols) {
       count++;
-
       try {
-        // fetch ข้อมูลราคาจาก Yahoo
-        const url = `https://r.jina.ai/https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
-        const r = await fetch(url);
-        const j = await r.json();
+        // ใช้ Yahoo API โดยตรง
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
+        const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+        const text = await r.text();
+
+        // ตรวจว่าเป็น JSON จริงไหม
+        if (!text.startsWith("{")) {
+          send({ log: `⚠️ ${symbol} — response ไม่ใช่ JSON, ข้าม` });
+          continue;
+        }
+
+        const j = JSON.parse(text);
         const data = j?.chart?.result?.[0];
         if (!data) continue;
 
@@ -69,13 +76,13 @@ export default async function handler(req, res) {
           signal,
         });
 
-        // แสดง progress ทุกๆ 50 ตัว
+        // แสดง progress ทุกๆ 50 หุ้น
         if (count % 50 === 0) {
           const percent = ((count / symbols.length) * 100).toFixed(1);
           send({ progress: `${percent}%`, log: `📊 ดำเนินการ ${percent}%` });
         }
 
-        // ป้องกันโดน block
+        // delay เล็กน้อยป้องกัน block
         await new Promise((r) => setTimeout(r, 200));
       } catch (err) {
         send({ log: `⚠️ ${symbol} error: ${err.message}` });
@@ -93,4 +100,4 @@ export default async function handler(req, res) {
     send({ error: err.message });
     res.end();
   }
-          }
+    }
