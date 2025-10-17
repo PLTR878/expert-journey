@@ -1,8 +1,7 @@
-// ✅ pages/index.js — Visionary Stock Screener (Galaxy + Hybrid AI Scanner)
+// ✅ pages/index.js — Visionary Stock Screener (Galaxy + Auto Scan Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
-import NewsFeedPro from "../components/NewsFeedPro";
 
 export default function Home() {
   const [favorites, setFavorites] = useState([]);
@@ -15,7 +14,46 @@ export default function Home() {
   const [active, setActive] = useState("market");
   const [search, setSearch] = useState("");
 
-  // ----- Favorites -----
+  // =============== AUTO SCAN STATES ===============
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [matches, setMatches] = useState([]);
+  const [batch, setBatch] = useState(1);
+  const [scannedCount, setScannedCount] = useState(0);
+  const totalSymbols = 7000;
+
+  async function runAutoScan() {
+    if (running) return;
+    setRunning(true);
+    setProgress(0);
+    setMatches([]);
+    setBatch(1);
+    setScannedCount(0);
+
+    for (let i = 0; i < totalSymbols; i += 800) {
+      try {
+        const res = await fetch(`/api/scan?offset=${i}&limit=800`);
+        const data = await res.json();
+
+        if (Array.isArray(data.results)) {
+          setMatches((prev) => [...prev, ...data.results]);
+        }
+
+        setScannedCount(i + 800);
+        setProgress(((i + 800) / totalSymbols) * 100);
+        setBatch((b) => b + 1);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    setRunning(false);
+    setProgress(100);
+    const audio = new Audio("/ding.mp3");
+    audio.play();
+  }
+
+  // =============== FAVORITES ===============
   useEffect(() => {
     const s = localStorage.getItem("favorites");
     if (s) setFavorites(JSON.parse(s));
@@ -30,7 +68,6 @@ export default function Home() {
       p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
 
-  // ----- ดึงราคาจริง -----
   async function fetchPrice(sym) {
     try {
       const r = await fetch(`/api/price?symbol=${encodeURIComponent(sym)}`);
@@ -46,7 +83,7 @@ export default function Home() {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ----- ดึงข้อมูลตลาดจาก API ใหม่ (Hybrid) -----
+  // =============== MARKET DATA ===============
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -81,7 +118,6 @@ export default function Home() {
     loadData();
   }, []);
 
-  // ----- เพิ่มหุ้นจากช่องค้นหา -----
   const addBySearch = (sym) => {
     if (!sym) return;
     const S = sym.toUpperCase();
@@ -94,7 +130,7 @@ export default function Home() {
     ...(favoritePrices[s] || {}),
   }));
 
-  // ----- UI -----
+  // =============== UI ===============
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
@@ -125,57 +161,59 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-4 py-4">
         {active === "market" && (
           <>
-            <MarketSection
-              title="🤖 AI Picks — Smart Buy Signals"
-              rows={aiPicks}
-              favorites={favorites}
-              favoritePrices={favoritePrices}
-              toggleFavorite={toggleFavorite}
-            />
-            <MarketSection
-              title="⚡ Fast Movers"
-              rows={fast}
-              favorites={favorites}
-              favoritePrices={favoritePrices}
-              toggleFavorite={toggleFavorite}
-            />
-            <MarketSection
-              title="🌱 Emerging Trends"
-              rows={emerging}
-              favorites={favorites}
-              favoritePrices={favoritePrices}
-              toggleFavorite={toggleFavorite}
-            />
-            <MarketSection
-              title="🚀 Future Leaders"
-              rows={future}
-              favorites={favorites}
-              favoritePrices={favoritePrices}
-              toggleFavorite={toggleFavorite}
-            />
-            <MarketSection
-              title="💎 Hidden Gems"
-              rows={hidden}
-              favorites={favorites}
-              favoritePrices={favoritePrices}
-              toggleFavorite={toggleFavorite}
-            />
+            <MarketSection title="🤖 AI Picks — Smart Buy Signals" rows={aiPicks} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
+            <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
+            <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
+            <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
+            <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
           </>
         )}
 
         {active === "favorites" && <Favorites data={favData} />}
-        {active === "news" && <NewsFeedPro />}
+
+        {/* AUTO SCAN SECTION */}
+        {active === "scan" && (
+          <section className="text-sm text-gray-200">
+            <h2 className="text-emerald-400 text-lg mb-2">📡 Auto Scan — US Stocks</h2>
+            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
+              <button
+                onClick={runAutoScan}
+                disabled={running}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3"
+              >
+                ▶ {running ? "Scanning..." : "Run Now"}
+              </button>
+
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
+                <div
+                  className="h-2 bg-emerald-500 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="text-xs text-gray-400 mb-2">
+                Progress: {progress.toFixed(1)}% | Batch {batch} | Total {scannedCount} / {totalSymbols}
+              </div>
+
+              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
+                {matches.map((m, i) => (
+                  <li key={i}>
+                    ✅ {m.symbol} — ${m.price.toFixed(2)} | RSI {m.rsi} | {m.signal}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
 
         {active === "menu" && (
           <section className="text-center text-gray-400 py-10">
-            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">
-              ⚙️ Settings & Info
-            </h2>
+            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
             <p>📡 Auto refresh lists on load</p>
             <p>💾 Favorites stored locally</p>
             <p>🔔 Alerts check every 1 minute</p>
             <div className="text-xs text-gray-500 mt-3">
-              Version 3.0 — Galaxy Hybrid + AI Scanner Universe
+              Version 3.1 — Galaxy + Auto Scan Universe
             </div>
           </section>
         )}
@@ -186,7 +224,7 @@ export default function Home() {
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
-          { id: "news", label: "News", icon: "📰" },
+          { id: "scan", label: "Auto Scan", icon: "🔔" },
           { id: "menu", label: "Menu", icon: "☰" },
         ].map((t) => (
           <button
@@ -203,4 +241,4 @@ export default function Home() {
       </nav>
     </main>
   );
-         }
+    }
