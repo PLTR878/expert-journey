@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener V5.1 — 4 Tabs Edition (Stable & Beautiful)
+// ✅ Visionary Stock Screener V5.2 — Fully Synced with API
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -24,26 +24,31 @@ export default function Home() {
     setMatches([]);
     setScannedCount(0);
     setLatestSymbol("-");
+
     for (let i = 0; i < totalSymbols; i += 800) {
       try {
         const res = await fetch(`/api/scan?offset=${i}&limit=800`);
         const data = await res.json();
+
         if (Array.isArray(data.results)) {
           setMatches((prev) => [...prev, ...data.results]);
-          setLatestSymbol(data.batch?.lastSymbol || "-");
+          setLatestSymbol(data.results?.at(-1)?.symbol || "-");
         }
+
         setScannedCount(i + 800);
-        setProgress(((i + 800) / totalSymbols) * 100);
+        setProgress(Math.min(100, ((i + 800) / totalSymbols) * 100));
       } catch (err) {
-        console.error(err);
+        console.error("Scan error:", err);
       }
     }
+
     setRunning(false);
   }
 
   // ===== AUTO TRADE =====
   const [autoTrades, setAutoTrades] = useState([]);
   const [tradeRunning, setTradeRunning] = useState(false);
+
   async function runAutoTrade() {
     if (tradeRunning) return;
     setTradeRunning(true);
@@ -52,7 +57,7 @@ export default function Home() {
       const data = await res.json();
       setAutoTrades(data.trades || []);
     } catch (e) {
-      console.error(e);
+      console.error("AutoTrade error:", e);
     } finally {
       setTradeRunning(false);
     }
@@ -63,6 +68,7 @@ export default function Home() {
     const s = localStorage.getItem("favorites");
     if (s) setFavorites(JSON.parse(s));
   }, []);
+
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -78,9 +84,16 @@ export default function Home() {
       const j = await r.json();
       setFavoritePrices((p) => ({
         ...p,
-        [sym]: { symbol: sym, price: j.price, rsi: j.rsi, signal: j.signal },
+        [sym]: {
+          symbol: sym,
+          price: j.price || 0,
+          rsi: j.rsi || 50,
+          signal: j.signal || "Hold",
+        },
       }));
-    } catch {}
+    } catch (err) {
+      console.error("Fetch price error:", err);
+    }
   }
 
   useEffect(() => {
@@ -94,32 +107,23 @@ export default function Home() {
   const [hidden, setHidden] = useState([]);
 
   useEffect(() => {
-    async function loadData() {
+    async function loadMarketData() {
       try {
-        const s1 = await fetch(`/api/screener-hybrid?mode=short`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setFast(s1.results || []);
+        const modes = ["short", "swing", "long", "hidden"];
+        const setters = [setFast, setEmerging, setFuture, setHidden];
 
-        const s2 = await fetch(`/api/screener-hybrid?mode=swing`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setEmerging(s2.results || []);
-
-        const s3 = await fetch(`/api/screener-hybrid?mode=long`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setFuture(s3.results || []);
-
-        const s4 = await fetch(`/api/screener-hybrid?mode=hidden`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setHidden(s4.results || []);
-      } catch (e) {
-        console.error("Market load error:", e);
+        await Promise.all(
+          modes.map(async (m, i) => {
+            const res = await fetch(`/api/screener-hybrid?mode=${m}`);
+            const data = await res.json();
+            setters[i](data.results || []);
+          })
+        );
+      } catch (err) {
+        console.error("Market load error:", err);
       }
     }
-    loadData();
+    loadMarketData();
   }, []);
 
   // ===== UI =====
@@ -129,7 +133,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — V5.1 Galaxy
+            🌍 Visionary Stock Screener — V5.2 Universe
           </b>
           <input
             type="text"
@@ -150,25 +154,51 @@ export default function Home() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* ===== Favorites ===== */}
+        {/* Favorites */}
         {active === "favorites" && (
           <section>
             <h2 className="text-emerald-400 text-lg mb-2">💙 My Favorite Stocks</h2>
-            <Favorites data={favorites.map((f) => favoritePrices[f] || { symbol: f })} />
+            <Favorites
+              data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
+            />
           </section>
         )}
 
-        {/* ===== Market ===== */}
+        {/* Market */}
         {active === "market" && (
           <>
-            <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
+            <MarketSection
+              title="⚡ Fast Movers"
+              rows={fast}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              favoritePrices={favoritePrices}
+            />
+            <MarketSection
+              title="🌱 Emerging Trends"
+              rows={emerging}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              favoritePrices={favoritePrices}
+            />
+            <MarketSection
+              title="🚀 Future Leaders"
+              rows={future}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              favoritePrices={favoritePrices}
+            />
+            <MarketSection
+              title="💎 Hidden Gems"
+              rows={hidden}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              favoritePrices={favoritePrices}
+            />
           </>
         )}
 
-        {/* ===== Scanner ===== */}
+        {/* Scanner */}
         {active === "scan" && (
           <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
             <h2 className="text-emerald-400 text-lg mb-3">📡 AI Stock Scanner + Dashboard</h2>
@@ -180,7 +210,10 @@ export default function Home() {
               {running ? "🔍 Scanning..." : "▶ Run AI Scan"}
             </button>
             <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-2">
-              <div className="h-2 bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
+              <div
+                className="h-2 bg-emerald-500 transition-all"
+                style={{ width: `${progress}%` }}
+              />
             </div>
             <p className="text-xs text-gray-400 mb-2">
               Progress: {progress.toFixed(1)}% | {scannedCount}/{totalSymbols} | 🔎 {latestSymbol}
@@ -206,7 +239,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* ===== AI Trade ===== */}
+        {/* AI Trade */}
         {active === "trade" && (
           <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
             <h2 className="text-emerald-400 text-lg mb-2">🤖 AI Auto Trade</h2>
@@ -233,13 +266,13 @@ export default function Home() {
               🌍 Visionary Stock Screener Galaxy AI<br />
               💾 Favorites stored locally<br />
               🔔 Sound Alerts Active<br />
-              Version 5.1 — Stable Universe
+              Version 5.2 — Fully Synced
             </div>
           </section>
         )}
       </div>
 
-      {/* ===== Bottom Navigation ===== */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
@@ -261,4 +294,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+}
