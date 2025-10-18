@@ -1,50 +1,30 @@
-// ✅ /pages/api/symbols.js
-// ดึงรายชื่อหุ้นทั้งหมดจากตลาดอเมริกา (NASDAQ + NYSE + AMEX)
-export default async function handler(req, res) {
-  try {
-    const sources = [
-      "https://financialmodelingprep.com/api/v3/nasdaq_constituent",
-      "https://financialmodelingprep.com/api/v3/nyse_constituent",
-      "https://financialmodelingprep.com/api/v3/amex_constituent"
-    ];
-
-    let symbols = [];
-    for (const url of sources) {
-      try {
-        const r = await fetch(url);
-        const j = await r.json();
-        if (Array.isArray(j)) {
-          j.forEach(x => {
-            if (x.symbol && /^[A-Z.]+$/.test(x.symbol))
-              symbols.push({ symbol: x.symbol });
-          });
-        }
-      } catch (e) {
-        console.log("Source error:", url);
-      }
-    }
-
-    // รวม + ลบซ้ำ
-    symbols = symbols.filter(
-      (v, i, a) => a.findIndex(t => t.symbol === v.symbol) === i
-    );
-
-    // ถ้ายังไม่มีข้อมูล ใช้ fallback set
-    if (symbols.length === 0) {
-      symbols = [
-        { symbol: "AAPL" }, { symbol: "MSFT" }, { symbol: "NVDA" },
-        { symbol: "PLTR" }, { symbol: "SOFI" }, { symbol: "TSLA" },
-        { symbol: "AMZN" }, { symbol: "GOOG" }, { symbol: "META" },
-        { symbol: "IONQ" }, { symbol: "SMCI" }, { symbol: "SLDP" },
-        { symbol: "GWH" }, { symbol: "BEEM" }, { symbol: "ENVX" }
-      ];
-    }
-
-    res.status(200).json({
-      count: symbols.length,
-      symbols
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// ✅ /pages/api/symbols.js — รายชื่อหุ้นตลาดอเมริกา (ย่อ)
+export default function handler(req, res) {
+  const symbols = [
+    { symbol: "AAPL" },
+    { symbol: "MSFT" },
+    { symbol: "GOOG" },
+    { symbol: "AMZN" },
+    { symbol: "TSLA" },
+    { symbol: "NVDA" },
+    { symbol: "META" },
+    { symbol: "SMCI" },
+    { symbol: "GWH" },
+    { symbol: "ENPH" },
+    { symbol: "PLTR" },
+    { symbol: "INTC" },
+    { symbol: "AMD" },
+    { symbol: "BEEM" },
+    { symbol: "CHPT" },
+    { symbol: "SOFI" },
+    { symbol: "CRWD" },
+    { symbol: "PATH" },
+    { symbol: "DNA" },
+    { symbol: "IONQ" },
+    { symbol: "ASTS" },
+    { symbol: "LWLG" },
+    { symbol: "SLDP" },
+    { symbol: "NRGV" },
+  ];
+  res.status(200).json({ symbols });
 }
