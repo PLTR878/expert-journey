@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener V5.0 — Stable Build
+// ✅ Visionary Stock Screener V5.1 — 4 Tabs Edition (Stable & Beautiful)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -9,7 +9,7 @@ export default function Home() {
   const [favoritePrices, setFavoritePrices] = useState({});
   const [search, setSearch] = useState("");
 
-  // ====== AUTO SCAN ======
+  // ===== AUTO SCAN =====
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [matches, setMatches] = useState([]);
@@ -24,7 +24,6 @@ export default function Home() {
     setMatches([]);
     setScannedCount(0);
     setLatestSymbol("-");
-
     for (let i = 0; i < totalSymbols; i += 800) {
       try {
         const res = await fetch(`/api/scan?offset=${i}&limit=800`);
@@ -42,7 +41,7 @@ export default function Home() {
     setRunning(false);
   }
 
-  // ====== AUTO TRADE ======
+  // ===== AUTO TRADE =====
   const [autoTrades, setAutoTrades] = useState([]);
   const [tradeRunning, setTradeRunning] = useState(false);
   async function runAutoTrade() {
@@ -52,25 +51,25 @@ export default function Home() {
       const res = await fetch("/api/auto-trade");
       const data = await res.json();
       setAutoTrades(data.trades || []);
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     } finally {
       setTradeRunning(false);
     }
   }
 
-  // ====== FAVORITES ======
+  // ===== FAVORITES =====
   useEffect(() => {
-    const stored = localStorage.getItem("favorites");
-    if (stored) setFavorites(JSON.parse(stored));
+    const s = localStorage.getItem("favorites");
+    if (s) setFavorites(JSON.parse(s));
   }, []);
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
   const toggleFavorite = (sym) =>
-    setFavorites((prev) =>
-      prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
+    setFavorites((p) =>
+      p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
 
   async function fetchPrice(sym) {
@@ -88,7 +87,7 @@ export default function Home() {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ====== MARKET ======
+  // ===== MARKET =====
   const [fast, setFast] = useState([]);
   const [emerging, setEmerging] = useState([]);
   const [future, setFuture] = useState([]);
@@ -123,18 +122,18 @@ export default function Home() {
     loadData();
   }, []);
 
-  // ====== UI ======
+  // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — Galaxy + Auto Trade
+            🌍 Visionary Stock Screener — V5.1 Galaxy
           </b>
           <input
             type="text"
-            placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
+            placeholder="🔍 Search (e.g. NVDA, TSLA)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
@@ -150,9 +149,16 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Market */}
+        {/* ===== Favorites ===== */}
+        {active === "favorites" && (
+          <section>
+            <h2 className="text-emerald-400 text-lg mb-2">💙 My Favorite Stocks</h2>
+            <Favorites data={favorites.map((f) => favoritePrices[f] || { symbol: f })} />
+          </section>
+        )}
+
+        {/* ===== Market ===== */}
         {active === "market" && (
           <>
             <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
@@ -162,26 +168,22 @@ export default function Home() {
           </>
         )}
 
-        {/* Favorites */}
-        {active === "favorites" && <Favorites data={favorites.map((f) => favoritePrices[f] || { symbol: f })} />}
-
-        {/* Auto Scan */}
+        {/* ===== Scanner ===== */}
         {active === "scan" && (
           <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-            <h2 className="text-emerald-400 text-lg mb-2">📡 Auto Scan — Real-Time</h2>
+            <h2 className="text-emerald-400 text-lg mb-3">📡 AI Stock Scanner + Dashboard</h2>
             <button
               onClick={runAutoScan}
               disabled={running}
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
             >
-              {running ? "🔍 Scanning..." : "▶ Run Auto Scan"}
+              {running ? "🔍 Scanning..." : "▶ Run AI Scan"}
             </button>
             <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-2">
               <div className="h-2 bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
             </div>
             <p className="text-xs text-gray-400 mb-2">
-              Progress: {progress.toFixed(1)}% | Scanned: {scannedCount}/{totalSymbols}
-              <br />Now Scanning: <span className="text-emerald-400">{latestSymbol}</span>
+              Progress: {progress.toFixed(1)}% | {scannedCount}/{totalSymbols} | 🔎 {latestSymbol}
             </p>
             <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
               {matches.map((m, i) => (
@@ -190,13 +192,24 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+            <h3 className="text-emerald-400 text-sm mt-4 mb-1">🧠 Top 10 Buy Signals</h3>
+            <ul className="text-xs space-y-1 bg-black/30 rounded-lg p-2 max-h-48 overflow-auto">
+              {matches
+                .filter((m) => m.signal === "Buy")
+                .slice(0, 10)
+                .map((m, i) => (
+                  <li key={i}>
+                    🟢 {m.symbol} — ${m.price?.toFixed(2)} | RSI {m.rsi?.toFixed(1)}
+                  </li>
+                ))}
+            </ul>
           </section>
         )}
 
-        {/* Auto Trade */}
+        {/* ===== AI Trade ===== */}
         {active === "trade" && (
-          <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10 mt-4">
-            <h2 className="text-emerald-400 text-lg mb-2">🤖 Auto Trade — AI Contracts</h2>
+          <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
+            <h2 className="text-emerald-400 text-lg mb-2">🤖 AI Auto Trade</h2>
             <button
               onClick={runAutoTrade}
               disabled={tradeRunning}
@@ -215,48 +228,24 @@ export default function Home() {
                 ))
               )}
             </ul>
-          </section>
-        )}
-
-        {/* Dashboard */}
-        {active === "dashboard" && (
-          <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-            <h2 className="text-emerald-400 text-lg mb-2">📊 Dashboard Overview</h2>
-            <p className="text-xs text-gray-400 mb-2">
-              Total Scanned: {scannedCount} | Buy Signals: {matches.filter((m) => m.signal === "Buy").length}
-            </p>
-            <ul className="text-xs space-y-1 bg-black/30 rounded-lg p-2 max-h-64 overflow-auto">
-              {matches
-                .filter((m) => m.signal === "Buy")
-                .slice(0, 10)
-                .map((m, i) => (
-                  <li key={i}>🟢 {m.symbol} — ${m.price?.toFixed(2)} | RSI {m.rsi?.toFixed(1)}</li>
-                ))}
-            </ul>
-          </section>
-        )}
-
-        {/* Menu */}
-        {active === "menu" && (
-          <section className="text-center text-gray-400 py-10">
-            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
-            <p>🌍 Visionary Stock Screener + Auto Trade</p>
-            <p>💾 Local storage favorites</p>
-            <p>🔔 Sound alerts active</p>
-            <p className="text-xs text-gray-500 mt-3">Version 5.0 — Galaxy Universe</p>
+            <div className="text-xs text-gray-500 mt-4 border-t border-white/10 pt-2">
+              ⚙️ System Info: <br />
+              🌍 Visionary Stock Screener Galaxy AI<br />
+              💾 Favorites stored locally<br />
+              🔔 Sound Alerts Active<br />
+              Version 5.1 — Stable Universe
+            </div>
           </section>
         )}
       </div>
 
-      {/* Bottom Nav */}
+      {/* ===== Bottom Navigation ===== */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
-          { id: "scan", label: "Auto Scan", icon: "📡" },
-          { id: "trade", label: "Auto Trade", icon: "🤖" },
-          { id: "dashboard", label: "Dashboard", icon: "📊" },
-          { id: "menu", label: "Menu", icon: "☰" },
+          { id: "scan", label: "Scanner", icon: "📡" },
+          { id: "trade", label: "AI Trade", icon: "🤖" },
         ].map((t) => (
           <button
             key={t.id}
@@ -272,4 +261,4 @@ export default function Home() {
       </nav>
     </main>
   );
-      }
+    }
