@@ -14,8 +14,10 @@ export default function Favorites({ data }) {
 
   return (
     <section className="w-full px-2 pt-1">
-      {/* 🔍 ปุ่ม Search มุมขวาบน */}
-      <div className="flex justify-end mb-1">
+      {/* 📊 ตารางหุ้น */}
+      <div className="flex items-center justify-between mb-2">
+        <div></div>
+        {/* ✅ ปุ่ม Search อยู่เฉพาะใน Favorites */}
         <button
           onClick={handleSearch}
           className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-1.5 shadow-sm bg-[#0f172a]/50"
@@ -24,8 +26,7 @@ export default function Favorites({ data }) {
         </button>
       </div>
 
-      {/* 📊 ตารางหุ้น */}
-      <div className="overflow-x-auto -mt-1">
+      <div className="overflow-x-auto">
         <table className="w-full text-[15px] text-center border-collapse">
           <thead>
             <tr
@@ -131,4 +132,4 @@ export default function Favorites({ data }) {
       )}
     </section>
   );
-                      }
+              }
