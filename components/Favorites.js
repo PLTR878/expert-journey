@@ -1,9 +1,9 @@
-// ✅ /components/Favorites.js — Visionary Ultra Balanced Edition (V∞.9)
+// ✅ /components/Favorites.js — Visionary Perfect Alignment Edition (V∞.10)
 export default function Favorites({ data }) {
   return (
-    <section className="px-2 mb-6">
+    <section className="w-full mb-4">
       {/* หัวข้อ */}
-      <div className="flex items-center justify-between mb-2 px-1">
+      <div className="flex items-center justify-between mb-2 px-3">
         <h2 className="text-emerald-400 text-[15px] font-semibold tracking-wide">
           My Favorite Stocks
         </h2>
@@ -12,15 +12,15 @@ export default function Favorites({ data }) {
         </span>
       </div>
 
-      {/* ตารางแบบโปร */}
+      {/* ตารางเต็มหน้าจอ ไม่มีกรอบ */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px] text-center border-separate border-spacing-y-[3px]">
+        <table className="w-full text-[13px] text-center border-collapse">
           <thead>
-            <tr className="text-gray-400 text-[11px] uppercase select-none">
-              <th className="pb-2 font-medium w-[25%]">Symbol</th>
-              <th className="pb-2 font-medium w-[25%]">Price</th>
-              <th className="pb-2 font-medium w-[25%]">RSI</th>
-              <th className="pb-2 font-medium w-[25%]">AI Signal</th>
+            <tr className="text-gray-400 text-[11px] uppercase select-none border-b border-white/5">
+              <th className="py-2 font-medium text-left pl-4 w-[30%]">Symbol</th>
+              <th className="py-2 font-medium text-right pr-6 w-[25%]">Price</th>
+              <th className="py-2 font-medium text-right pr-6 w-[20%]">RSI</th>
+              <th className="py-2 font-medium text-right pr-6 w-[25%]">AI Signal</th>
             </tr>
           </thead>
 
@@ -29,14 +29,10 @@ export default function Favorites({ data }) {
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className="transition-all rounded-lg"
-                  style={{
-                    backgroundColor: i % 2 === 0 ? "rgba(18,25,39,0.55)" : "rgba(20,30,50,0.45)",
-                    borderBottom: "1px solid rgba(255,255,255,0.05)",
-                  }}
+                  className="transition-colors hover:bg-[#1a253a]/60"
                 >
                   {/* Symbol */}
-                  <td className="py-2 text-center font-semibold text-sky-400 align-middle">
+                  <td className="py-2.5 text-left pl-4 font-semibold text-sky-400 whitespace-nowrap">
                     <a
                       href={`/analyze/${r.symbol}`}
                       className="hover:text-emerald-400 transition-colors"
@@ -46,13 +42,13 @@ export default function Favorites({ data }) {
                   </td>
 
                   {/* Price */}
-                  <td className="py-2 text-center font-mono text-gray-100 align-middle">
+                  <td className="py-2.5 text-right pr-6 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
 
                   {/* RSI */}
                   <td
-                    className={`py-2 text-center font-mono align-middle ${
+                    className={`py-2.5 text-right pr-6 font-mono ${
                       typeof r.rsi === "number"
                         ? r.rsi > 70
                           ? "text-red-400"
@@ -67,7 +63,7 @@ export default function Favorites({ data }) {
 
                   {/* AI Signal */}
                   <td
-                    className={`py-2 text-center font-semibold align-middle ${
+                    className={`py-2.5 text-right pr-6 font-semibold ${
                       r.signal === "Buy"
                         ? "text-green-400"
                         : r.signal === "Sell"
