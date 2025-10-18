@@ -1,33 +1,23 @@
-// ✅ /components/Favorites.js — Visionary Perfect Mobile Alignment (V∞.11)
+// ✅ /components/Favorites.js — Visionary Ultra Flat Alignment (V∞.12)
 export default function Favorites({ data }) {
   return (
-    <section className="w-full mb-4 px-2">
-      {/* หัวข้อ */}
-      <div className="flex items-center justify-between mb-2 px-1">
-        <h2 className="text-emerald-400 text-[16px] font-semibold tracking-wide">
-          My Favorite Stocks
-        </h2>
-        <span className="text-[12px] text-gray-400">
-          ({data?.length || 0} symbols)
-        </span>
-      </div>
-
-      {/* ตารางเต็มจอ ไม่มีกรอบ */}
+    <section className="w-full mb-2 px-2">
+      {/* ตารางหลัก ไม่มีหัว ไม่มีกรอบ */}
       <div className="overflow-x-auto">
         <table className="w-full text-[15px] text-center border-collapse">
           <thead>
             <tr className="text-gray-400 text-[12px] uppercase select-none border-b border-white/5">
-              <th className="py-2 font-medium text-left pl-4 w-[28%] tracking-wide">
-                Symbol
+              <th className="py-2 font-medium text-left pl-4 w-[30%] tracking-wide">
+                SYMBOL
               </th>
-              <th className="py-2 font-medium text-right pr-4 w-[24%] tracking-wide">
-                Price
+              <th className="py-2 font-medium text-right pr-4 w-[23%] tracking-wide">
+                PRICE
               </th>
               <th className="py-2 font-medium text-right pr-4 w-[22%] tracking-wide">
                 RSI
               </th>
-              <th className="py-2 font-medium text-right pr-4 w-[26%] tracking-wide">
-                AI Signal
+              <th className="py-2 font-medium text-right pr-4 w-[25%] tracking-wide">
+                AI SIGNAL
               </th>
             </tr>
           </thead>
@@ -39,10 +29,10 @@ export default function Favorites({ data }) {
                   key={r.symbol + i}
                   className="transition-all hover:bg-[#162235]/60"
                   style={{
-                    borderBottom: "1px solid rgba(255,255,255,0.03)",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
                   }}
                 >
-                  {/* Symbol */}
+                  {/* SYMBOL */}
                   <td className="py-2.5 text-left pl-4 font-semibold text-sky-400 align-middle">
                     <a
                       href={`/analyze/${r.symbol}`}
@@ -52,7 +42,7 @@ export default function Favorites({ data }) {
                     </a>
                   </td>
 
-                  {/* Price */}
+                  {/* PRICE */}
                   <td className="py-2.5 text-right pr-4 font-mono text-gray-100 align-middle">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
@@ -72,7 +62,7 @@ export default function Favorites({ data }) {
                     {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
 
-                  {/* AI Signal */}
+                  {/* AI SIGNAL */}
                   <td
                     className={`py-2.5 text-right pr-4 font-semibold align-middle ${
                       r.signal === "Buy"
@@ -101,4 +91,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                       }
+                      }
