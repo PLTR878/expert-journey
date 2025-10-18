@@ -1,167 +1,201 @@
-// ✅ Visionary Stock Screener — V5.4 Universe Auto-Debug Edition
-import { useEffect, useState } from "react";
-import MarketSection from "../components/MarketSection";
-import Favorites from "../components/Favorites";
+// 🌌 Visionary Eternal Dashboard — Frontend (V∞.3)
+// UI เดียว ครอบคลุมทุกระบบ เชื่อมกับ API /api/visionary-eternal.js
+
+import { useState, useEffect } from "react";
 
 export default function Home() {
-  const [active, setActive] = useState("market");
-  const [favorites, setFavorites] = useState([]);
-  const [favoritePrices, setFavoritePrices] = useState({});
-  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("market");
+  const [loading, setLoading] = useState(false);
+  const [output, setOutput] = useState("");
+  const [input, setInput] = useState("");
+  const [data, setData] = useState(null);
 
-  // ===== FAVORITES =====
-  useEffect(() => {
-    const s = localStorage.getItem("favorites");
-    if (s) setFavorites(JSON.parse(s));
-  }, []);
-  useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
+  const API = "/api/visionary-eternal";
 
-  const toggleFavorite = (sym) =>
-    setFavorites((p) =>
-      p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
-    );
-
-  async function fetchPrice(sym) {
+  // ========== ฟังก์ชันหลัก ==========
+  async function fetchPrice() {
+    if (!input) return;
+    setLoading(true);
+    setOutput("⏳ Loading price...");
     try {
-      const r = await fetch(`/api/price?symbol=${sym}`);
-      const j = await r.json();
-      setFavoritePrices((p) => ({
-        ...p,
-        [sym]: {
-          symbol: sym,
-          price: j.price || 0,
-          rsi: j.rsi || 50,
-          signal: j.signal || "Hold",
-        },
-      }));
-    } catch (err) {
-      console.error("Fetch price error:", err);
+      const res = await fetch(`${API}?mode=price&symbol=${input}`);
+      const j = await res.json();
+      setData(j);
+      setOutput(
+        `💹 ${j.symbol} — $${j.price?.toFixed(2)} | RSI ${j.rsi?.toFixed(
+          1
+        )} | ${j.signal} (${j.trend})`
+      );
+    } catch (e) {
+      setOutput("❌ Error loading data");
+    } finally {
+      setLoading(false);
     }
   }
 
-  useEffect(() => {
-    favorites.forEach(fetchPrice);
-  }, [favorites]);
-
-  // ===== MARKET =====
-  const [fast, setFast] = useState([]);
-  const [emerging, setEmerging] = useState([]);
-  const [future, setFuture] = useState([]);
-  const [hidden, setHidden] = useState([]);
-  const [logs, setLogs] = useState([]);
-
-  const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-20), `${new Date().toLocaleTimeString()} ${msg}`]);
-
-  useEffect(() => {
-    async function loadMarketData() {
-      const modes = ["short", "swing", "long", "hidden"];
-      const setters = [setFast, setEmerging, setFuture, setHidden];
-      const modeNames = ["Fast Movers", "Emerging Trends", "Future Leaders", "Hidden Gems"];
-      const base = "/api/screener-hybrid";
-
-      for (let i = 0; i < modes.length; i++) {
-        let success = false;
-        for (let retry = 1; retry <= 3 && !success; retry++) {
-          try {
-            addLog(`📡 Loading ${modeNames[i]} (try ${retry})...`);
-            const res = await fetch(`${base}?mode=${modes[i]}`, { cache: "no-store" });
-            if (!res.ok) throw new Error("HTTP error " + res.status);
-            const data = await res.json();
-            const rows = data.results || data.groups?.[modes[i]] || [];
-            setters[i](rows);
-            addLog(`✅ Loaded ${modeNames[i]} (${rows.length})`);
-            success = true;
-          } catch (err) {
-            addLog(`⚠️ ${modeNames[i]} failed: ${err.message}`);
-            await new Promise((r) => setTimeout(r, 1500)); // delay ก่อน retry
-          }
-        }
-        if (!success) addLog(`❌ ${modeNames[i]} failed all attempts`);
-      }
+  async function runScan() {
+    setLoading(true);
+    setOutput("📡 Scanning market...");
+    try {
+      const res = await fetch(`${API}?mode=scan`);
+      const j = await res.json();
+      setData(j.picks);
+      setOutput(`✅ Scan complete (${j.picks.length} top stocks)`);
+    } catch {
+      setOutput("❌ Scan failed");
+    } finally {
+      setLoading(false);
     }
-    loadMarketData();
-  }, []);
+  }
 
-  // ===== UI =====
+  async function runAIBrain() {
+    setLoading(true);
+    setOutput("🧠 AI Brain analyzing...");
+    try {
+      const res = await fetch(`${API}?mode=ai-brain`);
+      const j = await res.json();
+      setData(j);
+      setOutput(`🤖 ${j.summary} | Memory ${j.memoryCount} stocks`);
+    } catch {
+      setOutput("❌ AI Brain error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchNews() {
+    if (!input) return;
+    setLoading(true);
+    setOutput("📰 Fetching news...");
+    try {
+      const res = await fetch(`${API}?mode=news&symbol=${input}`);
+      const j = await res.json();
+      setData(j);
+      setOutput(j.ai_view || "✅ News loaded");
+    } catch {
+      setOutput("❌ News fetch failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ========== UI ==========
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white pb-16">
+    <main className="min-h-screen bg-[#0b1220] text-white flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — V5.4 Universe
-          </b>
-          <input
-            type="text"
-            placeholder="🔍 Search (e.g. NVDA, TSLA)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && search.trim()) {
-                const s = search.trim().toUpperCase();
-                if (!favorites.includes(s)) setFavorites([...favorites, s]);
-                fetchPrice(s);
-                setSearch("");
-              }
-            }}
-            className="bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 w-full sm:w-64"
-          />
-        </div>
+      <header className="bg-[#0e1628]/90 backdrop-blur border-b border-white/10 p-4 flex flex-col sm:flex-row justify-between items-center">
+        <h1 className="text-emerald-400 text-lg sm:text-xl font-bold">
+          🌍 Visionary Eternal AI — V∞.3
+        </h1>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value.toUpperCase())}
+          placeholder="🔍 Enter Symbol (e.g. NVDA)"
+          className="bg-[#141b2d] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 w-full sm:w-64 mt-2 sm:mt-0"
+        />
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-4">
-        {active === "favorites" && (
-          <section>
-            <h2 className="text-emerald-400 text-lg mb-2">💙 My Favorite Stocks</h2>
-            <Favorites
-              data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
-            />
-          </section>
+      {/* Main Content */}
+      <section className="flex-1 p-4 max-w-5xl mx-auto w-full space-y-3">
+        <div className="flex gap-2 justify-around text-sm border-b border-white/10 pb-2">
+          {[
+            ["market", "🌐 Market Scan"],
+            ["ai", "🧠 AI Brain"],
+            ["price", "💹 Price"],
+            ["news", "📰 News"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-3 py-1 rounded-lg ${
+                tab === id ? "bg-emerald-600 text-white" : "bg-[#111a2c]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Output */}
+        <div className="bg-[#111a2c] border border-white/10 rounded-xl p-3 text-sm">
+          <p className="text-emerald-400 mb-2">System Output</p>
+          <div className="text-gray-300 whitespace-pre-line">{output}</div>
+        </div>
+
+        {/* Data Display */}
+        {tab === "market" && Array.isArray(data) && (
+          <div className="bg-[#0f192e] border border-white/10 rounded-lg p-3 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-gray-400 border-b border-white/10">
+                <tr>
+                  <th className="text-left">Symbol</th>
+                  <th>Price</th>
+                  <th>RSI</th>
+                  <th>Signal</th>
+                  <th>Trend</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((x, i) => (
+                  <tr key={i} className="border-b border-white/5">
+                    <td className="text-emerald-400">{x.symbol}</td>
+                    <td>${x.price?.toFixed(2)}</td>
+                    <td>{x.rsi?.toFixed(1)}</td>
+                    <td>{x.signal}</td>
+                    <td>{x.trend}</td>
+                    <td>{x.score?.toFixed(0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        {active === "market" && (
-          <>
-            <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-          </>
+        {tab === "ai" && data && data.best && (
+          <div className="bg-[#0f192e] border border-white/10 rounded-lg p-3">
+            <p className="text-emerald-400 mb-2">Top AI Picks:</p>
+            <ul className="space-y-1 text-sm">
+              {data.best.map((x, i) => (
+                <li key={i}>
+                  ✅ {x.symbol} — ${x.price?.toFixed(2)} | RSI {x.rsi?.toFixed(1)} |{" "}
+                  {x.signal}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
-        {/* 🧠 Log Monitor */}
-        <section className="bg-black/30 mt-6 rounded-lg p-3 text-xs text-gray-400 max-h-48 overflow-auto border border-white/10">
-          <b className="text-emerald-400">🧠 System Logs</b>
-          <ul className="mt-2 space-y-1">
-            {logs.map((l, i) => (
-              <li key={i}>{l}</li>
-            ))}
-          </ul>
-        </section>
-      </div>
+        {tab === "news" && data && data.items && (
+          <div className="bg-[#0f192e] border border-white/10 rounded-lg p-3">
+            <p className="text-emerald-400 mb-2">Latest News:</p>
+            <ul className="space-y-1 text-sm">
+              {data.items.map((n, i) => (
+                <li key={i}>
+                  📰 <a href={n.link} className="text-blue-400" target="_blank">
+                    {n.title}
+                  </a>{" "}
+                  — {n.source}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
-        {[
-          { id: "favorites", label: "Favorites", icon: "💙" },
-          { id: "market", label: "Market", icon: "🌐" },
-          { id: "scan", label: "Scanner", icon: "📡" },
-          { id: "trade", label: "AI Trade", icon: "🤖" },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActive(t.id)}
-            className={`py-2 flex flex-col items-center ${
-              active === t.id ? "text-emerald-400" : ""
-            }`}
-          >
-            <span className="text-[18px]">{t.icon}</span>
-            {t.label}
-          </button>
-        ))}
+      {/* Footer */}
+      <footer className="bg-[#0e1628]/90 border-t border-white/10 text-center text-xs text-gray-400 py-2">
+        ⚙️ Visionary AI Stack — Self-Evolving System (∞)
+      </footer>
+
+      {/* Control Buttons */}
+      <nav className="fixed bottom-0 left-0 right-0 flex justify-around bg-[#0e1628]/95 border-t border-white/10 py-2 text-xs text-gray-400">
+        <button onClick={runScan} disabled={loading}>📡 Scan</button>
+        <button onClick={fetchPrice} disabled={loading}>💹 Price</button>
+        <button onClick={runAIBrain} disabled={loading}>🧠 AI Brain</button>
+        <button onClick={fetchNews} disabled={loading}>📰 News</button>
       </nav>
     </main>
   );
-         }
+}
