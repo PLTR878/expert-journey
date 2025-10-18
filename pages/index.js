@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.3 Universe Edition (Eternal Engine Connected)
+// ✅ Visionary Stock Screener — V∞.4 Universe Edition (Eternal API Connected)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -27,21 +27,22 @@ export default function Home() {
       p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
 
+  // ✅ ดึงราคาหุ้นรายตัวจาก API ใหม่
   async function fetchPrice(sym) {
     try {
       addLog(`🔍 Checking ${sym}...`);
-      const r = await fetch(`/api/visionary-eternal?mode=price&symbol=${sym}`);
+      const r = await fetch(`/api/visionary-eternal?type=price&symbol=${sym}`);
       const j = await r.json();
       setFavoritePrices((p) => ({
         ...p,
         [sym]: {
           symbol: sym,
           price: j.price || 0,
-          rsi: j.rsi || 50,
+          currency: j.currency || "USD",
           signal: j.signal || "Hold",
         },
       }));
-      addLog(`✅ ${sym} → ${j.signal} ($${j.price?.toFixed(2)})`);
+      addLog(`✅ ${sym} → $${j.price?.toFixed(2) || "-"} (${j.currency})`);
     } catch (err) {
       addLog(`⚠️ Price error: ${err.message}`);
     }
@@ -51,7 +52,7 @@ export default function Home() {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ===== MARKET AI =====
+  // ===== MARKET AI (ใช้ type=market จาก API V∞.4)
   const [fast, setFast] = useState([]);
   const [emerging, setEmerging] = useState([]);
   const [future, setFuture] = useState([]);
@@ -59,17 +60,23 @@ export default function Home() {
 
   async function loadMarketData() {
     try {
-      addLog("📡 Running Eternal AI Market Scan...");
-      const res = await fetch(`/api/visionary-eternal?mode=scan`, { cache: "no-store" });
+      addLog("📡 Loading AI Market Universe...");
+      const res = await fetch(`/api/visionary-eternal?type=market`, {
+        cache: "no-store",
+      });
       const j = await res.json();
-      const picks = j.picks || [];
-      setFast(picks.slice(0, 10));
-      setEmerging(picks.slice(10, 20));
-      setFuture(picks.slice(20, 25));
-      setHidden(picks.slice(25, 30));
-      addLog(`✅ Loaded AI Picks (${picks.length})`);
+      setFast(j.groups?.fast || []);
+      setEmerging(j.groups?.emerging || []);
+      setFuture(j.groups?.future || []);
+      setHidden(j.groups?.hidden || []);
+      addLog(`✅ Market groups loaded (${[
+        j.groups?.fast?.length || 0,
+        j.groups?.emerging?.length || 0,
+        j.groups?.future?.length || 0,
+        j.groups?.hidden?.length || 0,
+      ].reduce((a, b) => a + b, 0)} symbols)`);
     } catch (err) {
-      addLog(`❌ Market scan failed: ${err.message}`);
+      addLog(`❌ Market load failed: ${err.message}`);
     }
   }
 
@@ -84,7 +91,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — V∞.3 Universe
+            🌍 Visionary Stock Screener — V∞.4 Universe
           </b>
           <input
             type="text"
@@ -109,7 +116,9 @@ export default function Home() {
         {/* FAVORITES */}
         {active === "favorites" && (
           <section>
-            <h2 className="text-emerald-400 text-lg mb-2">💙 My Favorite Stocks</h2>
+            <h2 className="text-emerald-400 text-lg mb-2">
+              💙 My Favorite Stocks
+            </h2>
             <Favorites
               data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
             />
@@ -183,4 +192,4 @@ export default function Home() {
       </nav>
     </main>
   );
-}
+                }
