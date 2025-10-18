@@ -1,4 +1,4 @@
-// ✅ /pages/api/daily.js — AI Stock Analyzer Stable Edition
+// ✅ /pages/api/daily.js — FIXED for UI compatibility (no UI change)
 import { ema, rsi, macd, atr } from "../../lib/indicators.js";
 
 export default async function handler(req, res) {
@@ -7,17 +7,19 @@ export default async function handler(req, res) {
 
   try {
     // 🧠 ป้องกัน Too Many Requests
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(resolve => setTimeout(resolve, 800));
+
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
 
-    const r = await fetch(url, {
+    // 👇 เปลี่ยนจาก r → resp เพื่อไม่ชนตัวแปร
+    const resp = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (AIStockBot/1.0)",
         "Accept": "application/json",
       },
     });
-    const j = await r.json();
 
+    const j = await resp.json();
     const data = j?.chart?.result?.[0];
     if (!data) throw new Error("No data for symbol");
 
@@ -25,8 +27,12 @@ export default async function handler(req, res) {
     const c = q?.close?.filter(Boolean) || [];
     const h = q?.high?.filter(Boolean) || [];
     const l = q?.low?.filter(Boolean) || [];
+
     if (c.length < 50)
-      return res.status(200).json({ symbol, message: "ข้อมูลไม่เพียงพอสำหรับการวิเคราะห์" });
+      return res.status(200).json({
+        symbol,
+        message: "ข้อมูลไม่เพียงพอสำหรับการวิเคราะห์",
+      });
 
     const lastClose = c.at(-1);
     const ema20 = ema(c, 20).at(-1);
@@ -35,6 +41,7 @@ export default async function handler(req, res) {
     const R = rsi(c, 14).at(-1);
     const M = macd(c, 12, 26, 9);
     const ATR = atr(h, l, c, 14).at(-1);
+
     const macdLine = M.line.at(-1);
     const macdSignal = M.signal.at(-1);
     const macdHist = M.hist.at(-1);
@@ -96,6 +103,4 @@ export default async function handler(req, res) {
       message: "เกิดข้อผิดพลาดในการวิเคราะห์",
     });
   }
-  }
-
-
+}
