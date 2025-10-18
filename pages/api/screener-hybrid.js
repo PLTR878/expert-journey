@@ -1,58 +1,47 @@
-// ✅ AI Screener Hybrid — Galactic Edition
-import { ema, rsi, macd } from "../../lib/indicators.js";
-
-const STOCK_LIST = [
-  "AAPL","MSFT","NVDA","TSLA","AMZN","GOOG","META","PLTR","AMD","NFLX","INTC","SHOP","SQ",
-  "RBLX","CRWD","NET","SMCI","SOFI","F","NIO","SLDP","NRGV","GWH","CHPT","BEEM","ENPH",
-  "RUN","SPWR","TTD","ZM","BBAI","AEHR","TMC","VKTX","RR","BTDR","IREN","GWH","IONQ"
-];
+// ✅ /pages/api/screener-hybrid.js
+// AI Screener แบบอัจฉริยะ คัดหุ้นดีสุดอัตโนมัติแต่ละกลุ่ม
 
 export default async function handler(req, res) {
   try {
-    const { mode = "short" } = req.query;
-    const out = [];
+    const base = `https://${req.headers.host}`;
+    const resp = await fetch(`${base}/api/ai-picks?limit=100`);
+    const data = await resp.json();
 
-    for (const symbol of STOCK_LIST) {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
-      const r = await fetch(url);
-      const j = await r.json();
-      const data = j?.chart?.result?.[0];
-      if (!data) continue;
+    if (!data.results?.length) throw new Error("No AI data");
 
-      const c = data.indicators.quote[0].close.filter(Boolean);
-      const h = data.indicators.quote[0].high.filter(Boolean);
-      const l = data.indicators.quote[0].low.filter(Boolean);
-      if (c.length < 50) continue;
+    const results = data.results;
 
-      const last = c.at(-1);
-      const e20 = ema(c, 20).at(-1);
-      const e50 = ema(c, 50).at(-1);
-      const e200 = ema(c, 200).at(-1);
-      const R = rsi(c, 14).at(-1);
-      const M = macd(c, 12, 26, 9);
-      const hist = M.hist.at(-1);
+    // กลุ่ม Emerging Trends: RSI > 55 และ EMA20 > EMA50
+    const emerging = results
+      .filter(x => x.rsi > 55 && x.ema20 > x.ema50 && x.signal === "Buy")
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
 
-      let signal = "Hold";
-      if (mode === "short" && e20 > e50 && R > 45 && R < 65 && hist > 0) signal = "Buy";
-      else if (mode === "swing" && e20 > e50 && e50 > e200 && R > 50 && hist > 0) signal = "Buy";
-      else if (mode === "long" && e50 > e200 && R > 50 && last > e200) signal = "Buy";
+    // กลุ่ม Future Leaders: signal = "Buy" + score > 70
+    const future = results
+      .filter(x => x.signal === "Buy" && x.score > 70)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
 
-      out.push({
-        symbol,
-        price: last,
-        ema20: e20,
-        ema50: e50,
-        ema200: e200,
-        rsi: R,
-        macdHist: hist,
-        signal,
-        confidence: Math.min(1, Math.abs(R - 50) / 50),
-      });
-    }
+    // กลุ่ม Hidden Gems: ราคา < 10 และ RSI เริ่มตัดขึ้น
+    const hidden = results
+      .filter(x => x.price < 10 && x.rsi > 45 && x.ema20 > x.ema50)
+      .sort((a, b) => b.rsi - a.rsi)
+      .slice(0, 10);
 
-    const filtered = out.filter((x) => x.signal === "Buy");
-    res.status(200).json({ mode, total: out.length, results: filtered });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    // กลุ่ม AI Tech (หุ้น AI โดยตรง)
+    const ai = results.filter(x =>
+      ["PLTR", "NVDA", "MSFT", "GOOGL", "AMD", "META", "TSLA"].includes(x.symbol)
+    );
+
+    res.status(200).json({
+      updated: new Date().toISOString(),
+      emerging,
+      future,
+      hidden,
+      ai,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }
