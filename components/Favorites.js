@@ -16,7 +16,7 @@ export default function Favorites({ data }) {
                 SYMBOL
               </th>
               <th className="py-2 font-medium text-right pr-2 w-[23%] tracking-wide">
-              PRICE
+         PRICE
               </th>
               <th className="py-2 font-medium text-right pr-2 w-[22%] tracking-wide">
                 RSI
