@@ -1,10 +1,10 @@
-// ✅ Visionary Stock Screener — V∞.5 (Balanced Edition)
+// ✅ Visionary Stock Screener — V∞.6 (Clean Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 
 export default function Home() {
-  const [active, setActive] = useState("market");
+  const [active, setActive] = useState("favorites");
   const [favorites, setFavorites] = useState([]);
   const [favoritePrices, setFavoritePrices] = useState({});
   const [logs, setLogs] = useState([]);
@@ -113,18 +113,14 @@ export default function Home() {
   // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* ✅ Header — เอาปุ่มค้นหาออกทั้งหมด */}
-      <header className="sticky top-0 z-50 bg-[#0b1220] border-b border-white/5 px-3 py-1">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1 className="text-transparent text-xs select-none">.</h1>
-        </div>
-      </header>
+      {/* ✅ ลบกรอบบนสุดออกทั้งหมด */}
+      <header className="px-3 py-0 h-[4px] bg-[#0b1220]" />
 
       {/* Body */}
-      <div className="max-w-6xl mx-auto px-3 py-3">
+      <div className="max-w-6xl mx-auto px-3 pt-2">
         {/* FAVORITES */}
         {active === "favorites" && (
-          <section>
+          <section className="mt-2">
             <Favorites
               data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
             />
@@ -211,4 +207,4 @@ export default function Home() {
       </nav>
     </main>
   );
-      }
+                }
