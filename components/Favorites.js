@@ -47,7 +47,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       {/* 🩵 หัวข้อ */}
       <div className="flex justify-between items-center mb-2 border-b border-[rgba(255,255,255,0.05)] pb-2">
         <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2">
-          💙 My Favorite Stocks
+          💹 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
