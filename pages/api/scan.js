@@ -1,302 +1,68 @@
-// ✅ Visionary Stock Screener V4.7 — Galaxy + Auto Trade + Dashboard + Real-Time Scan HUD
-import { useEffect, useState } from "react";
-import MarketSection from "../components/MarketSection";
-import Favorites from "../components/Favorites";
+// ✅ /pages/api/scan.js — version with real-time progress
+export const config = { runtime: "edge" };
 
-export default function Home() {
-  // ---------- STATES ----------
-  const [favorites, setFavorites] = useState([]);
-  const [favoritePrices, setFavoritePrices] = useState({});
-  const [aiPicks, setAiPicks] = useState([]);
-  const [fast, setFast] = useState([]);
-  const [emerging, setEmerging] = useState([]);
-  const [future, setFuture] = useState([]);
-  const [hidden, setHidden] = useState([]);
-  const [active, setActive] = useState("market");
-  const [search, setSearch] = useState("");
+const yahoo = (s) =>
+  `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=6mo&interval=1d`;
 
-  // ---------- AUTO SCAN ----------
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [matches, setMatches] = useState([]);
-  const [batch, setBatch] = useState(1);
-  const [scannedCount, setScannedCount] = useState(0);
-  const [latestSymbol, setLatestSymbol] = useState("-");
-  const totalSymbols = 7000;
-
-  async function runAutoScan() {
-    if (running) return;
-    setRunning(true);
-    setProgress(0);
-    setMatches([]);
-    setBatch(1);
-    setScannedCount(0);
-    setLatestSymbol("-");
-
-    for (let i = 0; i < totalSymbols; i += 200) {
-      try {
-        const res = await fetch(`/api/scan?offset=${i}&limit=200`);
-        const data = await res.json();
-
-        if (data.batch?.lastSymbol) setLatestSymbol(data.batch.lastSymbol);
-
-        if (Array.isArray(data.results)) {
-          const found = data.results.filter((x) => x.signal === "Buy");
-          if (found.length > 0) new Audio("/ding.mp3").play();
-          setMatches((p) => [...p, ...found]);
-        }
-
-        setScannedCount(i + (data.batch?.scanned || 0));
-        setProgress(data.batch?.percent || ((i + 200) / totalSymbols) * 100);
-        setBatch((b) => b + 1);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    setRunning(false);
-    setProgress(100);
-    setLatestSymbol("✅ Done");
-  }
-
-  // ---------- AUTO TRADE ----------
-  const [autoTrades, setAutoTrades] = useState([]);
-  const [tradeRunning, setTradeRunning] = useState(false);
-
-  async function runAutoTrade() {
-    if (tradeRunning) return;
-    setTradeRunning(true);
-    try {
-      const res = await fetch("/api/auto-trade");
-      const data = await res.json();
-      setAutoTrades(data.trades || []);
-      if (data.trades?.length > 0) new Audio("/ding.mp3").play();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setTradeRunning(false);
-    }
-  }
-
-  // ---------- FAVORITES ----------
-  useEffect(() => {
-    const s = localStorage.getItem("favorites");
-    if (s) setFavorites(JSON.parse(s));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
-
-  const toggleFavorite = (sym) =>
-    setFavorites((p) =>
-      p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
-    );
-
-  async function fetchPrice(sym) {
-    try {
-      const r = await fetch(`/api/price?symbol=${encodeURIComponent(sym)}`);
-      const j = await r.json();
-      setFavoritePrices((p) => ({
-        ...p,
-        [sym]: { symbol: sym, price: j.price, rsi: j.rsi, signal: j.signal },
-      }));
-    } catch {}
-  }
-
-  useEffect(() => {
-    favorites.forEach(fetchPrice);
-  }, [favorites]);
-
-  // ---------- MARKET DATA ----------
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const pick = await fetch(`/api/ai-picks?limit=150&offset=0`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setAiPicks(pick.results || []);
-
-        const s1 = await fetch(`/api/screener-hybrid?mode=short`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setFast(s1.results || []);
-
-        const s2 = await fetch(`/api/screener-hybrid?mode=swing`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setEmerging(s2.results || []);
-
-        const s3 = await fetch(`/api/screener-hybrid?mode=long`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setFuture(s3.results || []);
-
-        const hid = await fetch(`/api/screener-hybrid?mode=swing`)
-          .then((r) => r.json())
-          .catch(() => ({ results: [] }));
-        setHidden(hid.results || []);
-      } catch (e) {
-        console.error("Load market error:", e);
-      }
-    };
-    loadData();
-  }, []);
-
-  const addBySearch = (sym) => {
-    if (!sym) return;
-    const S = sym.toUpperCase();
-    if (!favorites.includes(S)) setFavorites((p) => [...p, S]);
-    fetchPrice(S);
-  };
-
-  const favData = favorites.map((s) => ({
-    symbol: s,
-    ...(favoritePrices[s] || {}),
-  }));
-
-  // ---------- UI ----------
-  return (
-    <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — Galaxy Universe
-          </b>
-          <div className="relative w-full sm:w-64">
-            <input
-              type="text"
-              placeholder="🔍 Search symbol (e.g. NVDA, TSLA)"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  addBySearch(search.trim());
-                  setSearch("");
-                }
-              }}
-              className="w-full bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-400 placeholder-gray-500"
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* BODY */}
-      <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* FAVORITES */}
-        {active === "favorites" && <Favorites data={favData} />}
-
-        {/* MARKET */}
-        {active === "market" && (
-          <>
-            <MarketSection title="🤖 AI Picks" rows={aiPicks} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-            <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-            <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-            <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-            <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-          </>
-        )}
-
-        {/* AUTO SCAN */}
-        {active === "scan" && (
-          <section className="text-sm text-gray-200">
-            <h2 className="text-emerald-400 text-lg mb-2">📡 Auto Scan — US Stocks</h2>
-            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <button onClick={runAutoScan} disabled={running} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full">
-                ▶ {running ? "Scanning..." : "Run Scan Now"}
-              </button>
-              <div className="text-xs text-gray-400 mb-1">
-                🧩 Now Scanning: <b className="text-emerald-400">{latestSymbol}</b>
-              </div>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
-                <div className="h-2 bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
-              </div>
-              <div className="text-xs text-gray-400 mb-2">
-                Progress: {progress.toFixed(1)}% | Batch {batch} | Total {scannedCount} / {totalSymbols} | Buy Signals:{" "}
-                <b className="text-green-400">{matches.length}</b>
-              </div>
-              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2 font-mono">
-                {matches.map((m, i) => (
-                  <li key={i}>🟢 {m.symbol.padEnd(6)} — ${m.price.toFixed(2)} | RSI {Math.round(m.rsi)} | {m.signal}</li>
-                ))}
-              </ul>
-              {running && <p className="text-[11px] text-gray-400 mt-1 animate-pulse">🔍 กำลังสแกนตลาดหุ้นอเมริกาแบบเรียลไทม์...</p>}
-            </div>
-          </section>
-        )}
-
-        {/* AUTO TRADE */}
-        {active === "trade" && (
-          <section className="text-sm text-gray-200 mt-4">
-            <h2 className="text-emerald-400 text-lg mb-2">🤖 Auto Trade — AI Contracts</h2>
-            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <button onClick={runAutoTrade} disabled={tradeRunning} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full">
-                ⚡ {tradeRunning ? "Processing..." : "Run Auto Trade"}
-              </button>
-              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
-                {autoTrades.length === 0 ? (
-                  <li className="text-gray-400">ยังไม่มีสัญญาซื้อขาย...</li>
-                ) : (
-                  autoTrades.map((t, i) => (
-                    <li key={i}>{t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} <b>{t.symbol}</b> — ${t.price} | RSI {t.rsi} | Δ {t.change}%</li>
-                  ))}
-                )}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        {/* DASHBOARD */}
-        {active === "dashboard" && (
-          <section className="text-sm text-gray-200">
-            <h2 className="text-emerald-400 text-lg mb-3">📊 AI Dashboard — Real-Time Performance</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <StatBox label="Scanned Stocks" value={scannedCount} color="text-emerald-400" />
-              <StatBox label="AI Buy Signals" value={matches.filter((x) => x.signal === "Buy").length} color="text-green-400" />
-              <StatBox label="Active Trades" value={autoTrades.length} color="text-yellow-400" />
-              <StatBox label="System" value={running || tradeRunning ? "RUNNING" : "IDLE"} color={running || tradeRunning ? "text-emerald-400" : "text-gray-400"} />
-            </div>
-          </section>
-        )}
-
-        {/* MENU */}
-        {active === "menu" && (
-          <section className="text-center text-gray-400 py-10">
-            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
-            <p>📡 Auto Scan + AI Trade + Dashboard</p>
-            <p>💾 Favorites stored locally</p>
-            <p>🔔 Alerts with Sound</p>
-            <div className="text-xs text-gray-500 mt-3">Version 4.7 — Galaxy Universe</div>
-          </section>
-        )}
-      </div>
-
-      {/* BOTTOM NAV */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
-        {[
-          { id: "favorites", label: "Favorites", icon: "💙" },
-          { id: "market", label: "Market", icon: "🌐" },
-          { id: "scan", label: "Auto Scan", icon: "📡" },
-          { id: "trade", label: "Auto Trade", icon: "🤖" },
-          { id: "dashboard", label: "Dashboard", icon: "📊" },
-          { id: "menu", label: "Menu", icon: "☰" },
-        ].map((t) => (
-          <button key={t.id} onClick={() => setActive(t.id)} className={`py-2 flex flex-col items-center ${active === t.id ? "text-emerald-400" : ""}`}>
-            <span className="text-[18px]">{t.icon}</span>
-            {t.label}
-          </button>
-        ))}
-      </nav>
-    </main>
-  );
+async function getClose(symbol) {
+  const r = await fetch(yahoo(symbol), { cache: "no-store" });
+  const j = await r.json();
+  const res = j?.chart?.result?.[0];
+  return res?.indicators?.quote?.[0]?.close?.filter((x) => x);
 }
 
-function StatBox({ label, value, color }) {
-  return (
-    <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
-      <p className="text-gray-400 text-xs">{label}</p>
-      <p className={`${color} text-lg font-bold`}>{value}</p>
-    </div>
-  );
+function rsi(values, period = 14) {
+  if (values.length < period + 1) return null;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = values[i] - values[i - 1];
+    if (diff > 0) gains += diff;
+    else losses -= diff;
   }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  for (let i = period + 1; i < values.length; i++) {
+    const diff = values[i] - values[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(diff, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-diff, 0)) / period;
+  }
+  const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+}
+
+export default async function handler(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const offset = Number(searchParams.get("offset") || 0);
+    const limit = Number(searchParams.get("limit") || 200);
+
+    const base = `${new URL(req.url).origin}/api/symbols`;
+    const { symbols } = await fetch(base).then((r) => r.json());
+    const slice = symbols.slice(offset, offset + limit);
+
+    const result = [];
+    let scanned = 0;
+
+    for (const sym of slice) {
+      scanned++;
+      try {
+        const c = await getClose(sym);
+        if (!c || c.length < 30) continue;
+        const last = c[c.length - 1];
+        const r = rsi(c);
+        if (r >= 35 && r <= 60)
+          result.push({ symbol: sym, price: last, rsi: r, signal: "Buy" });
+      } catch {}
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        results: result, 
+        batch: { offset, limit, scanned, percent: ((offset + scanned) / symbols.length) * 100 } 
+      }),
+      { headers: { "content-type": "application/json" } }
+    );
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  }
+}
