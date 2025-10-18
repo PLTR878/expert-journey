@@ -1,33 +1,44 @@
-// ✅ /components/Favorites.js — Force True Gray Edition (V∞.18)
+// ✅ /components/Favorites.js — Ultra Thin Line Edition (V∞.19)
 export default function Favorites({ data }) {
   return (
     <section className="w-full px-2">
       <div className="overflow-x-auto">
         <table className="w-full text-[15px] text-center border-collapse">
+          {/* หัวตาราง */}
           <thead>
             <tr
-              className="text-[#a1a1aa] text-[12px] uppercase select-none"
+              className="text-[#9ca3af] text-[12px] uppercase select-none"
               style={{
-                borderBottom: "1px solid #20242f !important",
+                borderBottom: "0.5px solid #1a1d26 !important", // ✅ เส้นบางเฉียบเทาอ่อน
               }}
             >
-              <th className="py-2 font-medium text-left pl-3 w-[30%]">SYMBOL</th>
-              <th className="py-2 font-medium text-right pr-2 w-[23%]">PRICE</th>
-              <th className="py-2 font-medium text-right pr-2 w-[22%]">RSI</th>
-              <th className="py-2 font-medium text-right pr-2 w-[25%]">AI SIG</th>
+              <th className="py-2 font-medium text-left pl-3 w-[30%] tracking-wide">
+                SYMBOL
+              </th>
+              <th className="py-2 font-medium text-right pr-2 w-[23%] tracking-wide">
+                PRICE
+              </th>
+              <th className="py-2 font-medium text-right pr-2 w-[22%] tracking-wide">
+                RSI
+              </th>
+              <th className="py-2 font-medium text-right pr-2 w-[25%] tracking-wide">
+                AI SIG
+              </th>
             </tr>
           </thead>
 
+          {/* เนื้อหา */}
           <tbody>
             {data?.length ? (
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className="transition-all hover:bg-[#151821]/70"
+                  className="transition-all hover:bg-[#151821]/60"
                   style={{
-                    borderBottom: "1px solid #1b1f29 !important", // ✅ สีเทาอ่อนจริง (ไม่โดน override)
+                    borderBottom: "0.5px solid #1a1d26 !important", // ✅ เส้นเทาอ่อน บางสุด
                   }}
                 >
+                  {/* SYMBOL */}
                   <td className="py-3 text-left pl-3 font-semibold text-sky-400">
                     <a
                       href={`/analyze/${r.symbol}`}
@@ -36,9 +47,13 @@ export default function Favorites({ data }) {
                       {r.symbol}
                     </a>
                   </td>
+
+                  {/* PRICE */}
                   <td className="py-3 text-right pr-2 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
+
+                  {/* RSI */}
                   <td
                     className={`py-3 text-right pr-2 font-mono ${
                       typeof r.rsi === "number"
@@ -52,6 +67,8 @@ export default function Favorites({ data }) {
                   >
                     {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
+
+                  {/* AI SIG */}
                   <td
                     className={`py-3 text-right pr-2 font-semibold ${
                       r.signal === "Buy"
@@ -67,7 +84,10 @@ export default function Favorites({ data }) {
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="py-4 text-gray-500 text-center italic">
+                <td
+                  colSpan="4"
+                  className="py-4 text-gray-500 text-center italic"
+                >
                   No favorites yet. Add one by searching 🔍
                 </td>
               </tr>
