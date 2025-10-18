@@ -1,78 +1,45 @@
-// ✅ /pages/api/scan.js — fixed version (Next.js 14.2.5 compatible)
-export const config = { runtime: "nodejs" };
+// ✅ /pages/api/symbols.js
+export const config = { runtime: "edge" };
 
-const yahoo = (s) =>
-  `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=6mo&interval=1d`;
+const urls = [
+  "https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt",
+  "https://www.nasdaqtrader.com/dynamic/symdir/otherlisted.txt",
+  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/master/all/all_tickers.txt",
+];
 
-async function getClose(symbol) {
-  const r = await fetch(yahoo(symbol));
-  const j = await r.json();
-  const res = j?.chart?.result?.[0];
-  return res?.indicators?.quote?.[0]?.close?.filter((x) => x);
+async function getText(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Fetch fail " + url);
+  return res.text();
 }
 
-function rsi(values, period = 14) {
-  if (values.length < period + 1) return null;
-  let gains = 0,
-    losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = values[i] - values[i - 1];
-    if (diff > 0) gains += diff;
-    else losses -= diff;
-  }
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-  for (let i = period + 1; i < values.length; i++) {
-    const diff = values[i] - values[i - 1];
-    avgGain = (avgGain * (period - 1) + Math.max(diff, 0)) / period;
-    avgLoss = (avgLoss * (period - 1) + Math.max(-diff, 0)) / period;
-  }
-  const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-  return 100 - 100 / (1 + rs);
+function parseNasdaq(text) {
+  return text
+    .split(/\r?\n/)
+    .slice(1)
+    .map((l) => l.split("|")[0])
+    .filter((x) => /^[A-Z.\-]+$/.test(x));
 }
 
-export default async function handler(req, res) {
+export default async function handler() {
   try {
-    const offset = Number(req.query.offset || 0);
-    const limit = Number(req.query.limit || 200);
+    const results = await Promise.allSettled(urls.map(getText));
+    const set = new Set();
 
-    const base = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}/api/symbols`
-      : `http://localhost:3000/api/symbols`;
-
-    const { symbols } = await fetch(base).then((r) => r.json());
-    const slice = symbols.slice(offset, offset + limit);
-
-    const result = [];
-    let scanned = 0;
-    let lastSymbol = "";
-
-    for (const sym of slice) {
-      scanned++;
-      lastSymbol = sym;
-      try {
-        const c = await getClose(sym);
-        if (!c || c.length < 30) continue;
-        const last = c[c.length - 1];
-        const r = rsi(c);
-        if (r >= 35 && r <= 60)
-          result.push({ symbol: sym, price: last, rsi: r, signal: "Buy" });
-      } catch (err) {
-        console.log("Symbol error:", sym);
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") {
+        const lines =
+          i < 2 ? parseNasdaq(r.value) : r.value.split(/\r?\n/).filter(Boolean);
+        lines.forEach((s) => set.add(s.trim()));
       }
-    }
-
-    res.status(200).json({
-      results: result,
-      batch: {
-        offset,
-        limit,
-        scanned,
-        lastSymbol,
-        percent: ((offset + scanned) / symbols.length) * 100,
-      },
     });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+
+    const list = Array.from(set).filter((s) => !s.includes("^")).sort();
+
+    return new Response(JSON.stringify({ total: list.length, symbols: list }), {
+      headers: { "content-type": "application/json" },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
