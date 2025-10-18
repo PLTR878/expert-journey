@@ -1,53 +1,50 @@
-// /pages/api/symbols.js
-export const config = { runtime: "edge" };
-
-const SOURCES = [
-  "https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt",
-  "https://www.nasdaqtrader.com/dynamic/symdir/otherlisted.txt",
-  // สำรอง (รวม NYSE/NASDAQ/AMEX) – กันล่ม
-  "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/master/all/all_tickers.txt",
-];
-
-async function fetchText(url) {
-  const r = await fetch(url, { cache: "no-store" });
-  if (!r.ok) throw new Error("fetch fail " + url);
-  return r.text();
-}
-
-function parseSymbolsFromNasdaqTxt(txt) {
-  // ไฟล์ nasdaq: header แถวแรก, คั่นด้วย |
-  return txt
-    .split(/\r?\n/)
-    .slice(1)
-    .map((l) => l.split("|")[0]?.trim())
-    .filter((s) => s && /^[A-Z.\-]+$/.test(s) && !s.includes("#"));
-}
-
-function parseSymbolsFromList(txt) {
-  return txt
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter((s) => s && /^[A-Z.\-]+$/.test(s));
-}
-
-export default async function handler(req) {
+// ✅ /pages/api/symbols.js
+// ดึงรายชื่อหุ้นทั้งหมดจากตลาดอเมริกา (NASDAQ + NYSE + AMEX)
+export default async function handler(req, res) {
   try {
-    const [a, b, c] = await Promise.allSettled(SOURCES.map(fetchText));
-    const all = new Set();
+    const sources = [
+      "https://financialmodelingprep.com/api/v3/nasdaq_constituent",
+      "https://financialmodelingprep.com/api/v3/nyse_constituent",
+      "https://financialmodelingprep.com/api/v3/amex_constituent"
+    ];
 
-    if (a.status === "fulfilled") parseSymbolsFromNasdaqTxt(a.value).forEach((s) => all.add(s));
-    if (b.status === "fulfilled") parseSymbolsFromNasdaqTxt(b.value).forEach((s) => all.add(s));
-    if (c.status === "fulfilled") parseSymbolsFromList(c.value).forEach((s) => all.add(s));
+    let symbols = [];
+    for (const url of sources) {
+      try {
+        const r = await fetch(url);
+        const j = await r.json();
+        if (Array.isArray(j)) {
+          j.forEach(x => {
+            if (x.symbol && /^[A-Z.]+$/.test(x.symbol))
+              symbols.push({ symbol: x.symbol });
+          });
+        }
+      } catch (e) {
+        console.log("Source error:", url);
+      }
+    }
 
-    const arr = Array.from(all).filter((s) => !s.includes("^")).sort();
+    // รวม + ลบซ้ำ
+    symbols = symbols.filter(
+      (v, i, a) => a.findIndex(t => t.symbol === v.symbol) === i
+    );
 
-    return new Response(JSON.stringify({ total: arr.length, symbols: arr }), {
-      headers: {
-        "content-type": "application/json; charset=utf-8",
-        "cache-control": "public, max-age=900", // 15 นาที
-      },
+    // ถ้ายังไม่มีข้อมูล ใช้ fallback set
+    if (symbols.length === 0) {
+      symbols = [
+        { symbol: "AAPL" }, { symbol: "MSFT" }, { symbol: "NVDA" },
+        { symbol: "PLTR" }, { symbol: "SOFI" }, { symbol: "TSLA" },
+        { symbol: "AMZN" }, { symbol: "GOOG" }, { symbol: "META" },
+        { symbol: "IONQ" }, { symbol: "SMCI" }, { symbol: "SLDP" },
+        { symbol: "GWH" }, { symbol: "BEEM" }, { symbol: "ENVX" }
+      ];
+    }
+
+    res.status(200).json({
+      count: symbols.length,
+      symbols
     });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }
