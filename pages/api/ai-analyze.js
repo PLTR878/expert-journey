@@ -1,3 +1,4 @@
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://expert-journey-ten.vercel.app";
 // ✅ /pages/api/ai-analyze.js — AI Stock Analyzer (Stable)
 import { ema, rsi, macd, atr } from "../../lib/indicators.js";
 
