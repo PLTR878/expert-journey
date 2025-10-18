@@ -1,3 +1,4 @@
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://expert-journey-ten.vercel.app";
 // ✅ /pages/api/ai-visionary-score.js — รวมทุกมิติของ AI ความคิด
 export default async function handler(req, res) {
   try {
