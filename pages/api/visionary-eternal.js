@@ -1,184 +1,115 @@
-// 🧠 Visionary Super Investor Engine V∞.3 — The Eternal Brain
-// รวมทุก AI ที่เคยสร้างให้เป็นหนึ่งเดียว
-// คิดเอง วิเคราะห์เอง พัฒนาเอง ไม่พัง ไม่ล่ม ใช้ได้ตลอดชีวิต
-
+// ✅ Visionary Eternal API — AI Core (V∞.4)
+// รวมทุกระบบ daily, news, history, price, market, signal
 export default async function handler(req, res) {
+  const { type = "daily", symbol = "AAPL", range = "6mo", interval = "1d" } = req.query;
+
   try {
-    const mode = req.query.mode || "status";
-    const symbol = req.query.symbol?.toUpperCase();
-    const now = Date.now();
-
-    // === Eternal Memory ===
-    if (!global.VISIONARY_CORE)
-      global.VISIONARY_CORE = {
-        symbols: null,
-        scans: [],
-        memory: {},
-        config: { learnRate: 0.02 },
-      };
-
-    const core = global.VISIONARY_CORE;
-
-    // === ดึงรายชื่อหุ้นทั้งหมด (ครั้งเดียวพอ) ===
-    if (!core.symbols) {
-      const csv =
-        "https://raw.githubusercontent.com/datasets/nasdaq-listings/main/data/nasdaq-listed-symbols.csv";
-      const txt = await fetch(csv).then((r) => r.text());
-      core.symbols = Array.from(
-        new Set(
-          txt
-            .split("\n")
-            .slice(1)
-            .map((l) => l.split(",")[0])
-            .filter((x) => x && x.length < 6)
-        )
-      );
+    // --- History ---
+    if (type === "history") {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
+      const r = await fetch(url);
+      const j = await r.json();
+      const d = j?.chart?.result?.[0];
+      const q = d?.indicators?.quote?.[0];
+      const rows = (d?.timestamp || []).map((t, i) => ({
+        t: t * 1000,
+        o: q?.open?.[i],
+        h: q?.high?.[i],
+        l: q?.low?.[i],
+        c: q?.close?.[i],
+        v: q?.volume?.[i],
+      }));
+      return res.status(200).json({ symbol, rows });
     }
 
-    // === ฟังก์ชันคำนวณ ===
-    const ema = (arr, p) => {
-      if (!arr || arr.length < p) return arr?.at(-1) || 0;
-      const k = 2 / (p + 1);
-      let e = arr[0];
-      for (let i = 1; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
-      return e;
-    };
-
-    const rsi = (closes, p = 14) => {
-      if (!closes || closes.length < p + 1) return 50;
-      let g = 0,
-        l = 0;
-      for (let i = 1; i <= p; i++) {
-        const d = closes[i] - closes[i - 1];
-        if (d >= 0) g += d;
-        else l -= d;
-      }
-      const rs = g / (l || 1);
-      return 100 - 100 / (1 + rs);
-    };
-
-    const trendSignal = (rsiVal, ema20, ema50) => {
-      const trend = ema20 > ema50 ? "Uptrend" : "Downtrend";
-      const signal =
-        rsiVal < 35 ? "Buy" : rsiVal > 65 ? "Sell" : ema20 > ema50 ? "Hold+" : "Hold";
-      return { trend, signal };
-    };
-
-    // === วิเคราะห์รายตัว (Real-Time) ===
-    if (mode === "price" && symbol) {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=6mo`;
-      const j = await fetch(url).then((r) => r.json());
+    // --- Daily (Indicators + AI Signal) ---
+    if (type === "daily") {
+      const base = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
+      const r = await fetch(base);
+      const j = await r.json();
       const d = j?.chart?.result?.[0];
-      const c = d?.indicators?.quote?.[0]?.close || [];
-      const price = d?.meta?.regularMarketPrice ?? c.at(-1);
+      const q = d?.indicators?.quote?.[0];
+      if (!q?.close?.length) throw new Error("No data");
+
+      const c = q.close.filter(Boolean);
+      const ema = (arr, p) => {
+        const k = 2 / (p + 1);
+        let e = arr[0];
+        for (let i = 1; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
+        return e;
+      };
+      const rsi = (arr, period = 14) => {
+        if (arr.length < period + 1) return 50;
+        let gains = 0, losses = 0;
+        for (let i = 1; i <= period; i++) {
+          const diff = arr[i] - arr[i - 1];
+          if (diff >= 0) gains += diff; else losses -= diff;
+        }
+        const rs = gains / (losses || 1);
+        return 100 - 100 / (1 + rs);
+      };
+
       const ema20 = ema(c, 20);
       const ema50 = ema(c, 50);
+      const ema200 = ema(c, 200);
+      const lastClose = c.at(-1);
       const R = rsi(c);
-      const { signal, trend } = trendSignal(R, ema20, ema50);
-      const score = (R / 100) * 50 + (trend === "Uptrend" ? 25 : -25);
 
-      // === Memory Update ===
-      core.memory[symbol] = {
+      const signal =
+        lastClose > ema20 && ema20 > ema50 && R > 55
+          ? "Uptrend"
+          : lastClose < ema20 && ema20 < ema50 && R < 45
+          ? "Downtrend"
+          : "Sideway";
+
+      return res.status(200).json({
         symbol,
-        price,
+        lastClose,
         ema20,
         ema50,
+        ema200,
         rsi: R,
-        signal,
-        trend,
-        score,
-        updated: new Date().toISOString(),
-      };
-
-      return res.status(200).json(core.memory[symbol]);
-    }
-
-    // === สแกนตลาดทั้งหมด ===
-    if (mode === "scan") {
-      const results = [];
-      const sample = core.symbols.slice(0, 800);
-
-      for (const s of sample) {
-        try {
-          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&range=3mo`;
-          const j = await fetch(url).then((r) => r.json());
-          const d = j?.chart?.result?.[0];
-          const c = d?.indicators?.quote?.[0]?.close || [];
-          if (!c || c.length < 20) continue;
-          const price = c.at(-1);
-          const ema20 = ema(c, 20);
-          const ema50 = ema(c, 50);
-          const R = rsi(c);
-          const { signal, trend } = trendSignal(R, ema20, ema50);
-          const score = (R / 100) * 50 + (trend === "Uptrend" ? 25 : -25);
-
-          results.push({ symbol: s, price, rsi: R, ema20, ema50, signal, trend, score });
-        } catch {}
-      }
-
-      const picks = results
-        .filter((x) => x.signal === "Buy" && x.trend === "Uptrend" && x.rsi < 60)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 30);
-
-      core.scans.push({ time: now, picks });
-      if (core.scans.length > 20) core.scans.shift(); // limit memory
-
-      return res.status(200).json({ updated: new Date().toISOString(), picks });
-    }
-
-    // === AI วิเคราะห์แนวโน้มจากความทรงจำ ===
-    if (mode === "ai-brain") {
-      const all = Object.values(core.memory);
-      const avgScore = all.reduce((a, b) => a + b.score, 0) / (all.length || 1);
-      const best = all.sort((a, b) => b.score - a.score).slice(0, 5);
-      const idea =
-        avgScore > 40
-          ? "ตลาดกำลังสร้างแนวโน้มใหม่ — ควรจับตาหุ้นนวัตกรรม"
-          : "ตลาดเริ่มอ่อนแรง — เน้นถือเงินสด";
-
-      return res.status(200).json({
-        updated: new Date().toISOString(),
-        summary: idea,
-        memoryCount: all.length,
-        best,
+        trend: signal,
+        confidencePercent: Math.round(Math.abs(R - 50) * 2),
       });
     }
 
-    // === ข่าว AI + วิเคราะห์ ===
-    if (mode === "news" && symbol) {
-      const q = encodeURIComponent(`${symbol} stock innovation OR breakthrough`);
-      const link = `https://serpapi.com/search.json?q=${q}&engine=google_news&api_key=demo`;
-      const n = await fetch(link).then((r) => r.json());
-      const items = n?.news_results?.slice(0, 5)?.map((x) => ({
-        title: x.title,
-        link: x.link,
-        date: x.date,
-        source: x.source,
-      }));
+    // --- News ---
+    if (type === "news") {
+      const newsUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}`;
+      const r = await fetch(newsUrl);
+      const j = await r.json();
+      return res.status(200).json({ symbol, items: j.news || [] });
+    }
 
+    // --- Price only ---
+    if (type === "price") {
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`);
+      const j = await r.json();
+      const meta = j?.chart?.result?.[0]?.meta;
       return res.status(200).json({
         symbol,
-        ai_view: `AI วิเคราะห์ข่าวล่าสุดของ ${symbol}: ${
-          items?.length > 0
-            ? "มีความเคลื่อนไหวด้านเทคโนโลยีที่อาจเปลี่ยนโลก"
-            : "ยังไม่มีสัญญาณชัดเจน"
-        }`,
-        items,
+        price: meta?.regularMarketPrice,
+        previousClose: meta?.previousClose,
+        currency: meta?.currency,
       });
     }
 
-    // === Default ===
-    return res.status(200).json({
-      message: "🧠 Visionary Eternal AI is alive and evolving.",
-      usage: {
-        price: "/api/visionary-eternal?mode=price&symbol=AAPL",
-        scan: "/api/visionary-eternal?mode=scan",
-        aiBrain: "/api/visionary-eternal?mode=ai-brain",
-        news: "/api/visionary-eternal?mode=news&symbol=PLTR",
-      },
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    // --- Market (default 4 groups) ---
+    if (type === "market") {
+      return res.status(200).json({
+        groups: {
+          fast: [{ symbol: "NVDA" }, { symbol: "TSLA" }, { symbol: "AMD" }],
+          emerging: [{ symbol: "SLDP" }, { symbol: "NRGV" }, { symbol: "BEEM" }],
+          future: [{ symbol: "PLTR" }, { symbol: "GWH" }, { symbol: "LWLG" }],
+          hidden: [{ symbol: "AEHR" }, { symbol: "ENVX" }, { symbol: "SES" }],
+        },
+      });
+    }
+
+    // --- Default fallback ---
+    res.status(400).json({ error: "Unknown type" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-                         }
+        }
