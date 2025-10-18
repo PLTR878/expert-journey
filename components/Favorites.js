@@ -1,10 +1,10 @@
-// ✅ /components/Favorites.js — Perfect Balanced Clean Edition (V∞.7 no 💙)
+// ✅ /components/Favorites.js — Visionary Ultra Clean Edition (V∞.8)
 export default function Favorites({ data }) {
   return (
-    <section className="bg-transparent p-2 mb-6">
+    <section className="p-2 mb-4">
       {/* หัวข้อ */}
-      <div className="flex items-center justify-between mb-1 px-1">
-        <h2 className="text-emerald-400 text-base font-semibold">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <h2 className="text-emerald-400 text-[15px] font-semibold tracking-wide">
           My Favorite Stocks
         </h2>
         <span className="text-[11px] text-gray-400">
@@ -12,16 +12,16 @@ export default function Favorites({ data }) {
         </span>
       </div>
 
-      {/* ตารางหลัก */}
+      {/* ตารางแบบเรียบ ไม่มีกรอบ */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-center border-collapse">
+        <table className="w-full text-[13px] text-center border-collapse">
           {/* หัวตาราง */}
-          <thead className="text-gray-400 text-[11px] uppercase tracking-wider select-none">
-            <tr>
-              <th className="py-2 font-medium w-[25%]">Symbol</th>
-              <th className="py-2 font-medium w-[25%]">Price</th>
-              <th className="py-2 font-medium w-[25%]">RSI</th>
-              <th className="py-2 font-medium w-[25%]">AI Signal</th>
+          <thead>
+            <tr className="text-gray-400 text-[11px] uppercase select-none border-b border-white/10">
+              <th className="py-2 font-medium">Symbol</th>
+              <th className="py-2 font-medium">Price</th>
+              <th className="py-2 font-medium">RSI</th>
+              <th className="py-2 font-medium">AI Signal</th>
             </tr>
           </thead>
 
@@ -31,12 +31,7 @@ export default function Favorites({ data }) {
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className={`transition-all ${
-                    i % 2 === 0 ? "bg-[#0f172a]/50" : "bg-[#111c2d]/50"
-                  } hover:bg-[#182338]/80`}
-                  style={{
-                    border: "none",
-                  }}
+                  className={`transition-all hover:bg-[#162035]/80`}
                 >
                   {/* Symbol */}
                   <td className="py-2.5 text-center font-semibold text-sky-400">
@@ -97,4 +92,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                       }
+          }
