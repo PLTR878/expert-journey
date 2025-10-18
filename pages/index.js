@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener V4.5 — Galaxy + Auto Trade + Dashboard
+// ✅ Visionary Stock Screener V4.6 — Galaxy + Auto Trade + Real-Time Scanner HUD
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -20,6 +20,7 @@ export default function Home() {
   const [matches, setMatches] = useState([]);
   const [batch, setBatch] = useState(1);
   const [scannedCount, setScannedCount] = useState(0);
+  const [latestSymbol, setLatestSymbol] = useState("-");
   const totalSymbols = 7000;
 
   async function runAutoScan() {
@@ -29,25 +30,33 @@ export default function Home() {
     setMatches([]);
     setBatch(1);
     setScannedCount(0);
+    setLatestSymbol("-");
 
-    for (let i = 0; i < totalSymbols; i += 800) {
+    for (let i = 0; i < totalSymbols; i += 200) {
       try {
-        const res = await fetch(`/api/scan?offset=${i}&limit=800`);
+        const res = await fetch(`/api/scan?offset=${i}&limit=200`);
         const data = await res.json();
+
+        // อัปเดตหุ้นล่าสุดที่สแกน
+        if (data.batch?.lastSymbol) setLatestSymbol(data.batch.lastSymbol);
+
         if (Array.isArray(data.results)) {
           const found = data.results.filter((x) => x.signal === "Buy");
           if (found.length > 0) new Audio("/ding.mp3").play();
-          setMatches((prev) => [...prev, ...data.results]);
+          setMatches((prev) => [...prev, ...found]);
         }
-        setScannedCount(i + 800);
-        setProgress(((i + 800) / totalSymbols) * 100);
+
+        setScannedCount(i + (data.batch?.scanned || 0));
+        setProgress(data.batch?.percent || ((i + 200) / totalSymbols) * 100);
         setBatch((b) => b + 1);
       } catch (e) {
         console.error(e);
       }
     }
+
     setRunning(false);
     setProgress(100);
+    setLatestSymbol("✅ Done");
   }
 
   // =============== AUTO TRADE ===============
@@ -175,38 +184,48 @@ export default function Home() {
 
       {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {active === "market" && (
-          <>
-            <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-            <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-            <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-            <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} favoritePrices={favoritePrices} toggleFavorite={toggleFavorite} />
-          </>
-        )}
-
-        {active === "favorites" && <Favorites data={favData} />}
-
         {/* AUTO SCAN */}
         {active === "scan" && (
           <section className="text-sm text-gray-200">
             <h2 className="text-emerald-400 text-lg mb-2">📡 Auto Scan — US Stocks</h2>
             <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <button onClick={runAutoScan} disabled={running} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full">
+              <button
+                onClick={runAutoScan}
+                disabled={running}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
+              >
                 ▶ {running ? "Scanning..." : "Run Scan Now"}
               </button>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
-                <div className="h-2 bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
-              </div>
+
               <div className="text-xs text-gray-400 mb-2">
-                Progress: {progress.toFixed(1)}% | Batch {batch} | Total {scannedCount} / {totalSymbols}
+                🧩 Now Scanning: <b className="text-emerald-400">{latestSymbol}</b>
               </div>
-              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
+
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
+                <div
+                  className="h-2 bg-emerald-500 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="text-xs text-gray-400 mb-2">
+                Progress: {progress.toFixed(1)}% | Batch {batch} | Total {scannedCount} / {totalSymbols} | Buy Signals:{" "}
+                <b className="text-green-400">{matches.length}</b>
+              </div>
+
+              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2 font-mono">
                 {matches.map((m, i) => (
                   <li key={i}>
-                    ✅ {m.symbol} — ${m.price.toFixed(2)} | RSI {m.rsi} | {m.signal}
+                    🟢 {m.symbol.padEnd(6)} — ${m.price.toFixed(2)} | RSI {Math.round(m.rsi)} | {m.signal}
                   </li>
                 ))}
               </ul>
+
+              {running && (
+                <div className="mt-2 text-[11px] text-gray-400 animate-pulse">
+                  🔍 กำลังสแกน... ระบบกำลังตรวจสอบหุ้นอเมริกาเรียลไทม์ โปรดรอสักครู่...
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -216,7 +235,11 @@ export default function Home() {
           <section className="text-sm text-gray-200 mt-4">
             <h2 className="text-emerald-400 text-lg mb-2">🤖 Auto Trade — AI Contracts</h2>
             <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <button onClick={runAutoTrade} disabled={tradeRunning} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full">
+              <button
+                onClick={runAutoTrade}
+                disabled={tradeRunning}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
+              >
                 ⚡ {tradeRunning ? "Processing..." : "Run Auto Trade"}
               </button>
               <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
@@ -233,84 +256,14 @@ export default function Home() {
             </div>
           </section>
         )}
-
-        {/* DASHBOARD */}
-        {active === "dashboard" && (
-          <section className="text-sm text-gray-200">
-            <h2 className="text-emerald-400 text-lg mb-3">📊 AI Dashboard — Real-Time Performance</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
-                <p className="text-gray-400 text-xs">Scanned Stocks</p>
-                <p className="text-emerald-400 text-lg font-bold">{scannedCount}</p>
-              </div>
-              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
-                <p className="text-gray-400 text-xs">AI Buy Signals</p>
-                <p className="text-green-400 text-lg font-bold">{matches.filter((m) => m.signal === "Buy").length}</p>
-              </div>
-              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
-                <p className="text-gray-400 text-xs">Active Trades</p>
-                <p className="text-yellow-400 text-lg font-bold">{autoTrades.length}</p>
-              </div>
-              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
-                <p className="text-gray-400 text-xs">System</p>
-                <p className={`${running || tradeRunning ? "text-emerald-400" : "text-gray-400"} text-lg font-bold`}>
-                  {running || tradeRunning ? "RUNNING" : "IDLE"}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10 mb-4">
-              <h3 className="text-emerald-400 text-sm mb-2">🧠 Top AI Buy Signals</h3>
-              {matches.length === 0 ? (
-                <p className="text-gray-400 text-xs">ยังไม่มีข้อมูลสแกน...</p>
-              ) : (
-                <ul className="text-xs space-y-1">
-                  {matches.filter((x) => x.signal === "Buy").slice(0, 10).map((m, i) => (
-                    <li key={i}>🟢 <b>{m.symbol}</b> — ${m.price.toFixed(2)} | RSI {m.rsi}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <h3 className="text-emerald-400 text-sm mb-2">🤖 Active AI Trades</h3>
-              {autoTrades.length === 0 ? (
-                <p className="text-gray-400 text-xs">ยังไม่มีสัญญาซื้อขาย...</p>
-              ) : (
-                <ul className="text-xs space-y-1">
-                  {autoTrades.map((t, i) => (
-                    <li key={i}>
-                      {t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} <b>{t.symbol}</b> — ${t.price} | RSI {t.rsi} | Δ {t.change}%
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* MENU */}
-        {active === "menu" && (
-          <section className="text-center text-gray-400 py-10">
-            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
-            <p>📡 Auto Scan + AI Trade + Dashboard</p>
-            <p>💾 Favorites stored locally</p>
-            <p>🔔 Alerts with Sound</p>
-            <div className="text-xs text-gray-500 mt-3">
-              Version 4.5 — Galaxy Universe
-            </div>
-          </section>
-        )}
       </div>
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         {[
-          { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
           { id: "scan", label: "Auto Scan", icon: "📡" },
           { id: "trade", label: "Auto Trade", icon: "🤖" },
-          { id: "dashboard", label: "Dashboard", icon: "📊" },
           { id: "menu", label: "Menu", icon: "☰" },
         ].map((t) => (
           <button
