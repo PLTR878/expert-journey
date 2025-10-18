@@ -1,22 +1,33 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ data }) {
   const [showModal, setShowModal] = useState(false);
   const [symbol, setSymbol] = useState("");
-  const [favorites, setFavorites] = useState(
-    JSON.parse(localStorage.getItem("favorites") || "[]")
-  );
+  const [favorites, setFavorites] = useState([]);
+
+  // ✅ โหลด favorites เฉพาะฝั่ง client
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("favorites");
+      if (stored) setFavorites(JSON.parse(stored));
+    }
+  }, []);
+
+  const saveFavorites = (arr) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("favorites", JSON.stringify(arr));
+      setFavorites(arr);
+    }
+  };
 
   // === Add stock ===
   const handleSearch = () => setShowModal(true);
   const handleSubmit = () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
-    const current = JSON.parse(localStorage.getItem("favorites") || "[]");
-    if (!current.includes(sym)) {
-      const updated = [...current, sym];
-      localStorage.setItem("favorites", JSON.stringify(updated));
-      setFavorites(updated);
+    if (!favorites.includes(sym)) {
+      const updated = [...favorites, sym];
+      saveFavorites(updated);
     }
     setSymbol("");
     setShowModal(false);
@@ -25,36 +36,24 @@ export default function Favorites({ data }) {
   // === Remove stock ===
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
-    localStorage.setItem("favorites", JSON.stringify(updated));
-    setFavorites(updated);
+    saveFavorites(updated);
   };
 
-  // === Swipe logic ===
+  // === Swipe gesture ===
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
-
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-
+  const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
+  const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
     if (!touchStartX.current || !touchEndX.current) return;
     const distance = touchStartX.current - touchEndX.current;
-    if (distance > 70) {
-      // ปัดซ้ายเกิน 70px
-      removeFavorite(sym);
-    }
+    if (distance > 70) removeFavorite(sym);
     touchStartX.current = null;
     touchEndX.current = null;
   };
 
   return (
     <section className="w-full px-2 pt-1">
-      {/* 🩵 Header */}
       <div className="flex justify-between items-center mb-2 border-b border-[rgba(255,255,255,0.05)] pb-2">
         <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2">
           💙 My Favorite Stocks
@@ -95,19 +94,6 @@ export default function Favorites({ data }) {
                   onTouchMove={handleTouchMove}
                   onTouchEnd={() => handleTouchEnd(r.symbol)}
                 >
-                  {/* ปุ่มลบแสดงเมื่อ hover */}
-                  <td
-                    colSpan="4"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition-opacity"
-                  >
-                    <button
-                      onClick={() => removeFavorite(r.symbol)}
-                      className="bg-red-500/70 hover:bg-red-500 text-white text-xs px-2 py-1 rounded"
-                    >
-                      🗑 Remove
-                    </button>
-                  </td>
-
                   <td className="py-3 text-left pl-3 font-semibold text-sky-400">
                     <a
                       href={`/analyze/${r.symbol}`}
@@ -192,4 +178,4 @@ export default function Favorites({ data }) {
       )}
     </section>
   );
-                       }
+              }
