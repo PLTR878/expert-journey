@@ -1,31 +1,10 @@
-// ✅ /pages/analyze/[symbol].js — Final Balanced UI (Minimal Header + Stable Layout)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Connected to Eternal API V∞.4)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
 const Chart = dynamic(() => import("../../components/Chart"), { ssr: false });
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : "-");
-
-function computeSignal({ lastClose, ema20, ema50, ema200, rsi, macd }) {
-  if (
-    ![lastClose, ema20, ema50, ema200, rsi, macd?.hist, macd?.line, macd?.signal].every(
-      (v) => Number.isFinite(v)
-    )
-  ) {
-    return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
-  }
-
-  let score = 0;
-  if (lastClose > ema20) score++;
-  if (ema20 > ema50) score++;
-  if (ema50 > ema200) score++;
-  if (macd.hist > 0) score++;
-  if (rsi > 50) score++;
-
-  if (score >= 4) return { action: "Buy", confidence: score / 5, reason: "แนวโน้มขาขึ้น" };
-  if (score <= 1) return { action: "Sell", confidence: (2 - score) / 2, reason: "แรงขายกดดัน" };
-  return { action: "Hold", confidence: 0.5, reason: "สัญญาณเป็นกลาง" };
-}
 
 export default function Analyze() {
   const { query, push } = useRouter();
@@ -35,17 +14,20 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ===== ดึงข้อมูลหลักจาก API ตัวเดียว =====
   useEffect(() => {
     if (!symbol) return;
     (async () => {
       setLoading(true);
       try {
-        const [daily, n] = await Promise.all([
-          fetch(`/api/daily?symbol=${symbol}`).then((r) => r.json()),
-          fetch(`/api/news?symbol=${symbol}`).then((r) => r.json()),
+        const [daily, n, h] = await Promise.all([
+          fetch(`/api/visionary-eternal?type=daily&symbol=${symbol}`).then(r => r.json()),
+          fetch(`/api/visionary-eternal?type=news&symbol=${symbol}`).then(r => r.json()),
+          fetch(`/api/visionary-eternal?type=history&symbol=${symbol}&range=6mo&interval=1d`).then(r => r.json())
         ]);
         setInd(daily);
-        setNews(n.items || n.results || []);
+        setNews(n.items || []);
+        setHist(h.rows || []);
       } catch (e) {
         console.error(e);
       } finally {
@@ -54,17 +36,10 @@ export default function Analyze() {
     })();
   }, [symbol]);
 
-  useEffect(() => {
-    if (!symbol) return;
-    fetch(`/api/history?symbol=${symbol}&range=6mo&interval=1d`)
-      .then((r) => r.json())
-      .then((h) => setHist(h.rows || []))
-      .catch(console.error);
-  }, [symbol]);
-
-  const sig = computeSignal(ind || {});
   const price = ind?.lastClose || hist?.at(-1)?.c || 0;
+  const sig = computeSignal(ind || {});
 
+  // ===== Marker สำหรับจุด BUY / SELL บนกราฟ =====
   const markers = useMemo(() => {
     if (!ind || !hist.length) return [];
     const t = Math.floor((hist.at(-1)?.t || Date.now()) / 1000);
@@ -80,9 +55,8 @@ export default function Analyze() {
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* ===== Header + Chart ===== */}
         <div className="relative rounded-2xl bg-gradient-to-b from-[#121a2f] to-[#0b1220] border border-white/10 overflow-hidden shadow-xl">
-          {/* ===== Header (balanced) ===== */}
+          {/* Header */}
           <div className="absolute top-0 left-0 right-0 flex justify-between items-start px-3 pt-2 z-10">
-            {/* ปุ่มย้อนกลับ */}
             <button
               onClick={() => push("/")}
               className="flex items-center gap-1 text-[13px] text-gray-300 bg-white/5 border border-white/10 rounded-md px-2.5 py-1 hover:bg-emerald-500/10 hover:text-emerald-300 transition-all"
@@ -91,14 +65,12 @@ export default function Analyze() {
               <span>ย้อนกลับ</span>
             </button>
 
-            {/* ชื่อหุ้นกลาง */}
             <div className="absolute left-1/2 transform -translate-x-1/2 mt-0.5 text-center">
               <h1 className="text-lg font-bold text-white tracking-widest">
                 {symbol || "—"}
               </h1>
             </div>
 
-            {/* ราคาหุ้น */}
             <div className="ml-auto bg-transparent border border-emerald-400/30 text-emerald-400 font-semibold text-[14px] px-2.5 py-0.5 rounded-md">
               ${fmt(price, 2)}
             </div>
@@ -119,7 +91,23 @@ export default function Analyze() {
   );
 }
 
-/* ---------- COMPONENTS ---------- */
+// ===== AI คำนวณสัญญาณ =====
+function computeSignal({ lastClose, ema20, ema50, ema200, rsi }) {
+  if (![lastClose, ema20, ema50, ema200, rsi].every(v => Number.isFinite(v))) {
+    return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
+  }
+  let score = 0;
+  if (lastClose > ema20) score++;
+  if (ema20 > ema50) score++;
+  if (ema50 > ema200) score++;
+  if (rsi > 55) score++;
+
+  if (score >= 3) return { action: "Buy", confidence: score / 4, reason: "แนวโน้มขาขึ้น" };
+  if (score <= 1) return { action: "Sell", confidence: (2 - score) / 2, reason: "แรงขายกดดัน" };
+  return { action: "Hold", confidence: 0.5, reason: "สัญญาณเป็นกลาง" };
+}
+
+// ===== ส่วนแสดงผล =====
 function Info({ label, value, className = "" }) {
   const color = value?.includes("%")
     ? value.includes("-")
@@ -149,11 +137,7 @@ function AISignalSection({ ind, sig, price }) {
                 : "text-yellow-300"
             }
           >
-            {sig.action === "Buy"
-              ? "ซื้อ (Buy)"
-              : sig.action === "Sell"
-              ? "ขาย (Sell)"
-              : "ถือ (Hold)"}
+            {sig.action === "Buy" ? "ซื้อ (Buy)" : sig.action === "Sell" ? "ขาย (Sell)" : "ถือ (Hold)"}
           </span>
         </div>
 
@@ -164,7 +148,7 @@ function AISignalSection({ ind, sig, price }) {
         </div>
       </div>
 
-      {/* AI Entry Zone */}
+      {/* Entry Zone */}
       <div className="bg-[#0f172a] rounded-2xl border border-white/10 p-4 mt-4">
         <h3 className="text-lg font-semibold text-emerald-400 mb-2">🎯 AI Entry Zone</h3>
         <div className="text-sm font-semibold text-gray-300">
@@ -206,7 +190,7 @@ function AISignalSection({ ind, sig, price }) {
         </div>
       </div>
 
-      {/* Technical Overview */}
+      {/* Technical */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Technical Overview</h2>
         {!ind ? (
@@ -218,10 +202,6 @@ function AISignalSection({ ind, sig, price }) {
             <Info label="EMA 20" value={fmt(ind.ema20)} />
             <Info label="EMA 50" value={fmt(ind.ema50)} />
             <Info label="EMA 200" value={fmt(ind.ema200)} />
-            <Info label="MACD Line" value={fmt(ind.macd?.line)} />
-            <Info label="MACD Signal" value={fmt(ind.macd?.signal)} />
-            <Info label="MACD Histogram" value={fmt(ind.macd?.hist)} />
-            <Info label="ATR (14)" value={fmt(ind.atr14, 3)} />
           </div>
         )}
       </div>
@@ -239,10 +219,10 @@ function MarketNews({ news }) {
         <ul className="space-y-2">
           {news.slice(0, 10).map((n, i) => (
             <li key={i} className="p-3 bg-black/25 border border-white/10 rounded-lg">
-              <a href={n.url || n.link} target="_blank" rel="noreferrer" className="hover:text-emerald-400">
-                {n.title || n.headline}
+              <a href={n.link || n.url} target="_blank" rel="noreferrer" className="hover:text-emerald-400">
+                {n.title}
               </a>
-              <div className="text-xs text-gray-400 mt-1">{n.source || n.publisher || ""}</div>
+              <div className="text-xs text-gray-400 mt-1">{n.source || ""}</div>
             </li>
           ))}
         </ul>
