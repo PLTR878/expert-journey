@@ -1,3 +1,4 @@
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://expert-journey-ten.vercel.app";
 // /pages/api/alerts/runner.js
 export const config = { runtime: "nodejs" };
 
