@@ -3,7 +3,6 @@ export default function Favorites({ data }) {
   return (
     <section className="bg-transparent p-2 mb-6">
       <h2 className="text-emerald-400 text-base font-semibold mb-2 flex items-center gap-2">
-        💙 My Favorites
         <span className="text-[11px] text-gray-400">
           ({data?.length || 0} symbols)
         </span>
