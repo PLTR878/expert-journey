@@ -1,10 +1,22 @@
-// ✅ /components/Favorites.js — Visionary Minimal Clean Edition
+// ✅ /components/Favorites.js — Perfect Balanced Clean Edition (V∞.6)
 export default function Favorites({ data }) {
   return (
-    <section className="bg-transparent pt-2 mb-6">
+    <section className="bg-transparent p-2 mb-6">
+      {/* หัวข้อ */}
+      <div className="flex items-center justify-between mb-1 px-1">
+        <h2 className="text-emerald-400 text-base font-semibold">
+          💙 My Favorite Stocks
+        </h2>
+        <span className="text-[11px] text-gray-400">
+          ({data?.length || 0} symbols)
+        </span>
+      </div>
+
+      {/* ตารางหลัก */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-center border-collapse">
-          <thead className="text-gray-400 text-[11px] uppercase tracking-wide border-b border-white/10">
+          {/* หัวตาราง */}
+          <thead className="text-gray-400 text-[11px] uppercase tracking-wider select-none">
             <tr>
               <th className="py-2 font-medium w-[25%]">Symbol</th>
               <th className="py-2 font-medium w-[25%]">Price</th>
@@ -13,16 +25,21 @@ export default function Favorites({ data }) {
             </tr>
           </thead>
 
+          {/* เนื้อหา */}
           <tbody>
             {data?.length ? (
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
                   className={`transition-all ${
-                    i % 2 === 0 ? "bg-[#0f172a]/60" : "bg-[#111c2d]/60"
-                  } hover:bg-[#1b2536]/70`}
+                    i % 2 === 0 ? "bg-[#0f172a]/50" : "bg-[#111c2d]/50"
+                  } hover:bg-[#182338]/80`}
+                  style={{
+                    border: "none",
+                  }}
                 >
-                  <td className="py-2.5 font-semibold text-sky-400 text-center">
+                  {/* Symbol */}
+                  <td className="py-2.5 text-center font-semibold text-sky-400">
                     <a
                       href={`/analyze/${r.symbol}`}
                       className="hover:text-emerald-400 transition-colors"
@@ -31,12 +48,14 @@ export default function Favorites({ data }) {
                     </a>
                   </td>
 
-                  <td className="py-2.5 font-mono text-gray-100 text-center">
+                  {/* Price */}
+                  <td className="py-2.5 text-center font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
 
+                  {/* RSI */}
                   <td
-                    className={`py-2.5 font-mono text-center ${
+                    className={`py-2.5 text-center font-mono ${
                       typeof r.rsi === "number"
                         ? r.rsi > 70
                           ? "text-red-400"
@@ -49,8 +68,9 @@ export default function Favorites({ data }) {
                     {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
 
+                  {/* AI Signal */}
                   <td
-                    className={`py-2.5 font-semibold text-center ${
+                    className={`py-2.5 text-center font-semibold ${
                       r.signal === "Buy"
                         ? "text-green-400"
                         : r.signal === "Sell"
@@ -77,4 +97,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                    }
+                                        }
