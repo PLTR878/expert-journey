@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener V5.2 — Fully Synced with API
+// ✅ Visionary Stock Screener V5.3 — Universe Edition (Full Auto-Linked)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -24,31 +24,26 @@ export default function Home() {
     setMatches([]);
     setScannedCount(0);
     setLatestSymbol("-");
-
     for (let i = 0; i < totalSymbols; i += 800) {
       try {
         const res = await fetch(`/api/scan?offset=${i}&limit=800`);
         const data = await res.json();
-
         if (Array.isArray(data.results)) {
           setMatches((prev) => [...prev, ...data.results]);
           setLatestSymbol(data.results?.at(-1)?.symbol || "-");
         }
-
         setScannedCount(i + 800);
         setProgress(Math.min(100, ((i + 800) / totalSymbols) * 100));
       } catch (err) {
         console.error("Scan error:", err);
       }
     }
-
     setRunning(false);
   }
 
   // ===== AUTO TRADE =====
   const [autoTrades, setAutoTrades] = useState([]);
   const [tradeRunning, setTradeRunning] = useState(false);
-
   async function runAutoTrade() {
     if (tradeRunning) return;
     setTradeRunning(true);
@@ -68,7 +63,6 @@ export default function Home() {
     const s = localStorage.getItem("favorites");
     if (s) setFavorites(JSON.parse(s));
   }, []);
-
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -109,16 +103,12 @@ export default function Home() {
   useEffect(() => {
     async function loadMarketData() {
       try {
-        const modes = ["short", "swing", "long", "hidden"];
-        const setters = [setFast, setEmerging, setFuture, setHidden];
-
-        await Promise.all(
-          modes.map(async (m, i) => {
-            const res = await fetch(`/api/screener-hybrid?mode=${m}`);
-            const data = await res.json();
-            setters[i](data.results || []);
-          })
-        );
+        const res = await fetch(`/api/screener-hybrid`);
+        const data = await res.json();
+        setFast(data.groups?.fast || []);
+        setEmerging(data.groups?.emerging || []);
+        setFuture(data.groups?.future || []);
+        setHidden(data.groups?.hidden || []);
       } catch (err) {
         console.error("Market load error:", err);
       }
@@ -133,7 +123,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — V5.2 Universe
+            🌍 Visionary Stock Screener — V5.3 Universe
           </b>
           <input
             type="text"
@@ -225,17 +215,6 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <h3 className="text-emerald-400 text-sm mt-4 mb-1">🧠 Top 10 Buy Signals</h3>
-            <ul className="text-xs space-y-1 bg-black/30 rounded-lg p-2 max-h-48 overflow-auto">
-              {matches
-                .filter((m) => m.signal === "Buy")
-                .slice(0, 10)
-                .map((m, i) => (
-                  <li key={i}>
-                    🟢 {m.symbol} — ${m.price?.toFixed(2)} | RSI {m.rsi?.toFixed(1)}
-                  </li>
-                ))}
-            </ul>
           </section>
         )}
 
@@ -261,13 +240,6 @@ export default function Home() {
                 ))
               )}
             </ul>
-            <div className="text-xs text-gray-500 mt-4 border-t border-white/10 pt-2">
-              ⚙️ System Info: <br />
-              🌍 Visionary Stock Screener Galaxy AI<br />
-              💾 Favorites stored locally<br />
-              🔔 Sound Alerts Active<br />
-              Version 5.2 — Fully Synced
-            </div>
           </section>
         )}
       </div>
@@ -294,23 +266,4 @@ export default function Home() {
       </nav>
     </main>
   );
-}
-// ===== AI SOUND ALERTS =====
-  const playSound = (type) => {
-    const audio = new Audio(
-      type === "Buy"
-        ? "https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"
-        : "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
-    );
-    audio.volume = 0.5;
-    audio.play().catch(() => {});
-  };
-
-  // ใช้เพื่อเช็คและเล่นเสียงเมื่อพบสัญญาณใหม่
-  useEffect(() => {
-    if (matches.length > 0) {
-      const latest = matches.at(-1);
-      if (latest?.signal === "Buy") playSound("Buy");
-      if (latest?.signal === "Sell") playSound("Sell");
-    }
-  }, [matches]);
+          }
