@@ -9,7 +9,7 @@ export default function Home() {
   const [favoritePrices, setFavoritePrices] = useState({});
   const [search, setSearch] = useState("");
   const [logs, setLogs] = useState([]);
-  const [showLogs, setShowLogs] = useState(false); // ✅ เพิ่มปุ่มโชว์/ซ่อน logs
+  const [showLogs, setShowLogs] = useState(false);
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-30), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -28,13 +28,11 @@ export default function Home() {
       p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
 
-  // ✅ ดึงราคาหุ้นรายตัวจาก API ใหม่ (type=daily)
+  // ✅ ดึงราคาหุ้นรายตัวจาก Eternal API
   async function fetchPrice(sym) {
     try {
-      addLog(`🔍 Checking ${sym}...`);
       const r = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
       const j = await r.json();
-
       setFavoritePrices((p) => ({
         ...p,
         [sym]: {
@@ -49,18 +47,12 @@ export default function Home() {
               : "Hold",
         },
       }));
-
-      addLog(`✅ ${sym} → $${j.lastClose?.toFixed(2) || "-"} (${j.trend})`);
     } catch (err) {
-      addLog(`⚠️ Price error: ${err.message}`);
+      console.error("Fetch error:", sym, err.message);
     }
   }
 
-  useEffect(() => {
-    favorites.forEach(fetchPrice);
-  }, [favorites]);
-
-  // ===== MARKET AI (ใช้ type=market จาก API V∞.4)
+  // ✅ โหลดข้อมูล Market
   const [fast, setFast] = useState([]);
   const [emerging, setEmerging] = useState([]);
   const [future, setFuture] = useState([]);
@@ -77,12 +69,16 @@ export default function Home() {
       setEmerging(j.groups?.emerging || []);
       setFuture(j.groups?.future || []);
       setHidden(j.groups?.hidden || []);
-      addLog(`✅ Market groups loaded (${[
-        j.groups?.fast?.length || 0,
-        j.groups?.emerging?.length || 0,
-        j.groups?.future?.length || 0,
-        j.groups?.hidden?.length || 0,
-      ].reduce((a, b) => a + b, 0)} symbols)`);
+      addLog(`✅ Market groups loaded`);
+
+      // ✅ โหลดราคาทุกหุ้นใน market โดยอัตโนมัติ
+      const allSymbols = [
+        ...j.groups.fast.map((x) => x.symbol),
+        ...j.groups.emerging.map((x) => x.symbol),
+        ...j.groups.future.map((x) => x.symbol),
+        ...j.groups.hidden.map((x) => x.symbol),
+      ];
+      for (const s of allSymbols) await fetchPrice(s);
     } catch (err) {
       addLog(`❌ Market load failed: ${err.message}`);
     }
@@ -91,6 +87,28 @@ export default function Home() {
   useEffect(() => {
     loadMarketData();
   }, []);
+
+  // ✅ โหลดราคาสำหรับ favorites เมื่อมีการเพิ่ม/ลบ
+  useEffect(() => {
+    favorites.forEach(fetchPrice);
+  }, [favorites]);
+
+  // ✅ Auto Refresh ทุก 1 นาที (ทั้ง market + favorites)
+  useEffect(() => {
+    const refreshData = async () => {
+      addLog("🔁 Auto refreshing prices...");
+      const allSymbols = [
+        ...fast.map((x) => x.symbol),
+        ...emerging.map((x) => x.symbol),
+        ...future.map((x) => x.symbol),
+        ...hidden.map((x) => x.symbol),
+        ...favorites,
+      ];
+      for (const s of allSymbols) await fetchPrice(s);
+    };
+    const interval = setInterval(refreshData, 60 * 1000); // 1 นาที
+    return () => clearInterval(interval);
+  }, [fast, emerging, future, hidden, favorites]);
 
   // ===== UI =====
   return (
@@ -167,7 +185,7 @@ export default function Home() {
           </>
         )}
 
-        {/* 🧠 Logs Toggle Button */}
+        {/* 🧠 Logs Toggle */}
         <section className="mt-6">
           <button
             onClick={() => setShowLogs((p) => !p)}
@@ -213,4 +231,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                        }
+    }
