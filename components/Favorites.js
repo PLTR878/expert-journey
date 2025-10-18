@@ -1,10 +1,10 @@
-// ✅ /components/Favorites.js — Visionary Ultra Flat Alignment (V∞.12)
+// ✅ /components/Favorites.js — Visionary Ultra Flat Alignment (V∞.13 AI SIG Edition)
 export default function Favorites({ data }) {
   return (
     <section className="w-full mb-2 px-2">
-      {/* ตารางหลัก ไม่มีหัว ไม่มีกรอบ */}
       <div className="overflow-x-auto">
         <table className="w-full text-[15px] text-center border-collapse">
+          {/* หัวตาราง */}
           <thead>
             <tr className="text-gray-400 text-[12px] uppercase select-none border-b border-white/5">
               <th className="py-2 font-medium text-left pl-4 w-[30%] tracking-wide">
@@ -17,11 +17,12 @@ export default function Favorites({ data }) {
                 RSI
               </th>
               <th className="py-2 font-medium text-right pr-4 w-[25%] tracking-wide">
-                AI SIGNAL
+                AI SIG
               </th>
             </tr>
           </thead>
 
+          {/* เนื้อหา */}
           <tbody>
             {data?.length ? (
               data.map((r, i) => (
@@ -62,7 +63,7 @@ export default function Favorites({ data }) {
                     {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
 
-                  {/* AI SIGNAL */}
+                  {/* AI SIG */}
                   <td
                     className={`py-2.5 text-right pr-4 font-semibold align-middle ${
                       r.signal === "Buy"
@@ -91,4 +92,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                      }
+                        }
