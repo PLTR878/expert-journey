@@ -1,4 +1,4 @@
-// ✅ /pages/api/scan.js — version with real-time progress
+// ✅ /pages/api/scan.js — version with real-time progress + last symbol
 export const config = { runtime: "edge" };
 
 const yahoo = (s) =>
@@ -42,9 +42,11 @@ export default async function handler(req) {
 
     const result = [];
     let scanned = 0;
+    let lastSymbol = "";
 
     for (const sym of slice) {
       scanned++;
+      lastSymbol = sym; // 🟢 เพิ่มบรรทัดนี้ — เพื่อบอก UI ว่ากำลังสแกนตัวไหน
       try {
         const c = await getClose(sym);
         if (!c || c.length < 30) continue;
@@ -56,13 +58,19 @@ export default async function handler(req) {
     }
 
     return new Response(
-      JSON.stringify({ 
-        results: result, 
-        batch: { offset, limit, scanned, percent: ((offset + scanned) / symbols.length) * 100 } 
+      JSON.stringify({
+        results: result,
+        batch: {
+          offset,
+          limit,
+          scanned,
+          lastSymbol, // 🟢 ส่งค่า symbol สุดท้ายกลับไปให้ UI
+          percent: ((offset + scanned) / symbols.length) * 100,
+        },
       }),
       { headers: { "content-type": "application/json" } }
     );
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
-}
+      }
