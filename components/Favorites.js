@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Perfect Balanced Minimal Edition (V∞.14)
+// ✅ /components/Favorites.js — Ultra Soft Divider Edition (V∞.15)
 export default function Favorites({ data }) {
   return (
     <section className="w-full px-2">
@@ -6,7 +6,7 @@ export default function Favorites({ data }) {
         <table className="w-full text-[15px] text-center border-collapse">
           {/* หัวตาราง */}
           <thead>
-            <tr className="text-gray-300 text-[12px] uppercase select-none border-b border-white/10">
+            <tr className="text-gray-300 text-[12px] uppercase select-none border-b border-white/5">
               <th className="py-2 font-medium text-left pl-3 w-[30%] tracking-wide">
                 SYMBOL
               </th>
@@ -28,9 +28,9 @@ export default function Favorites({ data }) {
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className="transition-all hover:bg-[#162235]/50"
+                  className="transition-all hover:bg-[#18263b]/40 backdrop-blur-[1px]"
                   style={{
-                    borderBottom: "1px solid rgba(255,255,255,0.02)", // เส้นบางจางมาก
+                    borderBottom: "1px solid rgba(255,255,255,0.008)", // เส้นจางมาก
                   }}
                 >
                   {/* SYMBOL */}
@@ -92,4 +92,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                        }
+                      }
