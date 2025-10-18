@@ -1,47 +1,33 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 
-export default function Favorites({ data }) {
+export default function Favorites({ data, favorites, setFavorites, fetchPrice }) {
   const [showModal, setShowModal] = useState(false);
   const [symbol, setSymbol] = useState("");
-  const [favorites, setFavorites] = useState([]);
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
 
-  // ✅ โหลด favorites เฉพาะฝั่ง client
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("favorites");
-      if (stored) setFavorites(JSON.parse(stored));
-    }
-  }, []);
-
-  const saveFavorites = (arr) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("favorites", JSON.stringify(arr));
-      setFavorites(arr);
-    }
-  };
-
-  // === Add stock ===
-  const handleSearch = () => setShowModal(true);
-  const handleSubmit = () => {
+  // ✅ เพิ่มหุ้น
+  const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
     if (!favorites.includes(sym)) {
       const updated = [...favorites, sym];
-      saveFavorites(updated);
+      setFavorites(updated);
+      localStorage.setItem("favorites", JSON.stringify(updated));
+      await fetchPrice(sym);
     }
     setSymbol("");
     setShowModal(false);
   };
 
-  // === Remove stock ===
+  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
-    saveFavorites(updated);
+    setFavorites(updated);
+    localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
-  // === Swipe gesture ===
-  const touchStartX = useRef(null);
-  const touchEndX = useRef(null);
+  // ✅ ปัดซ้ายเพื่อลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -54,19 +40,20 @@ export default function Favorites({ data }) {
 
   return (
     <section className="w-full px-2 pt-1">
+      {/* 🩵 Header */}
       <div className="flex justify-between items-center mb-2 border-b border-[rgba(255,255,255,0.05)] pb-2">
         <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2">
           💙 My Favorite Stocks
         </h2>
         <button
-          onClick={handleSearch}
+          onClick={() => setShowModal(true)}
           className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-1 shadow-sm bg-[#0f172a]/60"
         >
           🔍 Search
         </button>
       </div>
 
-      {/* 📊 ตารางหุ้น */}
+      {/* 📊 ตาราง */}
       <div className="overflow-x-auto -mt-1">
         <table className="w-full text-[15px] text-center border-collapse">
           <thead>
@@ -86,13 +73,11 @@ export default function Favorites({ data }) {
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className="transition-all hover:bg-[#151821]/60 relative"
-                  style={{
-                    borderBottom: "0.5px solid rgba(255,255,255,0.08)",
-                  }}
+                  className="transition-all hover:bg-[#151821]/60"
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={() => handleTouchEnd(r.symbol)}
+                  style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
                 >
                   <td className="py-3 text-left pl-3 font-semibold text-sky-400">
                     <a
@@ -178,4 +163,4 @@ export default function Favorites({ data }) {
       )}
     </section>
   );
-              }
+                       }
