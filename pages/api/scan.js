@@ -1,11 +1,11 @@
-// ✅ /pages/api/scan.js — version with real-time progress + last symbol
-export const config = { runtime: "edge" };
+// ✅ /pages/api/scan.js — stable version for Vercel (Node runtime)
+export const config = { runtime: "nodejs" };
 
 const yahoo = (s) =>
   `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=6mo&interval=1d`;
 
 async function getClose(symbol) {
-  const r = await fetch(yahoo(symbol), { cache: "no-store" });
+  const r = await fetch(yahoo(symbol));
   const j = await r.json();
   const res = j?.chart?.result?.[0];
   return res?.indicators?.quote?.[0]?.close?.filter((x) => x);
@@ -30,13 +30,15 @@ function rsi(values, period = 14) {
   return 100 - 100 / (1 + rs);
 }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   try {
-    const { searchParams } = new URL(req.url);
-    const offset = Number(searchParams.get("offset") || 0);
-    const limit = Number(searchParams.get("limit") || 200);
+    const offset = Number(req.query.offset || 0);
+    const limit = Number(req.query.limit || 200);
 
-    const base = `${new URL(req.url).origin}/api/symbols`;
+    const base = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}/api/symbols`
+      : `http://localhost:3000/api/symbols`;
+
     const { symbols } = await fetch(base).then((r) => r.json());
     const slice = symbols.slice(offset, offset + limit);
 
@@ -46,7 +48,7 @@ export default async function handler(req) {
 
     for (const sym of slice) {
       scanned++;
-      lastSymbol = sym; // 🟢 เพิ่มบรรทัดนี้ — เพื่อบอก UI ว่ากำลังสแกนตัวไหน
+      lastSymbol = sym;
       try {
         const c = await getClose(sym);
         if (!c || c.length < 30) continue;
@@ -57,20 +59,17 @@ export default async function handler(req) {
       } catch {}
     }
 
-    return new Response(
-      JSON.stringify({
-        results: result,
-        batch: {
-          offset,
-          limit,
-          scanned,
-          lastSymbol, // 🟢 ส่งค่า symbol สุดท้ายกลับไปให้ UI
-          percent: ((offset + scanned) / symbols.length) * 100,
-        },
-      }),
-      { headers: { "content-type": "application/json" } }
-    );
+    res.status(200).json({
+      results: result,
+      batch: {
+        offset,
+        limit,
+        scanned,
+        lastSymbol,
+        percent: ((offset + scanned) / symbols.length) * 100,
+      },
+    });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    res.status(500).json({ error: e.message });
   }
-      }
+            }
