@@ -1,3 +1,4 @@
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://expert-journey-ten.vercel.app";
 // /pages/api/ai-trade.js
 import { ema, macd, rsi } from '../../lib/indicators';
 
