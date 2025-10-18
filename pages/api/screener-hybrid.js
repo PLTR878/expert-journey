@@ -1,39 +1,22 @@
-// ✅ /pages/api/screener-hybrid.js — กล่องรวม AI หุ้นแบ่งหมวดหมู่ครบ
+// ✅ /pages/api/screener-hybrid.js — เชื่อมทุก AI เข้ากับหน้าเว็บ
 export default async function handler(req, res) {
   try {
-    const mode = req.query.mode || "short";
-    const base = "https://expert-journey-ten.vercel.app"; // เปลี่ยนเป็นโดเมนของคุณ เช่น https://expert-journey-ten.vercel.app
-    const r = await fetch(`${base}/api/ai-picks`);
-    const j = await r.json();
-    const data = j.results || [];
+    const ai = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/ai-visionary-score`).then(r => r.json());
+    const list = ai.ranked || [];
 
-    // 🔍 แบ่งตามโหมด
-    let filtered = [];
-    if (mode === "short") {
-      filtered = data
-        .filter(x => x.signal === "Buy" && x.trend === "Uptrend")
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
-    } else if (mode === "swing") {
-      filtered = data
-        .filter(x => x.signal === "Hold" && x.trend === "Uptrend")
-        .sort((a, b) => b.confidence - a.confidence)
-        .slice(0, 10);
-    } else if (mode === "long") {
-      filtered = data
-        .filter(x => x.signal !== "Sell" && x.trend === "Uptrend")
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
-    } else if (mode === "hidden") {
-      filtered = data
-        .filter(x => x.signal === "Buy" && x.trend === "Downtrend")
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
-    }
+    const groups = {
+      fast: list.slice(0, 10),
+      emerging: list.slice(10, 20),
+      future: list.slice(20, 25),
+      hidden: list.slice(25, 30),
+    };
 
-    res.status(200).json({ mode, count: filtered.length, results: filtered });
-  } catch (err) {
-    console.error("Hybrid Error:", err.message);
-    res.status(500).json({ error: err.message, results: [] });
+    res.status(200).json({
+      updated: new Date().toISOString(),
+      groups,
+      message: "🧠 Visionary Screener fully linked with AI Brain.",
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 }
