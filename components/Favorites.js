@@ -13,7 +13,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     if (!favorites.includes(sym)) {
       const updated = [...favorites, sym];
       setFavorites(updated);
-      localStorage.setItem("favorites", JSON.stringify(updated));
+      if (typeof window !== "undefined") {
+        localStorage.setItem("favorites", JSON.stringify(updated));
+      }
       await fetchPrice(sym);
     }
     setSymbol("");
@@ -24,7 +26,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
-    localStorage.setItem("favorites", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("favorites", JSON.stringify(updated));
+    }
   };
 
   // ✅ ปัดซ้ายเพื่อลบ
@@ -79,13 +83,20 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                   onTouchEnd={() => handleTouchEnd(r.symbol)}
                   style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
                 >
-                  <td className="py-3 text-left pl-3 font-semibold text-sky-400">
+                  <td className="py-3 text-left pl-3 font-semibold text-sky-400 relative">
                     <a
                       href={`/analyze/${r.symbol}`}
                       className="hover:text-emerald-400 transition-colors"
                     >
                       {r.symbol}
                     </a>
+                    {/* ปุ่มลบใน desktop */}
+                    <button
+                      onClick={() => removeFavorite(r.symbol)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-red-400 transition"
+                    >
+                      🗑
+                    </button>
                   </td>
                   <td className="py-3 text-right pr-2 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
@@ -155,7 +166,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 onClick={handleSubmit}
                 className="px-4 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold"
               >
-                Search
+                Add
               </button>
             </div>
           </div>
@@ -163,4 +174,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                       }
+                    }
