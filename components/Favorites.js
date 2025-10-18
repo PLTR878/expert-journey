@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+Myrt { useState, useRef } from "react";
 
 export default function Favorites({ data, favorites, setFavorites, fetchPrice }) {
   const [showModal, setShowModal] = useState(false);
@@ -47,7 +47,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       {/* 🩵 หัวข้อ */}
       <div className="flex justify-between items-center mb-2 border-b border-[rgba(255,255,255,0.05)] pb-2">
         <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2">
-          💹 My Favorite Stocks
+        TSLAy Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -145,7 +145,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="Enter stock symbol (e.g. NVDA, TSLA)"
+              placeholder="Enter stock symbol (ชื่อย่อ/ชื่อหุ้น)
               className="w-full text-center bg-[#0d121d] border border-gray-700 text-gray-200 rounded-md py-2 focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-5"
             />
             <div className="flex justify-around">
