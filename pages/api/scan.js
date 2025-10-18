@@ -1,5 +1,5 @@
-// ✅ /pages/api/scan.js — stable version for Vercel (Node runtime)
-export const config = { runtime: "nodejs" };
+// ✅ /pages/api/scan.js — Vercel Node18 stable version
+export const config = { runtime: "nodejs18.x" };
 
 const yahoo = (s) =>
   `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=6mo&interval=1d`;
@@ -13,7 +13,8 @@ async function getClose(symbol) {
 
 function rsi(values, period = 14) {
   if (values.length < period + 1) return null;
-  let gains = 0, losses = 0;
+  let gains = 0,
+    losses = 0;
   for (let i = 1; i <= period; i++) {
     const diff = values[i] - values[i - 1];
     if (diff > 0) gains += diff;
@@ -56,7 +57,9 @@ export default async function handler(req, res) {
         const r = rsi(c);
         if (r >= 35 && r <= 60)
           result.push({ symbol: sym, price: last, rsi: r, signal: "Buy" });
-      } catch {}
+      } catch (err) {
+        console.log("Symbol error:", sym);
+      }
     }
 
     res.status(200).json({
