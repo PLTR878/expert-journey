@@ -14,24 +14,26 @@ export default function Favorites({ data }) {
 
   return (
     <section className="w-full px-2 pt-1">
-      {/* 📊 ตารางหุ้น */}
-      <div className="flex items-center justify-between mb-2">
-        <div></div>
-        {/* ✅ ปุ่ม Search อยู่เฉพาะใน Favorites */}
+      {/* 🩵 Header ใหม่ — เรียบและหรู */}
+      <div className="flex justify-between items-center mb-2 border-b border-[rgba(255,255,255,0.05)] pb-2">
+        <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2">
+          💙 My Favorite Stocks
+        </h2>
         <button
           onClick={handleSearch}
-          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-1.5 shadow-sm bg-[#0f172a]/50"
+          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-1 shadow-sm bg-[#0f172a]/60"
         >
           🔍 Search
         </button>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* 📊 ตารางหุ้น */}
+      <div className="overflow-x-auto -mt-1">
         <table className="w-full text-[15px] text-center border-collapse">
           <thead>
             <tr
               className="text-[#9ca3af] text-[12px] uppercase select-none"
-              style={{ borderBottom: "0.5px solid #1a1d26" }}
+              style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
             >
               <th className="py-2 font-medium text-left pl-3 w-[30%]">SYMBOL</th>
               <th className="py-2 font-medium text-right pr-2 w-[23%]">PRICE</th>
@@ -46,7 +48,7 @@ export default function Favorites({ data }) {
                 <tr
                   key={r.symbol + i}
                   className="transition-all hover:bg-[#151821]/60"
-                  style={{ borderBottom: "0.5px solid #1a1d26" }}
+                  style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
                 >
                   <td className="py-3 text-left pl-3 font-semibold text-sky-400">
                     <a
@@ -132,4 +134,4 @@ export default function Favorites({ data }) {
       )}
     </section>
   );
-              }
+                       }
