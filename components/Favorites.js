@@ -192,4 +192,4 @@ export default function Favorites({ data }) {
       )}
     </section>
   );
-              }
+                       }
