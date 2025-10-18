@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.4 Universe Edition (Eternal API Connected)
+// ✅ Visionary Stock Screener — V∞.4 (Minimal App Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -29,7 +29,7 @@ export default function Home() {
     await fetchPrice(sym);
   };
 
-  // ✅ ดึงราคาหุ้นรายตัวจาก Eternal API
+  // ✅ ดึงราคาหุ้นรายตัวจาก API
   async function fetchPrice(sym) {
     try {
       const r = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
@@ -53,7 +53,7 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูล Market
+  // ✅ โหลดข้อมูลตลาด
   const [fast, setFast] = useState([]);
   const [emerging, setEmerging] = useState([]);
   const [future, setFuture] = useState([]);
@@ -61,7 +61,7 @@ export default function Home() {
 
   async function loadMarketData() {
     try {
-      addLog("📡 Loading AI Market Universe...");
+      addLog("📡 Loading AI Market...");
       const res = await fetch(`/api/visionary-eternal?type=market`, {
         cache: "no-store",
       });
@@ -72,17 +72,16 @@ export default function Home() {
       setFuture((j.groups?.future || []).slice(0, 8));
       setHidden((j.groups?.hidden || []).slice(0, 8));
 
-      addLog(`✅ Market groups loaded`);
-
-      const allSymbols = [
+      addLog(`✅ Market loaded`);
+      const all = [
         ...j.groups.fast.map((x) => x.symbol),
         ...j.groups.emerging.map((x) => x.symbol),
         ...j.groups.future.map((x) => x.symbol),
         ...j.groups.hidden.map((x) => x.symbol),
       ];
-      for (const s of allSymbols) await fetchPrice(s);
+      for (const s of all) await fetchPrice(s);
     } catch (err) {
-      addLog(`❌ Market load failed: ${err.message}`);
+      addLog(`❌ Load failed: ${err.message}`);
     }
   }
 
@@ -94,20 +93,20 @@ export default function Home() {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ✅ Auto Refresh ทุก 1 นาที
+  // ✅ อัปเดตราคาอัตโนมัติทุก 1 นาที
   useEffect(() => {
-    const refreshData = async () => {
-      addLog("🔁 Auto refreshing prices...");
-      const allSymbols = [
+    const refresh = async () => {
+      addLog("🔁 Refreshing prices...");
+      const all = [
         ...fast.map((x) => x.symbol),
         ...emerging.map((x) => x.symbol),
         ...future.map((x) => x.symbol),
         ...hidden.map((x) => x.symbol),
         ...favorites,
       ];
-      for (const s of allSymbols) await fetchPrice(s);
+      for (const s of all) await fetchPrice(s);
     };
-    const interval = setInterval(refreshData, 60 * 1000);
+    const interval = setInterval(refresh, 60 * 1000);
     return () => clearInterval(interval);
   }, [fast, emerging, future, hidden, favorites]);
 
@@ -115,9 +114,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0e1628]/90 backdrop-blur border-b border-white/10 shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex justify-end items-center">
-          {/* ปุ่มค้นหาสวยๆ ขวาบน */}
+      <header className="sticky top-0 z-50 bg-[#0b1220] border-b border-white/5 px-3 py-1">
+        <div className="max-w-6xl mx-auto flex justify-end items-center">
+          {/* ปุ่มค้นหาเล็กเรียบฝังแอป */}
           <button
             onClick={() => {
               const s = prompt("🔍 Enter stock symbol (e.g. NVDA, TSLA):");
@@ -127,16 +126,16 @@ export default function Home() {
                 fetchPrice(sym);
               }
             }}
-            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/40 hover:to-teal-500/40 text-emerald-300 font-semibold border border-white/10 rounded-full px-4 py-2 text-sm transition-all shadow-md hover:scale-105"
+            className="flex items-center gap-1 bg-[#1e293b] hover:bg-[#2a3650] text-emerald-300 border border-white/10 rounded-md px-3 py-1 text-xs font-medium transition-all"
           >
-            <span className="text-[16px]">🔍</span>
-            <span>Search Stock</span>
+            <span className="text-[14px]">🔍</span>
+            <span>Search</span>
           </button>
         </div>
       </header>
 
       {/* Body */}
-      <div className="max-w-6xl mx-auto px-4 py-4">
+      <div className="max-w-6xl mx-auto px-3 py-3">
         {/* FAVORITES */}
         {active === "favorites" && (
           <section>
@@ -180,18 +179,18 @@ export default function Home() {
         )}
 
         {/* 🧠 Logs Toggle */}
-        <section className="mt-6">
+        <section className="mt-5">
           <button
             onClick={() => setShowLogs((p) => !p)}
-            className="flex items-center gap-2 bg-[#141b2d] border border-white/10 px-3 py-2 rounded-xl text-xs text-emerald-400 hover:bg-emerald-500/10 transition-all"
+            className="flex items-center gap-2 bg-[#141b2d] border border-white/10 px-2 py-1 rounded-md text-[11px] text-emerald-400 hover:bg-emerald-500/10 transition-all"
           >
-            <span className="text-[14px]">🧠</span>
-            <span>{showLogs ? "Hide Logs" : "Show System Logs"}</span>
+            <span className="text-[12px]">🧠</span>
+            <span>{showLogs ? "Hide Logs" : "Show Logs"}</span>
           </button>
 
           {showLogs && (
-            <div className="mt-2 bg-black/40 rounded-xl border border-white/10 p-3 text-xs text-gray-400 max-h-48 overflow-auto shadow-inner animate-fadeIn">
-              <ul className="space-y-1">
+            <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto shadow-inner">
+              <ul className="space-y-0.5">
                 {logs.length ? (
                   logs.map((l, i) => <li key={i}>{l}</li>)
                 ) : (
@@ -204,7 +203,7 @@ export default function Home() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#0b1220] border-t border-white/5 flex justify-around text-gray-400 text-[11px] z-50">
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
@@ -214,11 +213,11 @@ export default function Home() {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`py-2 flex flex-col items-center ${
+            className={`py-1 flex flex-col items-center ${
               active === t.id ? "text-emerald-400" : ""
             }`}
           >
-            <span className="text-[18px]">{t.icon}</span>
+            <span className="text-[16px]">{t.icon}</span>
             {t.label}
           </button>
         ))}
