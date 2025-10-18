@@ -1,4 +1,4 @@
-// ✅ pages/index.js — Visionary Stock Screener V4 (Galaxy + Auto Trade)
+// ✅ Visionary Stock Screener V4.5 — Galaxy + Auto Trade + Dashboard
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -14,17 +14,13 @@ export default function Home() {
   const [active, setActive] = useState("market");
   const [search, setSearch] = useState("");
 
-  // =============== AUTO SCAN STATES ===============
+  // =============== AUTO SCAN ===============
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [matches, setMatches] = useState([]);
   const [batch, setBatch] = useState(1);
   const [scannedCount, setScannedCount] = useState(0);
   const totalSymbols = 7000;
-
-  // =============== AUTO TRADE STATES ===============
-  const [autoTrades, setAutoTrades] = useState([]);
-  const [tradeRunning, setTradeRunning] = useState(false);
 
   async function runAutoScan() {
     if (running) return;
@@ -38,15 +34,11 @@ export default function Home() {
       try {
         const res = await fetch(`/api/scan?offset=${i}&limit=800`);
         const data = await res.json();
-
         if (Array.isArray(data.results)) {
           const found = data.results.filter((x) => x.signal === "Buy");
-          if (found.length > 0) {
-            new Audio("/ding.mp3").play();
-          }
+          if (found.length > 0) new Audio("/ding.mp3").play();
           setMatches((prev) => [...prev, ...data.results]);
         }
-
         setScannedCount(i + 800);
         setProgress(((i + 800) / totalSymbols) * 100);
         setBatch((b) => b + 1);
@@ -54,10 +46,13 @@ export default function Home() {
         console.error(e);
       }
     }
-
     setRunning(false);
     setProgress(100);
   }
+
+  // =============== AUTO TRADE ===============
+  const [autoTrades, setAutoTrades] = useState([]);
+  const [tradeRunning, setTradeRunning] = useState(false);
 
   async function runAutoTrade() {
     if (tradeRunning) return;
@@ -108,7 +103,7 @@ export default function Home() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const pick = await fetch(`/api/ai-picks?limit=150&offset=0&nocache=1`)
+        const pick = await fetch(`/api/ai-picks?limit=150&offset=0`)
           .then((r) => r.json())
           .catch(() => ({ results: [] }));
         setAiPicks(pick.results || []);
@@ -196,22 +191,15 @@ export default function Home() {
           <section className="text-sm text-gray-200">
             <h2 className="text-emerald-400 text-lg mb-2">📡 Auto Scan — US Stocks</h2>
             <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <button
-                onClick={runAutoScan}
-                disabled={running}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
-              >
+              <button onClick={runAutoScan} disabled={running} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full">
                 ▶ {running ? "Scanning..." : "Run Scan Now"}
               </button>
-
               <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
                 <div className="h-2 bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
               </div>
-
               <div className="text-xs text-gray-400 mb-2">
                 Progress: {progress.toFixed(1)}% | Batch {batch} | Total {scannedCount} / {totalSymbols}
               </div>
-
               <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
                 {matches.map((m, i) => (
                   <li key={i}>
@@ -228,14 +216,9 @@ export default function Home() {
           <section className="text-sm text-gray-200 mt-4">
             <h2 className="text-emerald-400 text-lg mb-2">🤖 Auto Trade — AI Contracts</h2>
             <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <button
-                onClick={runAutoTrade}
-                disabled={tradeRunning}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
-              >
+              <button onClick={runAutoTrade} disabled={tradeRunning} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full">
                 ⚡ {tradeRunning ? "Processing..." : "Run Auto Trade"}
               </button>
-
               <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
                 {autoTrades.length === 0 ? (
                   <li className="text-gray-400">ยังไม่มีสัญญาซื้อขาย...</li>
@@ -251,15 +234,70 @@ export default function Home() {
           </section>
         )}
 
+        {/* DASHBOARD */}
+        {active === "dashboard" && (
+          <section className="text-sm text-gray-200">
+            <h2 className="text-emerald-400 text-lg mb-3">📊 AI Dashboard — Real-Time Performance</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">Scanned Stocks</p>
+                <p className="text-emerald-400 text-lg font-bold">{scannedCount}</p>
+              </div>
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">AI Buy Signals</p>
+                <p className="text-green-400 text-lg font-bold">{matches.filter((m) => m.signal === "Buy").length}</p>
+              </div>
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">Active Trades</p>
+                <p className="text-yellow-400 text-lg font-bold">{autoTrades.length}</p>
+              </div>
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">System</p>
+                <p className={`${running || tradeRunning ? "text-emerald-400" : "text-gray-400"} text-lg font-bold`}>
+                  {running || tradeRunning ? "RUNNING" : "IDLE"}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10 mb-4">
+              <h3 className="text-emerald-400 text-sm mb-2">🧠 Top AI Buy Signals</h3>
+              {matches.length === 0 ? (
+                <p className="text-gray-400 text-xs">ยังไม่มีข้อมูลสแกน...</p>
+              ) : (
+                <ul className="text-xs space-y-1">
+                  {matches.filter((x) => x.signal === "Buy").slice(0, 10).map((m, i) => (
+                    <li key={i}>🟢 <b>{m.symbol}</b> — ${m.price.toFixed(2)} | RSI {m.rsi}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
+              <h3 className="text-emerald-400 text-sm mb-2">🤖 Active AI Trades</h3>
+              {autoTrades.length === 0 ? (
+                <p className="text-gray-400 text-xs">ยังไม่มีสัญญาซื้อขาย...</p>
+              ) : (
+                <ul className="text-xs space-y-1">
+                  {autoTrades.map((t, i) => (
+                    <li key={i}>
+                      {t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} <b>{t.symbol}</b> — ${t.price} | RSI {t.rsi} | Δ {t.change}%
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* MENU */}
         {active === "menu" && (
           <section className="text-center text-gray-400 py-10">
             <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
-            <p>📡 Auto Scan + AI Trade Enabled</p>
+            <p>📡 Auto Scan + AI Trade + Dashboard</p>
             <p>💾 Favorites stored locally</p>
             <p>🔔 Alerts with Sound</p>
             <div className="text-xs text-gray-500 mt-3">
-              Version 4.0 — Galaxy + Auto Trade Universe
+              Version 4.5 — Galaxy Universe
             </div>
           </section>
         )}
@@ -272,6 +310,7 @@ export default function Home() {
           { id: "market", label: "Market", icon: "🌐" },
           { id: "scan", label: "Auto Scan", icon: "📡" },
           { id: "trade", label: "Auto Trade", icon: "🤖" },
+          { id: "dashboard", label: "Dashboard", icon: "📊" },
           { id: "menu", label: "Menu", icon: "☰" },
         ].map((t) => (
           <button
@@ -286,4 +325,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+                }
