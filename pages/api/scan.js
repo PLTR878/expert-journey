@@ -1,5 +1,5 @@
-// ✅ /pages/api/scan.js — Vercel Node18 stable version
-export const config = { runtime: "nodejs18.x" };
+// ✅ /pages/api/scan.js — fixed version (Next.js 14.2.5 compatible)
+export const config = { runtime: "nodejs" };
 
 const yahoo = (s) =>
   `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=6mo&interval=1d`;
