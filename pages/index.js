@@ -7,7 +7,6 @@ export default function Home() {
   const [active, setActive] = useState("market");
   const [favorites, setFavorites] = useState([]);
   const [favoritePrices, setFavoritePrices] = useState({});
-  const [search, setSearch] = useState("");
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
 
@@ -27,7 +26,6 @@ export default function Home() {
     setFavorites((p) =>
       p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
-    // ✅ เมื่อกดดาวให้โหลดราคาทันที
     await fetchPrice(sym);
   };
 
@@ -69,7 +67,6 @@ export default function Home() {
       });
       const j = await res.json();
 
-      // ✅ เพิ่มจำนวนหุ้นแต่ละหมวดเป็น 8 ตัว
       setFast((j.groups?.fast || []).slice(0, 8));
       setEmerging((j.groups?.emerging || []).slice(0, 8));
       setFuture((j.groups?.future || []).slice(0, 8));
@@ -77,7 +74,6 @@ export default function Home() {
 
       addLog(`✅ Market groups loaded`);
 
-      // ✅ โหลดราคาทุกหุ้นใน market โดยอัตโนมัติ
       const allSymbols = [
         ...j.groups.fast.map((x) => x.symbol),
         ...j.groups.emerging.map((x) => x.symbol),
@@ -94,12 +90,11 @@ export default function Home() {
     loadMarketData();
   }, []);
 
-  // ✅ โหลดราคาสำหรับ favorites เมื่อมีการเพิ่ม/ลบ
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ✅ Auto Refresh ทุก 1 นาที (ทั้ง market + favorites)
+  // ✅ Auto Refresh ทุก 1 นาที
   useEffect(() => {
     const refreshData = async () => {
       addLog("🔁 Auto refreshing prices...");
@@ -112,7 +107,7 @@ export default function Home() {
       ];
       for (const s of allSymbols) await fetchPrice(s);
     };
-    const interval = setInterval(refreshData, 60 * 1000); // ทุก 1 นาที
+    const interval = setInterval(refreshData, 60 * 1000);
     return () => clearInterval(interval);
   }, [fast, emerging, future, hidden, favorites]);
 
@@ -120,26 +115,23 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — V∞.4 Universe
-          </b>
-          <input
-            type="text"
-            placeholder="🔍 Search (e.g. NVDA, TSLA)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && search.trim()) {
-                const s = search.trim().toUpperCase();
-                if (!favorites.includes(s)) setFavorites([...favorites, s]);
-                fetchPrice(s);
-                setSearch("");
+      <header className="sticky top-0 z-50 bg-[#0e1628]/90 backdrop-blur border-b border-white/10 shadow-lg">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex justify-end items-center">
+          {/* ปุ่มค้นหาสวยๆ ขวาบน */}
+          <button
+            onClick={() => {
+              const s = prompt("🔍 Enter stock symbol (e.g. NVDA, TSLA):");
+              if (s) {
+                const sym = s.trim().toUpperCase();
+                if (!favorites.includes(sym)) setFavorites([...favorites, sym]);
+                fetchPrice(sym);
               }
             }}
-            className="bg-[#141b2d] border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-200 w-full sm:w-64"
-          />
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/40 hover:to-teal-500/40 text-emerald-300 font-semibold border border-white/10 rounded-full px-4 py-2 text-sm transition-all shadow-md hover:scale-105"
+          >
+            <span className="text-[16px]">🔍</span>
+            <span>Search Stock</span>
+          </button>
         </div>
       </header>
 
@@ -233,4 +225,4 @@ export default function Home() {
       </nav>
     </main>
   );
-              }
+    }
