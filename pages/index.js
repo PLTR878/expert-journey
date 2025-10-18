@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.4 (Minimal App Edition)
+// ✅ Visionary Stock Screener — V∞.5 (Balanced Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -113,24 +113,10 @@ export default function Home() {
   // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* Header */}
+      {/* ✅ Header — เอาปุ่มค้นหาออกทั้งหมด */}
       <header className="sticky top-0 z-50 bg-[#0b1220] border-b border-white/5 px-3 py-1">
-        <div className="max-w-6xl mx-auto flex justify-end items-center">
-          {/* ปุ่มค้นหาเล็กเรียบฝังแอป */}
-          <button
-            onClick={() => {
-              const s = prompt("🔍 Enter stock symbol (e.g. NVDA, TSLA):");
-              if (s) {
-                const sym = s.trim().toUpperCase();
-                if (!favorites.includes(sym)) setFavorites([...favorites, sym]);
-                fetchPrice(sym);
-              }
-            }}
-            className="flex items-center gap-1 bg-[#1e293b] hover:bg-[#2a3650] text-emerald-300 border border-white/10 rounded-md px-3 py-1 text-xs font-medium transition-all"
-          >
-            <span className="text-[14px]">🔍</span>
-            <span>Search</span>
-          </button>
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <h1 className="text-transparent text-xs select-none">.</h1>
         </div>
       </header>
 
@@ -139,8 +125,9 @@ export default function Home() {
         {/* FAVORITES */}
         {active === "favorites" && (
           <section>
-            <h2 className="text-emerald-400 text-lg mb-2">💙 My Favorite Stocks</h2>
-            <Favorites data={favorites.map((f) => favoritePrices[f] || { symbol: f })} />
+            <Favorites
+              data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
+            />
           </section>
         )}
 
@@ -178,7 +165,7 @@ export default function Home() {
           </>
         )}
 
-        {/* 🧠 Logs Toggle */}
+        {/* 🧠 Logs */}
         <section className="mt-5">
           <button
             onClick={() => setShowLogs((p) => !p)}
@@ -224,4 +211,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+      }
