@@ -9,6 +9,7 @@ export default function Home() {
   const [favoritePrices, setFavoritePrices] = useState({});
   const [search, setSearch] = useState("");
   const [logs, setLogs] = useState([]);
+  const [showLogs, setShowLogs] = useState(false); // ✅ เพิ่มปุ่มโชว์/ซ่อน logs
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-30), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -27,22 +28,29 @@ export default function Home() {
       p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
 
-  // ✅ ดึงราคาหุ้นรายตัวจาก API ใหม่
+  // ✅ ดึงราคาหุ้นรายตัวจาก API ใหม่ (type=daily)
   async function fetchPrice(sym) {
     try {
       addLog(`🔍 Checking ${sym}...`);
-      const r = await fetch(`/api/visionary-eternal?type=price&symbol=${sym}`);
+      const r = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
       const j = await r.json();
+
       setFavoritePrices((p) => ({
         ...p,
         [sym]: {
           symbol: sym,
-          price: j.price || 0,
-          currency: j.currency || "USD",
-          signal: j.signal || "Hold",
+          price: j.lastClose || 0,
+          rsi: j.rsi || 0,
+          signal:
+            j.trend === "Uptrend"
+              ? "Buy"
+              : j.trend === "Downtrend"
+              ? "Sell"
+              : "Hold",
         },
       }));
-      addLog(`✅ ${sym} → $${j.price?.toFixed(2) || "-"} (${j.currency})`);
+
+      addLog(`✅ ${sym} → $${j.lastClose?.toFixed(2) || "-"} (${j.trend})`);
     } catch (err) {
       addLog(`⚠️ Price error: ${err.message}`);
     }
@@ -159,14 +167,27 @@ export default function Home() {
           </>
         )}
 
-        {/* 🧠 Logs */}
-        <section className="bg-black/30 mt-6 rounded-lg p-3 text-xs text-gray-400 max-h-48 overflow-auto border border-white/10">
-          <b className="text-emerald-400">🧠 System Logs</b>
-          <ul className="mt-2 space-y-1">
-            {logs.map((l, i) => (
-              <li key={i}>{l}</li>
-            ))}
-          </ul>
+        {/* 🧠 Logs Toggle Button */}
+        <section className="mt-6">
+          <button
+            onClick={() => setShowLogs((p) => !p)}
+            className="flex items-center gap-2 bg-[#141b2d] border border-white/10 px-3 py-2 rounded-xl text-xs text-emerald-400 hover:bg-emerald-500/10 transition-all"
+          >
+            <span className="text-[14px]">🧠</span>
+            <span>{showLogs ? "Hide Logs" : "Show System Logs"}</span>
+          </button>
+
+          {showLogs && (
+            <div className="mt-2 bg-black/40 rounded-xl border border-white/10 p-3 text-xs text-gray-400 max-h-48 overflow-auto shadow-inner animate-fadeIn">
+              <ul className="space-y-1">
+                {logs.length ? (
+                  logs.map((l, i) => <li key={i}>{l}</li>)
+                ) : (
+                  <li className="text-gray-500">No logs yet.</li>
+                )}
+              </ul>
+            </div>
+          )}
         </section>
       </div>
 
@@ -192,4 +213,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                }
+                        }
