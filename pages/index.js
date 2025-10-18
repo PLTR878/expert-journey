@@ -226,52 +226,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* AUTO TRADE */}
-        {active === "trade" && (
-          <section className="text-sm text-gray-200 mt-4">
-            <h2 className="text-emerald-400 text-lg mb-2">🤖 Auto Trade — AI Contracts</h2>
-            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-              <button onClick={runAutoTrade} disabled={tradeRunning} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full">
-                ⚡ {tradeRunning ? "Processing..." : "Run Auto Trade"}
-              </button>
-              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
-                {autoTrades.length === 0 ? (
-                  <li className="text-gray-400">ยังไม่มีสัญญาซื้อขาย...</li>
-                ) : (
-                  autoTrades.map((t, i) => (
-                    <li key={i}>{t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} <b>{t.symbol}</b> — ${t.price} | RSI {t.rsi} | Δ {t.change}%</li>
-                  ))}
-                )}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        {/* DASHBOARD */}
-        {active === "dashboard" && (
-          <section className="text-sm text-gray-200">
-            <h2 className="text-emerald-400 text-lg mb-3">📊 AI Dashboard — Real-Time Performance</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <StatBox label="Scanned Stocks" value={scannedCount} color="text-emerald-400" />
-              <StatBox label="AI Buy Signals" value={matches.filter((x) => x.signal === "Buy").length} color="text-green-400" />
-              <StatBox label="Active Trades" value={autoTrades.length} color="text-yellow-400" />
-              <StatBox label="System" value={running || tradeRunning ? "RUNNING" : "IDLE"} color={running || tradeRunning ? "text-emerald-400" : "text-gray-400"} />
-            </div>
-          </section>
-        )}
-
-        {/* MENU */}
-        {active === "menu" && (
-          <section className="text-center text-gray-400 py-10">
-            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
-            <p>📡 Auto Scan + AI Trade + Dashboard</p>
-            <p>💾 Favorites stored locally</p>
-            <p>🔔 Alerts with Sound</p>
-            <div className="text-xs text-gray-500 mt-3">Version 4.7 — Galaxy Universe</div>
-          </section>
-        )}
-      </div>
-
+        
       {/* BOTTOM NAV */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
         {[
@@ -291,12 +246,127 @@ export default function Home() {
     </main>
   );
 }
+{/* AUTO TRADE */}
+        {active === "trade" && (
+          <section className="text-sm text-gray-200 mt-4">
+            <h2 className="text-emerald-400 text-lg mb-2">🤖 Auto Trade — AI Contracts</h2>
+            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
+              <button
+                onClick={runAutoTrade}
+                disabled={tradeRunning}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
+              >
+                ⚡ {tradeRunning ? "Processing..." : "Run Auto Trade"}
+              </button>
+              <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
+                {autoTrades.length === 0 ? (
+                  <li className="text-gray-400">ยังไม่มีสัญญาซื้อขาย...</li>
+                ) : (
+                  autoTrades.map((t, i) => (
+                    <li key={i}>
+                      {t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} <b>{t.symbol}</b> — ${t.price} | RSI {t.rsi} | Δ {t.change}%
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </section>
+        )}
 
-function StatBox({ label, value, color }) {
-  return (
-    <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
-      <p className="text-gray-400 text-xs">{label}</p>
-      <p className={`${color} text-lg font-bold`}>{value}</p>
-    </div>
+        {/* DASHBOARD */}
+        {active === "dashboard" && (
+          <section className="text-sm text-gray-200">
+            <h2 className="text-emerald-400 text-lg mb-3">📊 AI Dashboard — Real-Time Performance</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">Scanned Stocks</p>
+                <p className="text-emerald-400 text-lg font-bold">{scannedCount}</p>
+              </div>
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">AI Buy Signals</p>
+                <p className="text-green-400 text-lg font-bold">{matches.filter((m) => m.signal === "Buy").length}</p>
+              </div>
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">Active Trades</p>
+                <p className="text-yellow-400 text-lg font-bold">{autoTrades.length}</p>
+              </div>
+              <div className="bg-[#111a2c] p-3 rounded-lg border border-white/10 text-center">
+                <p className="text-gray-400 text-xs">System</p>
+                <p className={`${running || tradeRunning ? "text-emerald-400" : "text-gray-400"} text-lg font-bold`}>
+                  {running || tradeRunning ? "RUNNING" : "IDLE"}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10 mb-4">
+              <h3 className="text-emerald-400 text-sm mb-2">🧠 Top AI Buy Signals</h3>
+              {matches.length === 0 ? (
+                <p className="text-gray-400 text-xs">ยังไม่มีข้อมูลสแกน...</p>
+              ) : (
+                <ul className="text-xs space-y-1">
+                  {matches
+                    .filter((x) => x.signal === "Buy")
+                    .slice(0, 10)
+                    .map((m, i) => (
+                      <li key={i}>
+                        🟢 <b>{m.symbol}</b> — ${m.price.toFixed(2)} | RSI {m.rsi}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
+              <h3 className="text-emerald-400 text-sm mb-2">🤖 Active AI Trades</h3>
+              {autoTrades.length === 0 ? (
+                <p className="text-gray-400 text-xs">ยังไม่มีสัญญาซื้อขาย...</p>
+              ) : (
+                <ul className="text-xs space-y-1">
+                  {autoTrades.map((t, i) => (
+                    <li key={i}>
+                      {t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} <b>{t.symbol}</b> — ${t.price} | RSI {t.rsi} | Δ {t.change}%
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* MENU */}
+        {active === "menu" && (
+          <section className="text-center text-gray-400 py-10">
+            <h2 className="text-emerald-400 text-xl mb-3 font-semibold">⚙️ Settings & Info</h2>
+            <p>📡 Auto Scan + AI Trade + Dashboard</p>
+            <p>💾 Favorites stored locally</p>
+            <p>🔔 Alerts with Sound</p>
+            <div className="text-xs text-gray-500 mt-3">
+              Version 4.5 — Galaxy Universe
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Bottom Nav */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#0e1628]/90 border-t border-white/10 backdrop-blur flex justify-around text-gray-400 text-[12px] z-50">
+        {[
+          { id: "favorites", label: "Favorites", icon: "💙" },
+          { id: "market", label: "Market", icon: "🌐" },
+          { id: "scan", label: "Auto Scan", icon: "📡" },
+          { id: "trade", label: "Auto Trade", icon: "🤖" },
+          { id: "dashboard", label: "Dashboard", icon: "📊" },
+          { id: "menu", label: "Menu", icon: "☰" },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={`py-2 flex flex-col items-center ${active === t.id ? "text-emerald-400" : ""}`}
+          >
+            <span className="text-[18px]">{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
+      </nav>
+    </main>
   );
-      }
+                  }
