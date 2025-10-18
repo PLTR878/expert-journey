@@ -1,3 +1,4 @@
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || "https://expert-journey-ten.vercel.app";
 // ✅ /pages/api/ai-picks.js — Stable & Full Market Analyzer (V6)
 const CACHE_TTL = 1000 * 60 * 60; // cache 1 ชม.
 if (!global.cache) global.cache = { picks: null, at: 0 };
