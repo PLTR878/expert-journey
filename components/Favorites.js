@@ -145,7 +145,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder=(ชื่อย่อ/ชื่อหุ้น)"
+              placeholder="(ชื่อย่อ/ชื่อหุ้น)"
               className="w-full text-center bg-[#0d121d] border border-gray-700 text-gray-200 rounded-md py-2 focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-5"
             />
             <div className="flex justify-around">
@@ -167,4 +167,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                    }
+                       }
