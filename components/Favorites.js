@@ -1,49 +1,54 @@
-// ✅ /components/Favorites.js — Visionary Eternal Edition (V∞.4 Ready)
+// ✅ /components/Favorites.js — Visionary Eternal Edition (Minimal App UI)
 export default function Favorites({ data }) {
   return (
-    <section className="bg-[#101827]/70 rounded-2xl p-4 mb-6 border border-white/10 shadow-lg">
-      <h2 className="text-yellow-300 text-lg font-semibold mb-3 flex items-center gap-2">
-        ⭐ My Favorites
+    <section className="bg-transparent p-2 mb-6">
+      <h2 className="text-emerald-400 text-base font-semibold mb-2 flex items-center gap-2">
+        💙 My Favorites
         <span className="text-[11px] text-gray-400">
           ({data?.length || 0} symbols)
         </span>
       </h2>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse text-center">
-          <thead className="bg-white/5 text-gray-400 uppercase text-[11px]">
+        <table className="w-full text-sm text-center">
+          {/* หัวตาราง */}
+          <thead className="text-gray-400 text-[11px] uppercase tracking-wide">
             <tr>
-              <th className="p-2">Symbol</th>
-              <th className="p-2">Price</th>
-              <th className="p-2">RSI</th>
-              <th className="p-2">AI Signal</th>
+              <th className="py-2 font-medium">Symbol</th>
+              <th className="py-2 font-medium">Price</th>
+              <th className="py-2 font-medium">RSI</th>
+              <th className="py-2 font-medium">AI Signal</th>
             </tr>
           </thead>
+
+          {/* เนื้อหาตาราง */}
           <tbody>
             {data?.length ? (
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                  className={`transition-all ${
+                    i % 2 === 0 ? "bg-[#111827]/40" : "bg-[#0f172a]/40"
+                  } hover:bg-[#1b2536]/70`}
                 >
                   {/* Symbol */}
-                  <td className="p-2 font-semibold text-sky-400">
+                  <td className="py-2 font-semibold text-sky-400">
                     <a
                       href={`/analyze/${r.symbol}`}
-                      className="hover:text-emerald-400"
+                      className="hover:text-emerald-400 transition-colors"
                     >
                       {r.symbol}
                     </a>
                   </td>
 
                   {/* Price */}
-                  <td className="p-2 font-mono text-gray-100">
+                  <td className="py-2 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
 
                   {/* RSI */}
                   <td
-                    className={`p-2 ${
+                    className={`py-2 font-mono ${
                       typeof r.rsi === "number"
                         ? r.rsi > 70
                           ? "text-red-400"
@@ -53,14 +58,12 @@ export default function Favorites({ data }) {
                         : "text-gray-400"
                     }`}
                   >
-                    {typeof r.rsi === "number"
-                      ? Math.round(r.rsi)
-                      : "-"}
+                    {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
 
                   {/* AI Signal */}
                   <td
-                    className={`p-2 font-semibold ${
+                    className={`py-2 font-semibold ${
                       r.signal === "Buy"
                         ? "text-green-400"
                         : r.signal === "Sell"
@@ -76,7 +79,7 @@ export default function Favorites({ data }) {
               <tr>
                 <td
                   colSpan="4"
-                  className="p-4 text-gray-500 text-center italic"
+                  className="py-4 text-gray-500 text-center italic"
                 >
                   No favorites yet. Add one by searching 🔍
                 </td>
@@ -87,4 +90,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                    }
+}
