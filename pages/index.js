@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener V5.3 — Universe Edition (Full Auto-Linked)
+// ✅ Visionary Stock Screener — V5.4 Universe Auto-Debug Edition
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -8,55 +8,6 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [favoritePrices, setFavoritePrices] = useState({});
   const [search, setSearch] = useState("");
-
-  // ===== AUTO SCAN =====
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [matches, setMatches] = useState([]);
-  const [scannedCount, setScannedCount] = useState(0);
-  const [latestSymbol, setLatestSymbol] = useState("-");
-  const totalSymbols = 7000;
-
-  async function runAutoScan() {
-    if (running) return;
-    setRunning(true);
-    setProgress(0);
-    setMatches([]);
-    setScannedCount(0);
-    setLatestSymbol("-");
-    for (let i = 0; i < totalSymbols; i += 800) {
-      try {
-        const res = await fetch(`/api/scan?offset=${i}&limit=800`);
-        const data = await res.json();
-        if (Array.isArray(data.results)) {
-          setMatches((prev) => [...prev, ...data.results]);
-          setLatestSymbol(data.results?.at(-1)?.symbol || "-");
-        }
-        setScannedCount(i + 800);
-        setProgress(Math.min(100, ((i + 800) / totalSymbols) * 100));
-      } catch (err) {
-        console.error("Scan error:", err);
-      }
-    }
-    setRunning(false);
-  }
-
-  // ===== AUTO TRADE =====
-  const [autoTrades, setAutoTrades] = useState([]);
-  const [tradeRunning, setTradeRunning] = useState(false);
-  async function runAutoTrade() {
-    if (tradeRunning) return;
-    setTradeRunning(true);
-    try {
-      const res = await fetch("/api/auto-trade");
-      const data = await res.json();
-      setAutoTrades(data.trades || []);
-    } catch (e) {
-      console.error("AutoTrade error:", e);
-    } finally {
-      setTradeRunning(false);
-    }
-  }
 
   // ===== FAVORITES =====
   useEffect(() => {
@@ -99,18 +50,36 @@ export default function Home() {
   const [emerging, setEmerging] = useState([]);
   const [future, setFuture] = useState([]);
   const [hidden, setHidden] = useState([]);
+  const [logs, setLogs] = useState([]);
+
+  const addLog = (msg) =>
+    setLogs((p) => [...p.slice(-20), `${new Date().toLocaleTimeString()} ${msg}`]);
 
   useEffect(() => {
     async function loadMarketData() {
-      try {
-        const res = await fetch(`/api/screener-hybrid`);
-        const data = await res.json();
-        setFast(data.groups?.fast || []);
-        setEmerging(data.groups?.emerging || []);
-        setFuture(data.groups?.future || []);
-        setHidden(data.groups?.hidden || []);
-      } catch (err) {
-        console.error("Market load error:", err);
+      const modes = ["short", "swing", "long", "hidden"];
+      const setters = [setFast, setEmerging, setFuture, setHidden];
+      const modeNames = ["Fast Movers", "Emerging Trends", "Future Leaders", "Hidden Gems"];
+      const base = "/api/screener-hybrid";
+
+      for (let i = 0; i < modes.length; i++) {
+        let success = false;
+        for (let retry = 1; retry <= 3 && !success; retry++) {
+          try {
+            addLog(`📡 Loading ${modeNames[i]} (try ${retry})...`);
+            const res = await fetch(`${base}?mode=${modes[i]}`, { cache: "no-store" });
+            if (!res.ok) throw new Error("HTTP error " + res.status);
+            const data = await res.json();
+            const rows = data.results || data.groups?.[modes[i]] || [];
+            setters[i](rows);
+            addLog(`✅ Loaded ${modeNames[i]} (${rows.length})`);
+            success = true;
+          } catch (err) {
+            addLog(`⚠️ ${modeNames[i]} failed: ${err.message}`);
+            await new Promise((r) => setTimeout(r, 1500)); // delay ก่อน retry
+          }
+        }
+        if (!success) addLog(`❌ ${modeNames[i]} failed all attempts`);
       }
     }
     loadMarketData();
@@ -123,7 +92,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-[#0e1628]/80 backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <b className="text-emerald-400 text-lg sm:text-xl">
-            🌍 Visionary Stock Screener — V5.3 Universe
+            🌍 Visionary Stock Screener — V5.4 Universe
           </b>
           <input
             type="text"
@@ -144,7 +113,6 @@ export default function Home() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Favorites */}
         {active === "favorites" && (
           <section>
             <h2 className="text-emerald-400 text-lg mb-2">💙 My Favorite Stocks</h2>
@@ -154,94 +122,24 @@ export default function Home() {
           </section>
         )}
 
-        {/* Market */}
         {active === "market" && (
           <>
-            <MarketSection
-              title="⚡ Fast Movers"
-              rows={fast}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-              favoritePrices={favoritePrices}
-            />
-            <MarketSection
-              title="🌱 Emerging Trends"
-              rows={emerging}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-              favoritePrices={favoritePrices}
-            />
-            <MarketSection
-              title="🚀 Future Leaders"
-              rows={future}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-              favoritePrices={favoritePrices}
-            />
-            <MarketSection
-              title="💎 Hidden Gems"
-              rows={hidden}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-              favoritePrices={favoritePrices}
-            />
+            <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
+            <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
+            <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
+            <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
           </>
         )}
 
-        {/* Scanner */}
-        {active === "scan" && (
-          <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-            <h2 className="text-emerald-400 text-lg mb-3">📡 AI Stock Scanner + Dashboard</h2>
-            <button
-              onClick={runAutoScan}
-              disabled={running}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
-            >
-              {running ? "🔍 Scanning..." : "▶ Run AI Scan"}
-            </button>
-            <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-2">
-              <div
-                className="h-2 bg-emerald-500 transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 mb-2">
-              Progress: {progress.toFixed(1)}% | {scannedCount}/{totalSymbols} | 🔎 {latestSymbol}
-            </p>
-            <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
-              {matches.map((m, i) => (
-                <li key={i}>
-                  ✅ {m.symbol} — ${m.price?.toFixed(2)} | RSI {m.rsi?.toFixed(1)} | {m.signal}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {/* AI Trade */}
-        {active === "trade" && (
-          <section className="bg-[#111a2c] p-4 rounded-lg border border-white/10">
-            <h2 className="text-emerald-400 text-lg mb-2">🤖 AI Auto Trade</h2>
-            <button
-              onClick={runAutoTrade}
-              disabled={tradeRunning}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 mb-3 w-full"
-            >
-              ⚡ {tradeRunning ? "Processing..." : "Run Auto Trade"}
-            </button>
-            <ul className="max-h-64 overflow-auto text-xs space-y-1 bg-black/30 rounded-lg p-2">
-              {autoTrades.length === 0 ? (
-                <li className="text-gray-400">ยังไม่มีสัญญาซื้อขาย...</li>
-              ) : (
-                autoTrades.map((t, i) => (
-                  <li key={i}>
-                    {t.action === "BUY" ? "🟢 BUY" : "🔴 SELL"} {t.symbol} — ${t.price} | RSI {t.rsi} | Δ {t.change}%
-                  </li>
-                ))
-              )}
-            </ul>
-          </section>
-        )}
+        {/* 🧠 Log Monitor */}
+        <section className="bg-black/30 mt-6 rounded-lg p-3 text-xs text-gray-400 max-h-48 overflow-auto border border-white/10">
+          <b className="text-emerald-400">🧠 System Logs</b>
+          <ul className="mt-2 space-y-1">
+            {logs.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+        </section>
       </div>
 
       {/* Bottom Navigation */}
@@ -266,4 +164,4 @@ export default function Home() {
       </nav>
     </main>
   );
-          }
+         }
