@@ -1,11 +1,11 @@
-// ✅ /components/Favorites.js — Perfect Balanced Clean Edition (V∞.6)
+// ✅ /components/Favorites.js — Perfect Balanced Clean Edition (V∞.7 no 💙)
 export default function Favorites({ data }) {
   return (
     <section className="bg-transparent p-2 mb-6">
       {/* หัวข้อ */}
       <div className="flex items-center justify-between mb-1 px-1">
         <h2 className="text-emerald-400 text-base font-semibold">
-          💙 My Favorite Stocks
+          My Favorite Stocks
         </h2>
         <span className="text-[11px] text-gray-400">
           ({data?.length || 0} symbols)
@@ -97,4 +97,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                                        }
+                       }
