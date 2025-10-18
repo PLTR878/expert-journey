@@ -295,3 +295,22 @@ export default function Home() {
     </main>
   );
 }
+// ===== AI SOUND ALERTS =====
+  const playSound = (type) => {
+    const audio = new Audio(
+      type === "Buy"
+        ? "https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"
+        : "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+    );
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+  };
+
+  // ใช้เพื่อเช็คและเล่นเสียงเมื่อพบสัญญาณใหม่
+  useEffect(() => {
+    if (matches.length > 0) {
+      const latest = matches.at(-1);
+      if (latest?.signal === "Buy") playSound("Buy");
+      if (latest?.signal === "Sell") playSound("Sell");
+    }
+  }, [matches]);
