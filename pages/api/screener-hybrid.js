@@ -1,67 +1,28 @@
-// ✅ /pages/api/screener-hybrid.js — เชื่อมตรงกับ pages/index.js (V5.1)
+// ✅ /pages/api/screener-hybrid.js
 export default async function handler(req, res) {
   try {
-    const { mode } = req.query;
-    const base = `https://${req.headers.host}`;
+    const { mode = "short" } = req.query;
+    const base = "https://expert-journey-ten.vercel.app";
+    const data = await fetch(`${base}/api/ai-picks`).then(r => r.json());
+    const list = data.results || [];
 
-    // ดึงหุ้นทั้งหมดจาก AI Picks (AI ที่คัดไว้แล้ว)
-    const resp = await fetch(`${base}/api/ai-picks?limit=200`);
-    const data = await resp.json();
-    const all = data.results || [];
+    let results = [];
+    if (mode === "short")
+      results = list.filter(x => x.signal === "Buy" && x.rsi < 60).slice(0, 25);
+    else if (mode === "swing")
+      results = list.filter(x => x.trend === "Uptrend" && x.signal === "Hold").slice(0, 25);
+    else if (mode === "long")
+      results = list.filter(x => x.confidence > 70 && x.signal === "Buy").slice(0, 25);
+    else if (mode === "hidden")
+      results = list.filter(x => x.price < 10 && x.signal === "Buy").slice(0, 25);
 
-    let filtered = [];
-
-    // 🎯 คัดกรองตามโหมด (ตามที่ index.js เรียก)
-    switch (mode) {
-      case "short":
-        filtered = all
-          .filter((x) => x.signal === "Buy" && x.rsi > 60)
-          .sort((a, b) => b.rsi - a.rsi)
-          .slice(0, 20);
-        break;
-
-      case "swing":
-        filtered = all
-          .filter((x) => x.ema20 > x.ema50 && x.rsi > 55)
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 20);
-        break;
-
-      case "long":
-        filtered = all
-          .filter((x) => x.signal === "Buy" && x.score > 70)
-          .sort((a, b) => b.confidence - a.confidence)
-          .slice(0, 20);
-        break;
-
-      case "hidden":
-        filtered = all
-          .filter((x) => x.price < 10 && x.signal === "Buy")
-          .sort((a, b) => b.rsi - a.rsi)
-          .slice(0, 20);
-        break;
-
-      default:
-        filtered = all.slice(0, 20);
-        break;
-    }
-
-    // ✅ ส่งกลับให้ index.js ใช้ได้ทันที
     res.status(200).json({
+      updated: new Date().toISOString(),
       mode,
-      count: filtered.length,
-      results: filtered.map((x) => ({
-        symbol: x.symbol,
-        price: x.price,
-        rsi: x.rsi,
-        signal: x.signal,
-        ema20: x.ema20,
-        ema50: x.ema50,
-        score: x.score,
-      })),
+      count: results.length,
+      results
     });
   } catch (err) {
-    console.error("❌ screener-hybrid error:", err);
     res.status(500).json({ error: err.message });
   }
 }
