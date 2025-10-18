@@ -1,61 +1,64 @@
-// ✅ /pages/api/screener-hybrid.js (เวอร์ชันรองรับ mode: short, swing, long, hidden)
+// ✅ /pages/api/screener-hybrid.js — เชื่อมตรงกับ pages/index.js (V5.1)
 export default async function handler(req, res) {
   try {
-    const base = `https://${req.headers.host}`;
     const { mode } = req.query;
+    const base = `https://${req.headers.host}`;
 
-    // ดึงข้อมูลทั้งหมดจาก ai-picks ก่อน
-    const resp = await fetch(`${base}/api/ai-picks?limit=150`);
+    // ดึงหุ้นทั้งหมดจาก AI Picks (AI ที่คัดไว้แล้ว)
+    const resp = await fetch(`${base}/api/ai-picks?limit=200`);
     const data = await resp.json();
-    const results = data.results || [];
+    const all = data.results || [];
 
-    // ==== คัดกรองตาม mode ====
     let filtered = [];
 
+    // 🎯 คัดกรองตามโหมด (ตามที่ index.js เรียก)
     switch (mode) {
-      // ⚡ Fast Movers (short)
       case "short":
-        filtered = results
-          .filter((x) => x.rsi > 60 && x.signal === "Buy")
+        filtered = all
+          .filter((x) => x.signal === "Buy" && x.rsi > 60)
           .sort((a, b) => b.rsi - a.rsi)
-          .slice(0, 15);
+          .slice(0, 20);
         break;
 
-      // 🌱 Emerging Trends (swing)
       case "swing":
-        filtered = results
+        filtered = all
           .filter((x) => x.ema20 > x.ema50 && x.rsi > 55)
           .sort((a, b) => b.score - a.score)
-          .slice(0, 15);
+          .slice(0, 20);
         break;
 
-      // 🚀 Future Leaders (long)
       case "long":
-        filtered = results
-          .filter((x) => x.score > 70 && x.signal === "Buy")
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 15);
+        filtered = all
+          .filter((x) => x.signal === "Buy" && x.score > 70)
+          .sort((a, b) => b.confidence - a.confidence)
+          .slice(0, 20);
         break;
 
-      // 💎 Hidden Gems (hidden)
       case "hidden":
-        filtered = results
-          .filter((x) => x.price < 10 && x.ema20 > x.ema50 && x.rsi > 45)
+        filtered = all
+          .filter((x) => x.price < 10 && x.signal === "Buy")
           .sort((a, b) => b.rsi - a.rsi)
-          .slice(0, 15);
+          .slice(0, 20);
         break;
 
-      // ถ้าไม่ระบุ mode -> รวมทั้งหมด
       default:
-        filtered = results.slice(0, 20);
+        filtered = all.slice(0, 20);
         break;
     }
 
-    // ส่งกลับในฟอร์แมตที่ Market.js ต้องการ
+    // ✅ ส่งกลับให้ index.js ใช้ได้ทันที
     res.status(200).json({
       mode,
-      updated: new Date().toISOString(),
-      results: filtered,
+      count: filtered.length,
+      results: filtered.map((x) => ({
+        symbol: x.symbol,
+        price: x.price,
+        rsi: x.rsi,
+        signal: x.signal,
+        ema20: x.ema20,
+        ema50: x.ema50,
+        score: x.score,
+      })),
     });
   } catch (err) {
     console.error("❌ screener-hybrid error:", err);
