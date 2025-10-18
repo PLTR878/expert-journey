@@ -23,10 +23,13 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  const toggleFavorite = (sym) =>
+  const toggleFavorite = async (sym) => {
     setFavorites((p) =>
       p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
     );
+    // ✅ เมื่อกดดาวให้โหลดราคาทันที
+    await fetchPrice(sym);
+  };
 
   // ✅ ดึงราคาหุ้นรายตัวจาก Eternal API
   async function fetchPrice(sym) {
@@ -65,10 +68,13 @@ export default function Home() {
         cache: "no-store",
       });
       const j = await res.json();
-      setFast(j.groups?.fast || []);
-      setEmerging(j.groups?.emerging || []);
-      setFuture(j.groups?.future || []);
-      setHidden(j.groups?.hidden || []);
+
+      // ✅ เพิ่มจำนวนหุ้นแต่ละหมวดเป็น 8 ตัว
+      setFast((j.groups?.fast || []).slice(0, 8));
+      setEmerging((j.groups?.emerging || []).slice(0, 8));
+      setFuture((j.groups?.future || []).slice(0, 8));
+      setHidden((j.groups?.hidden || []).slice(0, 8));
+
       addLog(`✅ Market groups loaded`);
 
       // ✅ โหลดราคาทุกหุ้นใน market โดยอัตโนมัติ
@@ -106,7 +112,7 @@ export default function Home() {
       ];
       for (const s of allSymbols) await fetchPrice(s);
     };
-    const interval = setInterval(refreshData, 60 * 1000); // 1 นาที
+    const interval = setInterval(refreshData, 60 * 1000); // ทุก 1 นาที
     return () => clearInterval(interval);
   }, [fast, emerging, future, hidden, favorites]);
 
@@ -142,12 +148,8 @@ export default function Home() {
         {/* FAVORITES */}
         {active === "favorites" && (
           <section>
-            <h2 className="text-emerald-400 text-lg mb-2">
-              💙 My Favorite Stocks
-            </h2>
-            <Favorites
-              data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
-            />
+            <h2 className="text-emerald-400 text-lg mb-2">💙 My Favorite Stocks</h2>
+            <Favorites data={favorites.map((f) => favoritePrices[f] || { symbol: f })} />
           </section>
         )}
 
@@ -231,4 +233,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+              }
