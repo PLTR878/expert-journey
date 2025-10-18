@@ -1,100 +1,68 @@
-// /pages/api/scan.js
-import { rsi, ema, scoreSignal } from "../../lib/indicators";
-
+// ✅ /pages/api/scan.js — version with real-time progress
 export const config = { runtime: "edge" };
 
-const Y_URL = (s) =>
-  `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-    s
-  )}?range=6mo&interval=1d`;
+const yahoo = (s) =>
+  `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=6mo&interval=1d`;
 
-async function getCloses(symbol) {
-  const r = await fetch(Y_URL(symbol), { cache: "no-store" });
-  if (!r.ok) throw new Error("yahoo fail");
+async function getClose(symbol) {
+  const r = await fetch(yahoo(symbol), { cache: "no-store" });
   const j = await r.json();
   const res = j?.chart?.result?.[0];
-  if (!res?.indicators?.quote?.[0]?.close) throw new Error("no data");
-  return res.indicators.quote[0].close.filter((x) => typeof x === "number");
+  return res?.indicators?.quote?.[0]?.close?.filter((x) => x);
 }
 
-// จำกัดความพร้อมกัน (concurrency) เพื่อเลี่ยง rate-limit
-async function mapLimit(items, limit, fn) {
-  const ret = [];
-  let i = 0;
-  const workers = Array.from({ length: limit }).map(async () => {
-    while (i < items.length) {
-      const idx = i++;
-      ret[idx] = await fn(items[idx], idx);
-    }
-  });
-  await Promise.all(workers);
-  return ret;
+function rsi(values, period = 14) {
+  if (values.length < period + 1) return null;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = values[i] - values[i - 1];
+    if (diff > 0) gains += diff;
+    else losses -= diff;
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  for (let i = period + 1; i < values.length; i++) {
+    const diff = values[i] - values[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(diff, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-diff, 0)) / period;
+  }
+  const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
 }
 
 export default async function handler(req) {
   try {
     const { searchParams } = new URL(req.url);
     const offset = Number(searchParams.get("offset") || 0);
-    const limit = Math.min(Number(searchParams.get("limit") || 120), 200);
+    const limit = Number(searchParams.get("limit") || 200);
 
-    // 1) รายชื่อทั้งหมด
-    const { symbols, total } = await fetch(
-      `${new URL(req.url).origin}/api/symbols`,
-      { cache: "no-store" }
-    ).then((r) => r.json());
-
+    const base = `${new URL(req.url).origin}/api/symbols`;
+    const { symbols } = await fetch(base).then((r) => r.json());
     const slice = symbols.slice(offset, offset + limit);
 
-    // 2) ดึงราคา + คำนวณอินดี้
-    const rows = await mapLimit(slice, 8, async (sym) => {
+    const result = [];
+    let scanned = 0;
+
+    for (const sym of slice) {
+      scanned++;
       try {
-        const closes = await getCloses(sym);
-        if (closes.length < 50) return null;
-
-        const rsi14 = rsi(closes, 14);
-        const ema20 = ema(closes, 20).at(-1);
-        const ema50 = ema(closes, 50).at(-1);
-        const ema200 = ema(closes, 200).at(-1);
-        const c = closes.at(-1);
-
-        // เงื่อนไข Buy 1–7 วัน (ปรับได้)
-        const ok =
-          rsi14 != null &&
-          rsi14 >= 35 &&
-          rsi14 <= 60 &&
-          c > ema20 &&
-          ema20 >= ema50 * 0.98; // ไม่แพ้ทางมาก
-
-        if (!ok) return null;
-
-        const score = scoreSignal({ c, ema20, ema50, ema200, rsi14 });
-        return {
-          symbol: sym,
-          price: Number(c.toFixed(2)),
-          rsi: Number(rsi14.toFixed(1)),
-          ema20: Number(ema20.toFixed(2)),
-          ema50: Number(ema50.toFixed(2)),
-          ema200: Number(ema200.toFixed(2)),
-          score,
-        };
-      } catch {
-        return null;
-      }
-    });
-
-    // 3) คัดเฉพาะที่ผ่าน + จัดอันดับ Top 10 ของแบตช์
-    const passed = rows.filter(Boolean).sort((a, b) => b.score - a.score).slice(0, 10);
+        const c = await getClose(sym);
+        if (!c || c.length < 30) continue;
+        const last = c[c.length - 1];
+        const r = rsi(c);
+        if (r >= 35 && r <= 60)
+          result.push({ symbol: sym, price: last, rsi: r, signal: "Buy" });
+      } catch {}
+    }
 
     return new Response(
-      JSON.stringify({
-        batch: { offset, limit, scanned: Math.min(offset + limit, total), total },
-        top10: passed,
+      JSON.stringify({ 
+        results: result, 
+        batch: { offset, limit, scanned, percent: ((offset + scanned) / symbols.length) * 100 } 
       }),
-      {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      }
+      { headers: { "content-type": "application/json" } }
     );
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
-          }
+}
