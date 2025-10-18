@@ -1,33 +1,46 @@
-PRICEs/Favorites.js — Ultra Thin Line Edition (V∞.19)
+import { useState } from "react";
+
 export default function Favorites({ data }) {
+  const [showModal, setShowModal] = useState(false);
+  const [symbol, setSymbol] = useState("");
+
+  const handleSearch = () => setShowModal(true);
+  const handleSubmit = () => {
+    if (!symbol.trim()) return;
+    window.location.href = `/analyze/${symbol.toUpperCase()}`;
+    setShowModal(false);
+    setSymbol("");
+  };
+
   return (
-    <section className="w-full px-2">
+    <section className="w-full px-2 pt-1">
+      {/* 🔍 ปุ่ม Search ด้านขวาบน */}
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={handleSearch}
+          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-2 py-1"
+        >
+          🔍 Search
+        </button>
+      </div>
+
+      {/* 📊 ตารางหุ้น */}
       <div className="overflow-x-auto">
         <table className="w-full text-[15px] text-center border-collapse">
-          {/* หัวตาราง */}
           <thead>
             <tr
               className="text-[#9ca3af] text-[12px] uppercase select-none"
               style={{
-                borderBottom: "0.5px solid #1a1d26 !important", // ✅ เส้นบางเฉียบเทาอ่อน
+                borderBottom: "0.5px solid #1a1d26",
               }}
             >
-              <th className="py-2 font-medium text-left pl-3 w-[30%] tracking-wide">
-                SYMBOL
-              </th>
-              <th className="py-2 font-medium text-right pr-2 w-[23%] tracking-wide">
-               PRICE
-              </th>
-              <th className="py-2 font-medium text-right pr-2 w-[22%] tracking-wide">
-                RSI
-              </th>
-              <th className="py-2 font-medium text-right pr-2 w-[25%] tracking-wide">
-                AI SIG
-              </th>
+              <th className="py-2 font-medium text-left pl-3 w-[30%]">SYMBOL</th>
+              <th className="py-2 font-medium text-right pr-2 w-[23%]">PRICE</th>
+              <th className="py-2 font-medium text-right pr-2 w-[22%]">RSI</th>
+              <th className="py-2 font-medium text-right pr-2 w-[25%]">AI SIG</th>
             </tr>
           </thead>
 
-          {/* เนื้อหา */}
           <tbody>
             {data?.length ? (
               data.map((r, i) => (
@@ -35,10 +48,9 @@ export default function Favorites({ data }) {
                   key={r.symbol + i}
                   className="transition-all hover:bg-[#151821]/60"
                   style={{
-                    borderBottom: "0.5px solid #1a1d26 !important", // ✅ เส้นเทาอ่อน บางสุด
+                    borderBottom: "0.5px solid #1a1d26",
                   }}
                 >
-                  {/* SYMBOL */}
                   <td className="py-3 text-left pl-3 font-semibold text-sky-400">
                     <a
                       href={`/analyze/${r.symbol}`}
@@ -47,13 +59,9 @@ export default function Favorites({ data }) {
                       {r.symbol}
                     </a>
                   </td>
-
-                  {/* PRICE */}
                   <td className="py-3 text-right pr-2 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
-
-                  {/* RSI */}
                   <td
                     className={`py-3 text-right pr-2 font-mono ${
                       typeof r.rsi === "number"
@@ -67,8 +75,6 @@ export default function Favorites({ data }) {
                   >
                     {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
-
-                  {/* AI SIG */}
                   <td
                     className={`py-3 text-right pr-2 font-semibold ${
                       r.signal === "Buy"
@@ -95,6 +101,38 @@ export default function Favorites({ data }) {
           </tbody>
         </table>
       </div>
+
+      {/* 🔍 Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-[#111827] rounded-2xl shadow-xl p-6 w-[85%] max-w-sm text-center border border-gray-700">
+            <h3 className="text-lg text-emerald-400 font-semibold mb-4">
+              Search Stock
+            </h3>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="Enter stock symbol (e.g. NVDA, TSLA)"
+              className="w-full text-center bg-[#0d121d] border border-gray-700 text-gray-200 rounded-md py-2 focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-5"
+            />
+            <div className="flex justify-around">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold"
+              >
+                Search
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
-                       }
+                }
