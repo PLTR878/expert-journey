@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — TradingView Line Style Edition (V∞.16)
+// ✅ /components/Favorites.js — True TradingView Gray Edition (V∞.17)
 export default function Favorites({ data }) {
   return (
     <section className="w-full px-2">
@@ -6,7 +6,7 @@ export default function Favorites({ data }) {
         <table className="w-full text-[15px] text-center border-collapse">
           {/* หัวตาราง */}
           <thead>
-            <tr className="text-gray-300 text-[12px] uppercase select-none border-b border-[#1a1f2a]">
+            <tr className="text-gray-300 text-[12px] uppercase select-none border-b border-[#20242f]">
               <th className="py-2 font-medium text-left pl-3 w-[30%] tracking-wide">
                 SYMBOL
               </th>
@@ -28,9 +28,9 @@ export default function Favorites({ data }) {
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className="transition-all hover:bg-[#141a24]/60"
+                  className="transition-all hover:bg-[#151821]/70"
                   style={{
-                    borderBottom: "1px solid #121621", // ✅ เส้นแบบ TradingView — สีเทาเข้มมาก
+                    borderBottom: "1px solid #1c1f2a", // ✅ เส้นเทาอ่อนแบบ TradingView
                   }}
                 >
                   {/* SYMBOL */}
@@ -92,4 +92,4 @@ export default function Favorites({ data }) {
       </div>
     </section>
   );
-                    }
+                       }
