@@ -6,7 +6,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ เพิ่มหุ้น
+  // ✅ เพิ่มหุ้นลงรายการโปรด
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -22,7 +22,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น
+  // ✅ ลบหุ้นออก (ใช้เมื่อปัดซ้าย)
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -31,20 +31,20 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     }
   };
 
-  // ✅ ปัดซ้ายเพื่อลบ
+  // ✅ จับ gesture ปัดซ้าย
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
     if (!touchStartX.current || !touchEndX.current) return;
     const distance = touchStartX.current - touchEndX.current;
-    if (distance > 70) removeFavorite(sym);
+    if (distance > 70) removeFavorite(sym); // ถ้าปัดซ้ายเกิน 70px → ลบ
     touchStartX.current = null;
     touchEndX.current = null;
   };
 
   return (
     <section className="w-full px-2 pt-1">
-      {/* 🩵 Header */}
+      {/* 🩵 หัวข้อ */}
       <div className="flex justify-between items-center mb-2 border-b border-[rgba(255,255,255,0.05)] pb-2">
         <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2">
           💙 My Favorite Stocks
@@ -57,7 +57,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </button>
       </div>
 
-      {/* 📊 ตาราง */}
+      {/* 📊 ตารางหุ้น */}
       <div className="overflow-x-auto -mt-1">
         <table className="w-full text-[15px] text-center border-collapse">
           <thead>
@@ -83,20 +83,13 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                   onTouchEnd={() => handleTouchEnd(r.symbol)}
                   style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
                 >
-                  <td className="py-3 text-left pl-3 font-semibold text-sky-400 relative">
+                  <td className="py-3 text-left pl-3 font-semibold text-sky-400">
                     <a
                       href={`/analyze/${r.symbol}`}
                       className="hover:text-emerald-400 transition-colors"
                     >
                       {r.symbol}
                     </a>
-                    {/* ปุ่มลบใน desktop */}
-                    <button
-                      onClick={() => removeFavorite(r.symbol)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-red-400 transition"
-                    >
-                      🗑
-                    </button>
                   </td>
                   <td className="py-3 text-right pr-2 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
@@ -141,7 +134,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </table>
       </div>
 
-      {/* 🔍 Modal */}
+      {/* 🔍 กล่องค้นหา */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-6 w-[85%] max-w-sm text-center border border-gray-700">
@@ -174,4 +167,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                    }
+    }
