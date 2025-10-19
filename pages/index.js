@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.11 (Future Discovery Market Edition)
+// ✅ Visionary Stock Screener — V∞.12 (AI Discovery Fixed)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -64,19 +64,33 @@ export default function Home() {
         cache: "no-store",
       });
       const j = await res.json();
-      const list = j.discovered || [];
-      if (list.length === 0) throw new Error("No discovery data");
 
-      setFutureDiscovery(list);
-      addLog(`✅ พบหุ้น ${list.length} ตัวจาก AI`);
-      // ดึงราคาทั้งหมด
-      for (const s of list) await fetchPrice(s.symbol);
+      // ✅ แก้ให้รองรับข้อมูลทั้งแบบ discovered และ aiPicks
+      const list = j.discovered || j.aiPicks || [];
+      if (!Array.isArray(list) || list.length === 0)
+        throw new Error("No discovery data");
+
+      // ✅ แปลงข้อมูลให้อยู่ในรูปเดียวกัน
+      const formatted = list.map((r) => ({
+        symbol: r.symbol,
+        lastClose: r.lastClose || 0,
+        rsi: r.rsi || 0,
+        trend: r.trend || (r.rsi > 55 ? "Uptrend" : "Sideway"),
+        reason: r.reason || "AI-detected potential growth",
+        sentiment: r.sentiment || 0,
+      }));
+
+      setFutureDiscovery(formatted);
+      addLog(`✅ พบหุ้น ${formatted.length} ตัวจาก AI`);
+
+      // ✅ ดึงราคาทั้งหมดเพิ่ม
+      for (const s of formatted) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
     }
   }
 
-  // ✅ เริ่มโหลดข้อมูลตอนเข้า
+  // ✅ โหลดตอนเปิดหน้า
   useEffect(() => {
     loadDiscovery();
   }, []);
@@ -86,7 +100,7 @@ export default function Home() {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ✅ รีเฟรชทุก 2 นาที (เร็วขึ้น)
+  // ✅ รีเฟรชทุก 2 นาที
   useEffect(() => {
     const interval = setInterval(() => {
       addLog("🔁 Auto-refreshing AI discovery...");
@@ -122,7 +136,8 @@ export default function Home() {
                 symbol: r.symbol,
                 price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
                 rsi: favoritePrices[r.symbol]?.rsi || r.rsi || 0,
-                ai:
+                reason: r.reason,
+                signal:
                   favoritePrices[r.symbol]?.signal ||
                   (r.trend === "Uptrend"
                     ? "Buy"
@@ -183,4 +198,4 @@ export default function Home() {
       </nav>
     </main>
   );
-}
+            }
