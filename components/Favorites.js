@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
-export default function Favorites({ data, favorites, setFavorites, fetchPrice }) {
+export default function Favorites({ favorites, setFavorites }) {
+  const [data, setData] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [symbol, setSymbol] = useState("");
   const touchStartX = useRef(null);
@@ -22,6 +23,34 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     RR: "rolls-royce.com",
     API: "agora.io",
   };
+
+  // ✅ ดึงข้อมูลจาก Visionary Eternal
+  const fetchPrice = async (sym) => {
+    try {
+      const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
+      const json = await res.json();
+
+      if (json && !json.error) {
+        setData((prev) => {
+          const existing = prev.find((x) => x.symbol === sym);
+          if (existing) {
+            return prev.map((x) => (x.symbol === sym ? { ...x, ...json } : x));
+          } else {
+            return [...prev, json];
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  };
+
+  // ✅ โหลดข้อมูลหุ้นทั้งหมดเมื่อหน้าเปิด
+  useEffect(() => {
+    if (favorites?.length) {
+      favorites.forEach((sym) => fetchPrice(sym));
+    }
+  }, [favorites]);
 
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
@@ -89,46 +118,47 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
           </thead>
 
           <tbody>
-            {data?.length ? (
-              data.map((r, i) => {
-                const domain = logoMap[r.symbol] || `${r.symbol.toLowerCase()}.com`;
+            {favorites?.length ? (
+              favorites.map((sym, i) => {
+                const r = data.find((x) => x.symbol === sym);
+                const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
                 const logoUrl = `https://logo.clearbit.com/${domain}`;
+
                 return (
                   <tr
-                    key={r.symbol + i}
+                    key={sym + i}
                     className="transition-all border-b border-white/10"
-                    style={{ background: "transparent" }}
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
-                    onTouchEnd={() => handleTouchEnd(r.symbol)}
+                    onTouchEnd={() => handleTouchEnd(sym)}
                   >
                     {/* โลโก้ + Ticker */}
                     <td className="relative py-[12px] pl-[58px] text-left font-semibold text-sky-400">
                       <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent">
                         <img
                           src={logoUrl}
-                          alt={r.symbol}
+                          alt={sym}
                           onError={(e) => (e.target.src = '/default-logo.png')}
                           className="w-9 h-9 object-contain"
                         />
                       </div>
                       <a
-                        href={`/analyze/${r.symbol}`}
+                        href={`/analyze/${sym}`}
                         className="hover:text-emerald-400 transition-colors font-semibold tracking-tight"
                       >
-                        {r.symbol}
+                        {sym}
                       </a>
                     </td>
 
                     {/* ราคา */}
                     <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
-                      {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
+                      {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
                     </td>
 
                     {/* RSI */}
                     <td
                       className={`py-[12px] px-3 text-right font-semibold font-mono text-[15px] ${
-                        typeof r.rsi === "number"
+                        typeof r?.rsi === "number"
                           ? r.rsi > 70
                             ? "text-red-400"
                             : r.rsi < 40
@@ -137,20 +167,20 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                           : "text-gray-400"
                       }`}
                     >
-                      {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
+                      {typeof r?.rsi === "number" ? Math.round(r.rsi) : "-"}
                     </td>
 
-                    {/* AI Signal */}
+                    {/* Trend จาก AI */}
                     <td
                       className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
-                        r.signal === "Buy"
+                        r?.trend === "Uptrend"
                           ? "text-green-400"
-                          : r.signal === "Sell"
+                          : r?.trend === "Downtrend"
                           ? "text-red-400"
                           : "text-yellow-400"
                       }`}
                     >
-                      {r.signal || "-"}
+                      {r?.trend || "-"}
                     </td>
                   </tr>
                 );
