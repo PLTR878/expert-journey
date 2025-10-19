@@ -84,20 +84,18 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 return (
                   <tr
                     key={r.symbol + i}
-                    className={`hover:bg-[#111827]/50 transition-all border-b ${
-                      i === data.length - 1 ? "border-white/5" : "border-white/10"
-                    }`}
+                    className="border-b border-white/10 bg-transparent"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
-                    <td className="relative py-[12px] pl-[54px] text-left font-bold text-sky-400">
-                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden bg-[#1e293b]/60 shadow-sm border border-white/10">
+                    <td className="relative py-[12px] pl-[54px] text-left font-bold text-sky-400 bg-transparent">
+                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden bg-transparent">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
-                          onError={(e) => (e.target.src = "/default-logo.png")}
+                          onError={(e) => (e.target.src = '/default-logo.png')}
                           className="w-8 h-8 object-contain"
                         />
                       </div>
@@ -109,44 +107,41 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       </a>
                     </td>
 
-                    {/* ราคา */}
-                    <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
-                      {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
+                    <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px] bg-transparent">
+                      {r.price != null ? `$${Number(r.price).toFixed(2)}` : '-'}
                     </td>
 
-                    {/* RSI */}
                     <td
-                      className={`py-[12px] px-3 text-right font-semibold font-mono text-[15px] ${
-                        typeof r.rsi === "number"
+                      className={`py-[12px] px-3 text-right font-semibold font-mono text-[15px] bg-transparent ${
+                        typeof r.rsi === 'number'
                           ? r.rsi > 70
-                            ? "text-red-400"
+                            ? 'text-red-400'
                             : r.rsi < 40
-                            ? "text-blue-400"
-                            : "text-emerald-400"
-                          : "text-gray-400"
+                            ? 'text-blue-400'
+                            : 'text-emerald-400'
+                          : 'text-gray-400'
                       }`}
                     >
-                      {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
+                      {typeof r.rsi === 'number' ? Math.round(r.rsi) : '-'}
                     </td>
 
-                    {/* Signal */}
                     <td
-                      className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
-                        r.signal === "Buy"
-                          ? "text-green-400"
-                          : r.signal === "Sell"
-                          ? "text-red-400"
-                          : "text-yellow-400"
+                      className={`py-[12px] px-3 text-right font-semibold text-[15px] bg-transparent ${
+                        r.signal === 'Buy'
+                          ? 'text-green-400'
+                          : r.signal === 'Sell'
+                          ? 'text-red-400'
+                          : 'text-yellow-400'
                       }`}
                     >
-                      {r.signal || "-"}
+                      {r.signal || '-'}
                     </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan="4" className="py-4 text-gray-500 text-center italic">
+                <td colSpan="4" className="py-4 text-gray-500 text-center italic bg-transparent">
                   No favorites yet. Add one by searching 🔍
                 </td>
               </tr>
@@ -190,4 +185,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-        }
+                       }
