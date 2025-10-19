@@ -66,17 +66,17 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[15px] text-center border-separate border-spacing-0 table-fixed">
-          <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
-            <tr className="border-b border-white/10">
-              <th className="py-[6px] text-left pl-6 w-[38%] tracking-tight">TICKER</th>
-              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
-              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
-              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
+        <table className="w-full text-[15px] text-center border-separate border-spacing-0 table-fixed bg-transparent">
+          <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold bg-transparent">
+            <tr className="border-b border-white/10 bg-transparent">
+              <th className="py-[6px] text-left pl-6 w-[38%] tracking-tight bg-transparent">TICKER</th>
+              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight bg-transparent">MARKET</th>
+              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight bg-transparent">RSI</th>
+              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight bg-transparent">AI</th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="bg-transparent">
             {data?.length ? (
               data.map((r, i) => {
                 const domain = logoMap[r.symbol] || `${r.symbol.toLowerCase()}.com`;
@@ -84,7 +84,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 return (
                   <tr
                     key={r.symbol + i}
-                    className="border-b border-white/10 bg-transparent"
+                    className="border-b border-white/10 bg-transparent" // ❌ ไม่มี hover
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
@@ -107,10 +107,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       </a>
                     </td>
 
+                    {/* ราคา */}
                     <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px] bg-transparent">
                       {r.price != null ? `$${Number(r.price).toFixed(2)}` : '-'}
                     </td>
 
+                    {/* RSI */}
                     <td
                       className={`py-[12px] px-3 text-right font-semibold font-mono text-[15px] bg-transparent ${
                         typeof r.rsi === 'number'
@@ -125,6 +127,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       {typeof r.rsi === 'number' ? Math.round(r.rsi) : '-'}
                     </td>
 
+                    {/* Signal */}
                     <td
                       className={`py-[12px] px-3 text-right font-semibold text-[15px] bg-transparent ${
                         r.signal === 'Buy'
@@ -185,4 +188,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                       }
+            }
