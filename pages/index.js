@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.10 (Future Discovery Market Edition)
+// ✅ Visionary Stock Screener — V∞.11 (Future Discovery Market Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -12,32 +12,33 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
 
   const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-30), `${new Date().toLocaleTimeString()} ${msg}`]);
+    setLogs((p) => [...p.slice(-40), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // ===== FAVORITES =====
+  // ✅ โหลด Favorites จาก LocalStorage
   useEffect(() => {
-    const s = localStorage.getItem("favorites");
-    if (s) setFavorites(JSON.parse(s));
+    const saved = localStorage.getItem("favorites");
+    if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
+  // ✅ Toggle Favorite
   const toggleFavorite = async (sym) => {
-    setFavorites((p) =>
-      p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
+    setFavorites((prev) =>
+      prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
     );
     await fetchPrice(sym);
   };
 
-  // ✅ ดึงราคาหุ้นรายตัวจาก API
+  // ✅ ดึงราคาหุ้นรายตัว
   async function fetchPrice(sym) {
     try {
-      const r = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
-      const j = await r.json();
-      setFavoritePrices((p) => ({
-        ...p,
+      const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
+      const j = await res.json();
+      setFavoritePrices((prev) => ({
+        ...prev,
         [sym]: {
           symbol: sym,
           price: j.lastClose || 0,
@@ -51,50 +52,53 @@ export default function Home() {
         },
       }));
     } catch (err) {
-      console.error("Fetch error:", sym, err.message);
+      addLog(`❌ Fetch error ${sym}: ${err.message}`);
     }
   }
 
-  // ✅ โหลดข้อมูล “หุ้นต้นน้ำ อนาคตไกล”
+  // ✅ โหลดข้อมูล "หุ้นต้นน้ำ อนาคตไกล"
   async function loadDiscovery() {
     try {
-      addLog("🌋 Discovering future leaders...");
+      addLog("🌋 AI กำลังค้นหาหุ้นต้นน้ำ...");
       const res = await fetch(`/api/visionary-eternal?type=ai-discovery`, {
         cache: "no-store",
       });
       const j = await res.json();
-      setFutureDiscovery(j.discovered || []);
-      addLog("✅ Future Discovery loaded");
+      const list = j.discovered || [];
+      if (list.length === 0) throw new Error("No discovery data");
 
-      for (const s of j.discovered || []) await fetchPrice(s.symbol);
+      setFutureDiscovery(list);
+      addLog(`✅ พบหุ้น ${list.length} ตัวจาก AI`);
+      // ดึงราคาทั้งหมด
+      for (const s of list) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
     }
   }
 
+  // ✅ เริ่มโหลดข้อมูลตอนเข้า
   useEffect(() => {
     loadDiscovery();
   }, []);
 
+  // ✅ ดึงราคาหุ้นใน Favorites
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ✅ รีเฟรชทุก 1 นาที
+  // ✅ รีเฟรชทุก 2 นาที (เร็วขึ้น)
   useEffect(() => {
-    const refresh = async () => {
-      addLog("🔁 Refreshing prices...");
-      for (const s of futureDiscovery.map((x) => x.symbol)) await fetchPrice(s);
-      await loadDiscovery();
-    };
-    const interval = setInterval(refresh, 60000);
+    const interval = setInterval(() => {
+      addLog("🔁 Auto-refreshing AI discovery...");
+      loadDiscovery();
+    }, 120000);
     return () => clearInterval(interval);
-  }, [futureDiscovery]);
+  }, []);
 
   // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      <header className="px-3 py-0 h-[4px] bg-[#0b1220]" />
+      <header className="px-3 py-1 h-[4px] bg-[#0b1220]" />
 
       <div className="max-w-6xl mx-auto px-3 pt-2">
         {/* FAVORITES */}
@@ -109,12 +113,23 @@ export default function Home() {
           </section>
         )}
 
-        {/* หุ้นต้นน้ำ อนาคตไกล */}
+        {/* 🌋 หุ้นต้นน้ำ อนาคตไกล */}
         {active === "market" && (
           <>
             <MarketSection
-              title="🌋 หุ้นต้นน้ำ อนาคตไกล (Future Discovery)"
-              rows={futureDiscovery}
+              title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Future Discovery)"
+              rows={futureDiscovery.map((r) => ({
+                symbol: r.symbol,
+                price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
+                rsi: favoritePrices[r.symbol]?.rsi || r.rsi || 0,
+                ai:
+                  favoritePrices[r.symbol]?.signal ||
+                  (r.trend === "Uptrend"
+                    ? "Buy"
+                    : r.trend === "Downtrend"
+                    ? "Sell"
+                    : "Hold"),
+              }))}
               favorites={favorites}
               toggleFavorite={toggleFavorite}
               favoritePrices={favoritePrices}
@@ -123,7 +138,7 @@ export default function Home() {
         )}
 
         {/* 🧠 Logs */}
-        <section className="mt-5">
+        <section className="mt-5 mb-10">
           <button
             onClick={() => setShowLogs((p) => !p)}
             className="flex items-center gap-2 bg-[#141b2d] border border-white/10 px-2 py-1 rounded-md text-[11px] text-emerald-400 hover:bg-emerald-500/10 transition-all"
@@ -168,4 +183,4 @@ export default function Home() {
       </nav>
     </main>
   );
-          }
+}
