@@ -53,9 +53,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   };
 
   return (
-    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+    <section className="w-full px-2 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           💙 My Favorite Stocks
         </h2>
@@ -73,12 +73,18 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         <table className="w-full text-[15px] text-center border-separate border-spacing-0">
           <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
             <tr>
-              <th className="py-[6px] text-left pl-[68px] w-[38%] tracking-tight border-b border-white/10">
+              <th className="py-[6px] text-left pl-[62px] w-[38%] tracking-tight border-b border-white/10">
                 TICKER
               </th>
-              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">PRICE</th>
-              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
-              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
+              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight border-b border-white/10">
+                PRICE
+              </th>
+              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight border-b border-white/10">
+                RSI
+              </th>
+              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight border-b border-white/10">
+                AI
+              </th>
             </tr>
           </thead>
 
@@ -90,16 +96,15 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 return (
                   <tr
                     key={r.symbol + i}
-                    className="transition-all"
+                    className="transition-all border-b border-white/10"
                     style={{ background: "transparent" }}
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
-                    {/* โลโก้และชื่อหุ้น */}
-                    <td className="relative py-[13px] pl-[70px] text-left font-semibold text-sky-400 border-b border-white/10">
-                      {/* โลโก้ หุ้น */}
-                      <div className="absolute left-[25px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden shadow-sm bg-transparent">
+                    {/* โลโก้ + Ticker */}
+                    <td className="relative py-[12px] pl-[58px] text-left font-semibold text-sky-400">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
@@ -107,8 +112,6 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                           className="w-9 h-9 object-contain"
                         />
                       </div>
-
-                      {/* ชื่อหุ้น */}
                       <a
                         href={`/analyze/${r.symbol}`}
                         className="hover:text-emerald-400 transition-colors font-semibold tracking-tight"
@@ -118,13 +121,13 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     </td>
 
                     {/* ราคา */}
-                    <td className="py-[13px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
+                    <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
                       {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                     </td>
 
                     {/* RSI */}
                     <td
-                      className={`py-[13px] px-3 text-right font-semibold font-mono text-[15px] ${
+                      className={`py-[12px] px-3 text-right font-semibold font-mono text-[15px] ${
                         typeof r.rsi === "number"
                           ? r.rsi > 70
                             ? "text-red-400"
@@ -139,7 +142,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
                     {/* AI Signal */}
                     <td
-                      className={`py-[13px] px-3 text-right font-semibold text-[15px] ${
+                      className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
                         r.signal === "Buy"
                           ? "text-green-400"
                           : r.signal === "Sell"
