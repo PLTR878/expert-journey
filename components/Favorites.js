@@ -40,31 +40,29 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
   return (
     <section className="w-full px-3 pt-2">
-      {/* 🩵 Header */}
-      <div className="flex justify-between items-center mb-3 border-b border-[rgba(255,255,255,0.05)] pb-2">
-        <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2 tracking-wide">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-2 pb-2">
+        <h2 className="text-[17px] font-bold text-emerald-400 tracking-tight">
           💙 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
-          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-1.5 shadow-sm bg-[#0f172a]/70 hover:bg-[#162032]"
+          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 
+                     border border-gray-700 rounded-md px-3 py-1.5 bg-[#0f172a]/70 hover:bg-[#162032]"
         >
           🔍 Search
         </button>
       </div>
 
       {/* 📊 ตาราง */}
-      <div className="overflow-x-auto -mt-1 rounded-lg border border-white/5 shadow-inner">
+      <div className="overflow-x-auto -mt-1">
         <table className="w-full text-[15px] text-center border-collapse">
-          <thead className="bg-[#0d1525]/70 backdrop-blur-sm">
-            <tr
-              className="text-[#a1a1aa] text-[12px] uppercase select-none"
-              style={{ borderBottom: "0.3px solid rgba(255,255,255,0.05)" }}
-            >
-              <th className="py-2 font-medium text-left pl-2 w-[34%]">SYMBOL</th>
-              <th className="py-2 font-medium text-right pr-4 w-[21%]">PRICE</th>
-              <th className="py-2 font-medium text-right pr-3 w-[22%]">RSI</th>
-              <th className="py-2 font-medium text-right pr-3 w-[23%]">AI SIG</th>
+          <thead className="text-[#9ca3af] text-[12px] uppercase select-none font-semibold">
+            <tr className="border-b border-white/5">
+              <th className="py-2 text-left pl-2 w-[34%] tracking-tight">SYMBOL</th>
+              <th className="py-2 text-right pr-4 w-[21%] tracking-tight">PRICE</th>
+              <th className="py-2 text-right pr-3 w-[22%] tracking-tight">RSI</th>
+              <th className="py-2 text-right pr-3 w-[23%] tracking-tight">AI SIG</th>
             </tr>
           </thead>
 
@@ -73,25 +71,21 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               data.map((r, i) => (
                 <tr
                   key={r.symbol + i}
-                  className="transition-all hover:bg-[#151821]/70 hover:shadow-[0_0_6px_rgba(16,185,129,0.25)]"
+                  className="hover:bg-[#151821]/60 transition-all border-b border-white/5"
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={() => handleTouchEnd(r.symbol)}
-                  style={{ borderBottom: "0.3px solid rgba(255,255,255,0.05)" }}
                 >
-                  <td className="py-3 text-left pl-2 font-semibold text-sky-400">
-                    <a
-                      href={`/analyze/${r.symbol}`}
-                      className="hover:text-emerald-400 transition-all drop-shadow-[0_0_3px_rgba(16,185,129,0.4)]"
-                    >
+                  <td className="py-3 text-left pl-2 font-bold text-sky-400 tracking-tight">
+                    <a href={`/analyze/${r.symbol}`} className="hover:text-emerald-400 transition-colors">
                       {r.symbol}
                     </a>
                   </td>
-                  <td className="py-3 text-right pr-4 font-mono text-gray-100">
+                  <td className="py-3 text-right pr-4 font-bold text-gray-100 font-mono tracking-tight">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
                   <td
-                    className={`py-3 text-right pr-3 font-mono ${
+                    className={`py-3 text-right pr-3 font-bold font-mono tracking-tight ${
                       typeof r.rsi === "number"
                         ? r.rsi > 70
                           ? "text-red-400"
@@ -104,7 +98,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
                   <td
-                    className={`py-3 text-right pr-3 font-semibold ${
+                    className={`py-3 text-right pr-3 font-bold tracking-tight ${
                       r.signal === "Buy"
                         ? "text-green-400"
                         : r.signal === "Sell"
@@ -127,19 +121,13 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </table>
       </div>
 
-      {/* ✨ เส้น Gradient */}
-      <div className="h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent mt-3 mb-5"></div>
-
       {/* 🔍 Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
-          {/* 💎 กล่องค้นหาแบบ Glow */}
-          <div className="bg-[#111827]/95 rounded-2xl shadow-[0_0_25px_rgba(16,185,129,0.25)] 
-                          p-5 w-[80%] max-w-xs text-center border border-emerald-400/30 -translate-y-16">
-            <h3 className="text-lg text-emerald-400 font-semibold mb-4 drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]">
+          <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-16">
+            <h3 className="text-lg text-emerald-400 font-bold mb-4 tracking-tight">
               Search Stock
             </h3>
-
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-emerald-400">🔎</span>
               <input
@@ -147,24 +135,20 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
                 placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
-                className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-emerald-400/40 
-                           text-gray-100 rounded-lg py-2 text-[14px] placeholder-gray-400 
-                           focus:outline-none focus:ring-2 focus:ring-emerald-400/70 
-                           focus:shadow-[0_0_12px_rgba(16,185,129,0.5)] transition-all mb-4"
+                className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-2 
+                           focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] tracking-tight font-bold"
               />
             </div>
-
             <div className="flex justify-around">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm"
+                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm tracking-tight"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 
-                           text-white font-semibold text-sm shadow-md shadow-emerald-500/20"
+                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-sm tracking-tight"
               >
                 Add
               </button>
@@ -174,4 +158,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-              }
+                                                   }
