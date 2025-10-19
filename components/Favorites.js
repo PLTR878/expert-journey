@@ -6,7 +6,6 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ เพิ่มหุ้น
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -20,14 +19,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
-  // ✅ ปัดซ้ายเพื่อลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -59,10 +56,10 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         <table className="w-full text-[15px] text-center border-collapse">
           <thead className="text-[#9ca3af] text-[12px] uppercase select-none font-semibold">
             <tr className="border-b border-white/5">
-              <th className="py-2 text-left pl-2 w-[34%] tracking-tight">SYMBOL</th>
-              <th className="py-2 text-right pr-4 w-[21%] tracking-tight">PRICE</th>
+              <th className="py-2 text-left pl-2 w-[34%] tracking-tight">TICKER</th>
+              <th className="py-2 text-right pr-4 w-[21%] tracking-tight">$</th>
               <th className="py-2 text-right pr-3 w-[22%] tracking-tight">RSI</th>
-              <th className="py-2 text-right pr-3 w-[23%] tracking-tight">AI SIG</th>
+              <th className="py-2 text-right pr-3 w-[23%] tracking-tight">AI</th>
             </tr>
           </thead>
 
@@ -158,4 +155,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                                                   }
+        }
