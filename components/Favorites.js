@@ -7,7 +7,7 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ Domain map สำหรับโลโก้หลัก
+  // ✅ โลโก้หลัก
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -33,9 +33,10 @@ export default function Favorites({ favorites, setFavorites }) {
     UNH: "uhc.com",
     EZGO: "ezgoev.com",
     QMCO: "quantum.com",
+    LAC: "lithiumamericas.com",
   };
 
-  // ✅ Map ชื่อบริษัท
+  // ✅ ชื่อบริษัท
   const companyMap = {
     NVDA: "NVIDIA Corp",
     AAPL: "Apple Inc.",
@@ -61,8 +62,10 @@ export default function Favorites({ favorites, setFavorites }) {
     UNH: "UnitedHealth Group",
     EZGO: "EZGO Technologies",
     QMCO: "Quantum Corp",
+    LAC: "Lithium Americas",
   };
 
+  // ✅ ดึงข้อมูลแต่ละหุ้น
   const fetchPrice = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
@@ -73,7 +76,6 @@ export default function Favorites({ favorites, setFavorites }) {
         else if (json.trend === "Downtrend") signal = "Sell";
         const company = json.companyName || companyMap[sym] || sym;
         const item = { ...json, signal, companyName: company };
-
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
           if (existing) return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
@@ -119,123 +121,116 @@ export default function Favorites({ favorites, setFavorites }) {
   };
 
   return (
-    <section className="w-full px-2 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center mb-3 px-2">
+      <div className="flex justify-between items-center mb-3 px-1">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🔮 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
-          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 
-                     border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
+          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
         >
           ➕ Search
         </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto mt-1">
-        <table className="w-full text-[15px] text-center border-separate border-spacing-0">
-          <tbody>
-            {favorites?.length ? (
-              favorites.map((sym, i) => {
-                const r = data.find((x) => x.symbol === sym);
-                const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
-                const companyName = r?.companyName || companyMap[sym] || "";
+      {/* ✅ Flex Layout แทน Table */}
+      <div className="flex flex-col divide-y divide-gray-800/50">
+        {favorites?.length ? (
+          favorites.map((sym, i) => {
+            const r = data.find((x) => x.symbol === sym);
+            const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
+            const companyName = r?.companyName || companyMap[sym] || "";
 
-                return (
-                  <tr
-                    key={sym + i}
-                    className="transition-all hover:bg-[#111827]/40 border-b border-gray-800/40"
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={() => handleTouchEnd(sym)}
-                  >
-                    {/* โลโก้ + ชื่อหุ้น */}
-                    <td className="relative py-[13px] pl-[58px] text-left">
-                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full border border-gray-700 bg-gradient-to-br from-[#1e293b] to-[#0f172a] flex items-center justify-center overflow-hidden">
-                        <img
-                          src={`https://logo.clearbit.com/${domain}`}
-                          alt={sym}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = `https://companieslogo.com/img/orig/${sym.toUpperCase()}_BIG.png`;
-                            setTimeout(() => {
-                              if (e.target.naturalWidth === 0 || e.target.naturalHeight === 0) {
-                                e.target.style.display = "none";
-                                const parent = e.target.parentNode;
-                                if (parent && !parent.querySelector(".fallback-logo")) {
-                                  const span = document.createElement("span");
-                                  span.className =
-                                    "fallback-logo text-emerald-400 font-bold text-[13px]";
-                                  span.textContent = sym[0];
-                                  parent.appendChild(span);
-                                }
-                              }
-                            }, 800);
-                          }}
-                          className="w-9 h-9 object-contain transition-opacity duration-700 ease-in-out opacity-0"
-                          onLoad={(e) => (e.target.style.opacity = 1)}
-                        />
-                      </div>
-                      <div className="flex flex-col leading-tight">
-                        <a
-                          href={`/analyze/${sym}`}
-                          className="text-white hover:text-emerald-400 font-semibold tracking-tight text-[15px]"
-                        >
-                          {sym}
-                        </a>
-                        <span className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
-                          {companyName}
-                        </span>
-                      </div>
-                    </td>
+            return (
+              <div
+                key={sym + i}
+                className="flex items-center justify-between py-[12px] px-2 hover:bg-[#111827]/40 transition-all"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={() => handleTouchEnd(sym)}
+              >
+                {/* ซ้าย: โลโก้ + ชื่อ */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-gradient-to-br from-[#1e293b] to-[#0f172a] flex items-center justify-center overflow-hidden">
+                    <img
+                      src={`https://logo.clearbit.com/${domain}`}
+                      alt={sym}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://companieslogo.com/img/orig/${sym.toUpperCase()}_BIG.png`;
+                        setTimeout(() => {
+                          if (e.target.naturalWidth === 0 || e.target.naturalHeight === 0) {
+                            e.target.style.display = "none";
+                            const parent = e.target.parentNode;
+                            if (parent && !parent.querySelector(".fallback-logo")) {
+                              const span = document.createElement("span");
+                              span.className = "fallback-logo text-emerald-400 font-bold text-[13px]";
+                              span.textContent = sym[0];
+                              parent.appendChild(span);
+                            }
+                          }
+                        }, 800);
+                      }}
+                      className="w-9 h-9 object-contain transition-opacity duration-700 ease-in-out opacity-0"
+                      onLoad={(e) => (e.target.style.opacity = 1)}
+                    />
+                  </div>
 
-                    {/* ราคา */}
-                    <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
-                      {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
-                    </td>
-
-                    {/* RSI */}
-                    <td
-                      className={`py-[12px] px-3 text-right font-semibold font-mono text-[15px] ${
-                        typeof r?.rsi === "number"
-                          ? r.rsi > 70
-                            ? "text-red-400"
-                            : r.rsi < 40
-                            ? "text-blue-400"
-                            : "text-emerald-400"
-                          : "text-gray-400"
-                      }`}
+                  <div>
+                    <a
+                      href={`/analyze/${sym}`}
+                      className="text-white hover:text-emerald-400 font-semibold text-[15px]"
                     >
-                      {typeof r?.rsi === "number" ? Math.round(r.rsi) : "-"}
-                    </td>
+                      {sym}
+                    </a>
+                    <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                      {companyName}
+                    </div>
+                  </div>
+                </div>
 
-                    {/* สัญญาณ AI */}
-                    <td
-                      className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
-                        r?.signal === "Buy"
-                          ? "text-green-400"
-                          : r?.signal === "Sell"
+                {/* ขวา: ราคา / RSI / สัญญาณ */}
+                <div className="flex items-center space-x-3 font-mono">
+                  <span className="text-gray-100 text-[14px] font-semibold">
+                    {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
+                  </span>
+
+                  <span
+                    className={`text-[14px] font-semibold ${
+                      typeof r?.rsi === "number"
+                        ? r.rsi > 70
                           ? "text-red-400"
-                          : "text-yellow-400"
-                      }`}
-                    >
-                      {r?.signal || "-"}
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan="4" className="py-4 text-gray-500 text-center italic">
-                  No favorites yet. Add one by searching ➕
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                          : r.rsi < 40
+                          ? "text-blue-400"
+                          : "text-emerald-400"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {typeof r?.rsi === "number" ? Math.round(r.rsi) : "-"}
+                  </span>
+
+                  <span
+                    className={`text-[14px] font-bold ${
+                      r?.signal === "Buy"
+                        ? "text-green-400"
+                        : r?.signal === "Sell"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {r?.signal || "-"}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="py-6 text-center text-gray-500 italic">
+            No favorites yet. Add one by searching ➕
+          </div>
+        )}
       </div>
 
       {/* Search Modal */}
@@ -273,4 +268,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-      }
+                        }
