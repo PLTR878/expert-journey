@@ -7,7 +7,6 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หุ้น (Smart Logo Engine)
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -16,46 +15,44 @@ export default function Favorites({ favorites, setFavorites }) {
     AMZN: "amazon.com",
     META: "meta.com",
     GOOG: "google.com",
-    INTC: "intel.com",
     AMD: "amd.com",
+    INTC: "intel.com",
     PLTR: "palantir.com",
     IREN: "irisenergy.co",
     RXRX: "recursion.com",
     RR: "rolls-royce.com",
-    API: "agora.io",
     AEHR: "aehr.com",
-    NVO: "novonordisk.com",
-    QUBT: "quantumcomputinginc.com",
     SLDP: "solidpowerbattery.com",
-    LAES: "sequelholdings.com",
-
-    // 🧠 เพิ่มโลโก้ fallback สำหรับหุ้นที่ Clearbit ไม่มี
-    NIO: "https://companieslogo.com/img/orig/NIO_BIG.png",
-    AI: "https://companieslogo.com/img/orig/AI_BIG-0c574b44.png",
-    BBAI: "https://companieslogo.com/img/orig/BBAI_BIG-1efdab34.png",
-    SOFI: "https://companieslogo.com/img/orig/SOFI-0183b6ce.png",
-    UPST: "https://companieslogo.com/img/orig/UPST-3d37b1f0.png",
-    PATH: "https://companieslogo.com/img/orig/PATH-8b7b37d6.png",
-    RIVN: "https://companieslogo.com/img/orig/RIVN-01b0f4e0.png",
-    CHPT: "https://companieslogo.com/img/orig/CHPT_BIG.png",
-    BEEM: "https://companieslogo.com/img/orig/BEEM_BIG.png",
+    NRGV: "energystorage.com",
+    BBAI: "https://companieslogo.com/img/orig/BBAI_BIG.png",
+    AMPX: "https://companieslogo.com/img/orig/AMPX_BIG.png",
+    ABAT: "https://companieslogo.com/img/orig/ABAT_BIG.png",
     GWH: "https://companieslogo.com/img/orig/GWH_BIG.png",
-    ENVX: "https://companieslogo.com/img/orig/ENVX_BIG.png",
-    FREY: "https://companieslogo.com/img/orig/FREY_BIG.png",
-    QS: "https://companieslogo.com/img/orig/QS_BIG.png",
-    ENPH: "https://companieslogo.com/img/orig/ENPH_BIG.png",
-    RUN: "https://companieslogo.com/img/orig/RUN_BIG.png",
-    FSLR: "https://companieslogo.com/img/orig/FSLR_BIG.png",
-    BLNK: "https://companieslogo.com/img/orig/BLNK_BIG.png",
-    STEM: "https://companieslogo.com/img/orig/STEM_BIG.png",
-    SES: "https://companieslogo.com/img/orig/SES_BIG.png",
-    LWLG: "https://companieslogo.com/img/orig/LWLG_BIG.png",
-    WOLF: "https://companieslogo.com/img/orig/WOLF_BIG.png",
-    LICY: "https://companieslogo.com/img/orig/LICY_BIG.png",
-    NRGV: "https://companieslogo.com/img/orig/NRGV_BIG.png",
   };
 
-  // ✅ ดึงข้อมูลจาก Visionary Eternal API (AI Core)
+  const companyMap = {
+    NVDA: "NVIDIA Corp",
+    AAPL: "Apple Inc.",
+    TSLA: "Tesla Inc.",
+    MSFT: "Microsoft Corp",
+    AMZN: "Amazon.com Inc.",
+    META: "Meta Platforms Inc.",
+    GOOG: "Alphabet Inc.",
+    AMD: "Advanced Micro Devices",
+    INTC: "Intel Corp",
+    PLTR: "Palantir Technologies",
+    IREN: "Iris Energy Ltd",
+    RXRX: "Recursion Pharmaceuticals",
+    RR: "Rolls-Royce Holdings",
+    AEHR: "Aehr Test Systems",
+    SLDP: "Solid Power Inc",
+    NRGV: "Energy Vault Holdings",
+    BBAI: "BigBear.ai Holdings",
+    AMPX: "Amprius Technologies",
+    ABAT: "American Battery Tech",
+    GWH: "ESS Tech Inc",
+  };
+
   const fetchPrice = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
@@ -66,7 +63,8 @@ export default function Favorites({ favorites, setFavorites }) {
         if (json.trend === "Uptrend") signal = "Buy";
         else if (json.trend === "Downtrend") signal = "Sell";
 
-        const item = { ...json, signal };
+        const company = json.companyName || companyMap[sym] || sym;
+        const item = { ...json, signal, companyName: company };
 
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
@@ -82,12 +80,10 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลทั้งหมดจากรายการโปรด
   useEffect(() => {
     if (favorites?.length) favorites.forEach((sym) => fetchPrice(sym));
   }, [favorites]);
 
-  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -101,7 +97,6 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น (ปัดซ้าย)
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -120,7 +115,6 @@ export default function Favorites({ favorites, setFavorites }) {
 
   return (
     <section className="w-full px-2 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
-      {/* Header */}
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🔮 My Favorite Stocks
@@ -134,17 +128,16 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto mt-1">
         <table className="w-full text-[15px] text-center border-separate border-spacing-0">
           <tbody>
             {favorites?.length ? (
               favorites.map((sym, i) => {
                 const r = data.find((x) => x.symbol === sym);
-                // ✅ ใช้ระบบโลโก้อัจฉริยะ
                 const logoSrc = logoMap[sym]?.startsWith("http")
                   ? logoMap[sym]
                   : `https://logo.clearbit.com/${logoMap[sym] || `${sym.toLowerCase()}.com`}`;
+                const companyName = r?.companyName || companyMap[sym] || "";
 
                 return (
                   <tr
@@ -154,9 +147,9 @@ export default function Favorites({ favorites, setFavorites }) {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(sym)}
                   >
-                    {/* โลโก้ + ชื่อหุ้น */}
-                    <td className="relative py-[13px] pl-[58px] text-left font-semibold text-sky-400">
-                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent">
+                    {/* โลโก้ + ชื่อหุ้น + ชื่อบริษัท */}
+                    <td className="relative py-[13px] pl-[58px] text-left">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden">
                         <img
                           src={logoSrc}
                           alt={sym}
@@ -168,12 +161,17 @@ export default function Favorites({ favorites, setFavorites }) {
                           onLoad={(e) => (e.target.style.opacity = 1)}
                         />
                       </div>
-                      <a
-                        href={`/analyze/${sym}`}
-                        className="hover:text-emerald-400 transition-colors font-semibold tracking-tight"
-                      >
-                        {sym}
-                      </a>
+                      <div className="flex flex-col leading-tight">
+                        <a
+                          href={`/analyze/${sym}`}
+                          className="text-white hover:text-emerald-400 font-semibold tracking-tight text-[15px]"
+                        >
+                          {sym}
+                        </a>
+                        <span className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                          {companyName}
+                        </span>
+                      </div>
                     </td>
 
                     {/* ราคา */}
@@ -222,7 +220,6 @@ export default function Favorites({ favorites, setFavorites }) {
         </table>
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
@@ -233,7 +230,7 @@ export default function Favorites({ favorites, setFavorites }) {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
@@ -257,4 +254,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-                   }
+    }
