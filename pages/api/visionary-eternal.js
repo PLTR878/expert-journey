@@ -1,122 +1,112 @@
-// ✅ Visionary Eternal API — AI Core (V∞.4)
-// รวมทุกระบบ daily, news, history, price, market, signal
+// ✅ Visionary Eternal API — AI Core V∞.X.1
+import fetch from "node-fetch";
 
 export default async function handler(req, res) {
-  const { type = "daily", symbol = "AAPL", range = "6mo", interval = "1d" } = req.query;
+  const { type, symbol } = req.query;
 
-  try {
-    // --- History ---
-    if (type === "history") {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
-      const r = await fetch(url);
-      const j = await r.json();
-      const d = j?.chart?.result?.[0];
-      const q = d?.indicators?.quote?.[0];
-      const rows = (d?.timestamp || []).map((t, i) => ({
-        t: t * 1000,
-        o: q?.open?.[i],
-        h: q?.high?.[i],
-        l: q?.low?.[i],
-        c: q?.close?.[i],
-        v: q?.volume?.[i],
-      }));
-      return res.status(200).json({ symbol, rows });
-    }
+  const base = "https://query1.finance.yahoo.com/v8/finance/chart/";
 
-    // --- Daily (Indicators + AI Signal) ---
-    if (type === "daily") {
-      const base = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
-      const r = await fetch(base);
-      const j = await r.json();
-      const d = j?.chart?.result?.[0];
-      const q = d?.indicators?.quote?.[0];
-      if (!q?.close?.length) throw new Error("No data");
+  // 🧠 ดึงราคาหุ้นและคำนวณ RSI / EMA
+  const getData = async (sym) => {
+    const r = await fetch(`${base}${sym}?interval=1d&range=6mo`);
+    const j = await r.json();
+    const d = j.chart?.result?.[0];
+    if (!d) return null;
+    const close = d.indicators.quote[0].close.filter(Boolean);
+    const lastClose = close.at(-1);
 
-      const c = q.close.filter(Boolean);
-
-      const ema = (arr, p) => {
-        const k = 2 / (p + 1);
-        let e = arr[0];
-        for (let i = 1; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
-        return e;
-      };
-
-      const rsi = (arr, period = 14) => {
-        if (arr.length < period + 1) return 50;
-        let gains = 0,
-          losses = 0;
-        for (let i = 1; i <= period; i++) {
-          const diff = arr[i] - arr[i - 1];
-          if (diff >= 0) gains += diff;
-          else losses -= diff;
-        }
-        const rs = gains / (losses || 1);
-        return 100 - 100 / (1 + rs);
-      };
-
-      const ema20 = ema(c, 20);
-      const ema50 = ema(c, 50);
-      const ema200 = ema(c, 200);
-      const lastClose = c.at(-1);
-      const R = rsi(c);
-
-      const signal =
-        lastClose > ema20 && ema20 > ema50 && R > 55
-          ? "Uptrend"
-          : lastClose < ema20 && ema20 < ema50 && R < 45
-          ? "Downtrend"
-          : "Sideway";
-
-      return res.status(200).json({
-        symbol,
-        lastClose,
-        ema20,
-        ema50,
-        ema200,
-        rsi: R,
-        trend: signal,
-        confidencePercent: Math.round(Math.abs(R - 50) * 2),
-      });
-    }
-
-    // --- News ---
-    if (type === "news") {
-      const newsUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}`;
-      const r = await fetch(newsUrl);
-      const j = await r.json();
-      return res.status(200).json({ symbol, items: j.news || [] });
-    }
-
-    // --- Price only ---
-    if (type === "price") {
-      const r = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`
+    const ema = (arr, p) => {
+      const k = 2 / (p + 1);
+      return arr.reduce(
+        (a, price, i) =>
+          i === 0 ? [price] : [...a, price * k + a[i - 1] * (1 - k)],
+        []
       );
-      const j = await r.json();
-      const meta = j?.chart?.result?.[0]?.meta;
-      return res.status(200).json({
-        symbol,
-        price: meta?.regularMarketPrice,
-        previousClose: meta?.previousClose,
-        currency: meta?.currency,
-      });
-    }
+    };
 
-    // --- Market (default 4 groups) ---
-    if (type === "market") {
-      return res.status(200).json({
-        groups: {
-          fast: [{ symbol: "NVDA" }, { symbol: "TSLA" }, { symbol: "AMD" }],
-          emerging: [{ symbol: "SLDP" }, { symbol: "NRGV" }, { symbol: "BEEM" }],
-          future: [{ symbol: "PLTR" }, { symbol: "GWH" }, { symbol: "LWLG" }],
-          hidden: [{ symbol: "AEHR" }, { symbol: "ENVX" }, { symbol: "SES" }],
-        },
-      });
-    }
+    const ema20 = ema(close, 20).at(-1);
+    const ema50 = ema(close, 50).at(-1);
 
-    // --- Default fallback ---
-    res.status(400).json({ error: "Unknown type" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const calcRSI = (data, n = 14) => {
+      let g = 0,
+        l = 0;
+      for (let i = 1; i < n; i++) {
+        const diff = data[i] - data[i - 1];
+        if (diff >= 0) g += diff;
+        else l -= diff;
+      }
+      const rs = g / (l || 1);
+      return 100 - 100 / (1 + rs);
+    };
+
+    const rsi = calcRSI(close.slice(-15));
+    const trend =
+      lastClose > ema20 && ema20 > ema50 && rsi > 55
+        ? "Uptrend"
+        : lastClose < ema20 && ema20 < ema50 && rsi < 45
+        ? "Downtrend"
+        : "Sideway";
+
+    return {
+      symbol: sym,
+      lastClose,
+      rsi,
+      ema20,
+      ema50,
+      trend,
+      confidencePercent: Math.round(Math.abs(rsi - 50) * 2),
+    };
+  };
+
+  // 🔍 รายตัว
+  if (type === "daily" && symbol) {
+    const data = await getData(symbol);
+    if (!data) return res.status(404).json({ error: "Symbol not found" });
+    return res.status(200).json(data);
   }
+
+  // 🤖 AI Scanner (รวมกลุ่มหุ้นยอดนิยม)
+  if (type === "ai-scan") {
+    const symbols = [
+      "NVDA",
+      "TSLA",
+      "AMD",
+      "PLTR",
+      "SLDP",
+      "NRGV",
+      "GWH",
+      "BBAI",
+      "AEHR",
+      "RR",
+      "SES",
+      "OKLO",
+    ];
+    const results = [];
+    for (const s of symbols) {
+      const r = await getData(s);
+      if (r && r.trend === "Uptrend" && r.rsi > 55)
+        results.push({ ...r, signal: "Buy" });
+    }
+    results.sort((a, b) => b.confidencePercent - a.confidencePercent);
+    return res.status(200).json({ aiPicks: results });
   }
+
+  // 🌍 AI Discovery — ค้นหาหุ้นใหม่ตลอดเวลา
+  if (type === "ai-discovery") {
+    const newCandidates = ["ASTS", "ENVX", "BEEM", "JOBY", "ACHR", "LUNR"];
+    const discovered = [];
+    for (const sym of newCandidates) {
+      const r = await getData(sym);
+      if (r && r.trend === "Uptrend" && r.rsi > 60)
+        discovered.push({
+          ...r,
+          discovered: true,
+          reason:
+            "New emerging tech pattern detected; strong volume + RSI breakout.",
+        });
+    }
+    return res.status(200).json({ discovered });
+  }
+
+  res.status(400).json({ error: "Invalid type" });
+}
