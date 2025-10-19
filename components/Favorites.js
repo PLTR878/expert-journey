@@ -85,22 +85,22 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
             return (
               <div
                 key={r.symbol + i}
-                className="flex items-center justify-between py-3 hover:bg-[#111827]/50 transition-all"
+                className="flex items-center justify-between py-3 px-1 hover:bg-[#101626]/60 transition-all"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(r.symbol)}
               >
                 {/* โลโก้ */}
-                <div className="flex items-center gap-3 min-w-[35%]">
+                <div className="flex items-center gap-3 min-w-[38%] relative">
                   <img
                     src={logoUrl}
                     alt={r.symbol}
                     onError={(e) => (e.target.src = "/default-logo.png")}
-                    className="w-8 h-8 rounded-full object-cover"
+                    className="w-8 h-8 rounded-full object-cover absolute -left-9 shadow-md"
                   />
                   <a
                     href={`/analyze/${r.symbol}`}
-                    className="text-sky-400 font-bold text-[15px] hover:text-emerald-400 transition-colors"
+                    className="text-sky-400 font-bold text-[15px] ml-10 hover:text-emerald-400 transition-colors"
                   >
                     {r.symbol}
                   </a>
@@ -183,4 +183,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                  }
+            }
