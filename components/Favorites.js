@@ -18,18 +18,11 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     INTC: "intel.com",
     AMD: "amd.com",
     PLTR: "palantir.com",
-    BBAI: "bigbear.ai",
-    LAES: "sectorspdr.com",
-    RCAT: "redcatholdings.com",
-    BTDR: "bitdeer.com",
-    IREN: "irisenergy.co",
     SOFI: "sofi.com",
-    RUN: "sunrun.com",
     ENPH: "enphase.com",
-    F: "ford.com",
+    RUN: "sunrun.com",
     GM: "gm.com",
-    RR: "rolls-royce.com",
-    RXRX: "recursion.com",
+    F: "ford.com",
   };
 
   const handleSubmit = async () => {
@@ -62,15 +55,16 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   };
 
   return (
-    <section className="w-full px-3 pt-3 bg-[#0b0f17] text-gray-200 min-h-screen">
+    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          My Favorite Stocks
+          💙 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
-          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
+          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 
+                     border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
         >
           🔍 Search
         </button>
@@ -81,8 +75,8 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         <table className="w-full text-[15px] text-center border-separate border-spacing-0 table-fixed">
           <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
             <tr className="border-b border-white/10">
-              <th className="py-[6px] text-left pl-6 w-[40%] tracking-tight">TICKER</th>
-              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
+              <th className="py-[6px] text-left pl-6 w-[38%] tracking-tight">TICKER</th>
+              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">PRICE</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
               <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
             </tr>
@@ -96,17 +90,21 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 return (
                   <tr
                     key={r.symbol + i}
-                    className="hover:bg-[#111827]/30 transition-all border-b border-white/10"
+                    className="transition-all border-b border-white/10"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
+                    style={{
+                      background: "transparent",
+                    }}
                   >
                     <td className="relative py-[12px] pl-[58px] text-left font-bold text-sky-400">
+                      {/* โลโก้นอกเส้น ไม่มีกรอบ */}
                       <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
-                          onError={(e) => (e.target.src = "/default-logo.png")}
+                          onError={(e) => (e.target.src = '/default-logo.png')}
                           className="w-8 h-8 object-cover"
                         />
                       </div>
@@ -196,4 +194,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-    }
+        }
