@@ -60,9 +60,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   };
 
   return (
-    <section className="w-full px-2 pt-2 bg-[#0b0f17] text-gray-200 min-h-screen">
+    <section className="w-full px-3 pt-3 bg-[#0b0f17] text-gray-200 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center mb-2 px-2">
+      <div className="flex justify-between items-center mb-3">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           💙 My Favorite Stocks
         </h2>
@@ -75,91 +75,77 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-[15px] border-collapse">
-          <thead className="text-[#9ca3af] text-[12px] uppercase font-semibold">
-            <tr>
-              <th className="text-left pl-[58px] py-[6px] w-[40%] border-b border-white/10">TICKER</th>
-              <th className="text-right pr-4 w-[20%] border-b border-white/10">MARKET</th>
-              <th className="text-right pr-3 w-[20%] border-b border-white/10">RSI</th>
-              <th className="text-right pr-3 w-[20%] border-b border-white/10">AI</th>
-            </tr>
-          </thead>
+      {/* List */}
+      <div className="divide-y divide-white/10">
+        {data?.length ? (
+          data.map((r, i) => {
+            const domain = logoMap[r.symbol] || `${r.symbol.toLowerCase()}.com`;
+            const logoUrl = `https://logo.clearbit.com/${domain}`;
 
-          <tbody>
-            {data?.length ? (
-              data.map((r, i) => {
-                const domain = logoMap[r.symbol] || `${r.symbol.toLowerCase()}.com`;
-                const logoUrl = `https://logo.clearbit.com/${domain}`;
-                return (
-                  <tr
-                    key={r.symbol + i}
-                    className="hover:bg-[#111827]/60 transition-all"
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={() => handleTouchEnd(r.symbol)}
+            return (
+              <div
+                key={r.symbol + i}
+                className="flex items-center justify-between py-3 hover:bg-[#111827]/50 transition-all"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={() => handleTouchEnd(r.symbol)}
+              >
+                {/* โลโก้ */}
+                <div className="flex items-center gap-3 min-w-[35%]">
+                  <img
+                    src={logoUrl}
+                    alt={r.symbol}
+                    onError={(e) => (e.target.src = "/default-logo.png")}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <a
+                    href={`/analyze/${r.symbol}`}
+                    className="text-sky-400 font-bold text-[15px] hover:text-emerald-400 transition-colors"
                   >
-                    <td className="py-[13px] text-left pl-[60px] font-bold text-sky-400 relative border-b border-white/10">
-                      {/* โลโก้นอกเส้น ไม่มีพื้นหลัง */}
-                      <div className="absolute left-[15px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden">
-                        <img
-                          src={logoUrl}
-                          alt={r.symbol}
-                          onError={(e) => (e.target.src = '/default-logo.png')}
-                          className="w-8 h-8 object-cover"
-                        />
-                      </div>
+                    {r.symbol}
+                  </a>
+                </div>
 
-                      <a
-                        href={`/analyze/${r.symbol}`}
-                        className="hover:text-emerald-400 transition-colors"
-                      >
-                        {r.symbol}
-                      </a>
-                    </td>
+                {/* ราคา */}
+                <div className="w-[25%] text-right font-bold text-gray-100 font-mono">
+                  {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
+                </div>
 
-                    <td className="py-[13px] text-right pr-4 font-semibold text-gray-100 font-mono border-b border-white/10">
-                      {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
-                    </td>
+                {/* RSI */}
+                <div
+                  className={`w-[20%] text-right font-bold font-mono ${
+                    typeof r.rsi === "number"
+                      ? r.rsi > 70
+                        ? "text-red-400"
+                        : r.rsi < 40
+                        ? "text-blue-400"
+                        : "text-emerald-400"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
+                </div>
 
-                    <td
-                      className={`py-[13px] text-right pr-3 font-semibold font-mono border-b border-white/10 ${
-                        typeof r.rsi === "number"
-                          ? r.rsi > 70
-                            ? "text-red-400"
-                            : r.rsi < 40
-                            ? "text-blue-400"
-                            : "text-emerald-400"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
-                    </td>
-
-                    <td
-                      className={`py-[13px] text-right pr-3 font-semibold border-b border-white/10 ${
-                        r.signal === "Buy"
-                          ? "text-green-400"
-                          : r.signal === "Sell"
-                          ? "text-red-400"
-                          : "text-yellow-400"
-                      }`}
-                    >
-                      {r.signal || "-"}
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan="4" className="py-4 text-gray-500 text-center italic">
-                  No favorites yet. Add one by searching 🔍
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                {/* สัญญาณ */}
+                <div
+                  className={`w-[20%] text-right font-bold ${
+                    r.signal === "Buy"
+                      ? "text-green-400"
+                      : r.signal === "Sell"
+                      ? "text-red-400"
+                      : "text-yellow-400"
+                  }`}
+                >
+                  {r.signal || "-"}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-center text-gray-500 italic py-6">
+            No favorites yet. Add one by searching 🔍
+          </p>
+        )}
       </div>
 
       {/* Modal */}
@@ -197,4 +183,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-            }
+                  }
