@@ -14,15 +14,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     AMZN: "amazon.com",
     META: "meta.com",
     GOOG: "google.com",
-    GOOGL: "google.com",
     INTC: "intel.com",
     AMD: "amd.com",
     PLTR: "palantir.com",
-    SOFI: "sofi.com",
-    ENPH: "enphase.com",
-    RUN: "sunrun.com",
-    GM: "gm.com",
-    F: "ford.com",
+    IREN: "irisenergy.co",
+    RXRX: "recursion.com",
+    RR: "rolls-royce.com",
   };
 
   const handleSubmit = async () => {
@@ -98,19 +95,19 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       background: "transparent",
                     }}
                   >
-                    <td className="relative py-[12px] pl-[58px] text-left font-bold text-sky-400">
-                      {/* โลโก้นอกเส้น ไม่มีกรอบ */}
-                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden">
+                    <td className="relative py-[12px] pl-[56px] text-left font-semibold text-sky-400">
+                      {/* โลโก้หุ้นสวยขนาดพอดี ไม่มีเส้นขาว */}
+                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden shadow-sm">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
                           onError={(e) => (e.target.src = '/default-logo.png')}
-                          className="w-8 h-8 object-cover"
+                          className="w-9 h-9 object-contain bg-transparent"
                         />
                       </div>
                       <a
                         href={`/analyze/${r.symbol}`}
-                        className="hover:text-emerald-400 transition-colors"
+                        className="hover:text-emerald-400 transition-colors font-semibold tracking-tight"
                       >
                         {r.symbol}
                       </a>
