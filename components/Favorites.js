@@ -6,7 +6,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // 🔹 Mapping โลโก้หุ้นหลัก
+  // โลโก้หุ้นหลัก
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -31,7 +31,6 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     GM: "gm.com",
   };
 
-  // ✅ เพิ่มหุ้น
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -45,14 +44,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
-  // ✅ ปัดซ้ายเพื่อลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -65,25 +62,26 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
   return (
     <section className="w-full px-3 pt-2">
-      {/* 🩵 Header */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           💙 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
-          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
+          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 
+                     border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
         >
           🔍 Search
         </button>
       </div>
 
-      {/* 📊 ตาราง */}
+      {/* ตารางหุ้น */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[15px] text-center border-collapse table-fixed">
+        <table className="w-full text-[15px] text-center border-separate border-spacing-0 table-fixed">
           <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
-            <tr className="border-b border-white/5">
-              <th className="py-[6px] text-left pl-2 w-[38%] tracking-tight">TICKER</th>
+            <tr className="border-b border-white/10">
+              <th className="py-[6px] text-left pl-3 w-[38%] tracking-tight">TICKER</th>
               <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
               <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
@@ -98,13 +96,15 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 return (
                   <tr
                     key={r.symbol + i}
-                    className="hover:bg-[#151821]/60 transition-all border-b border-white/5"
+                    className={`hover:bg-[#151821]/60 transition-all border-b ${
+                      i === data.length - 1 ? "border-white/5" : "border-white/10"
+                    }`}
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
-                    <td className="py-[10px] text-left pl-2 font-bold text-sky-400 flex items-center gap-3">
+                    <td className="py-[10px] px-3 text-left font-bold text-sky-400 flex items-center gap-3">
                       <div className="w-6 h-6 flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-[#1e293b]/60">
                         <img
                           src={logoUrl}
@@ -122,13 +122,13 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     </td>
 
                     {/* ราคา */}
-                    <td className="py-[10px] text-right pr-4 font-semibold text-gray-100 font-mono text-[15px]">
+                    <td className="py-[10px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
                       {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                     </td>
 
                     {/* RSI */}
                     <td
-                      className={`py-[10px] text-right pr-3 font-semibold font-mono text-[15px] ${
+                      className={`py-[10px] px-3 text-right font-semibold font-mono text-[15px] ${
                         typeof r.rsi === "number"
                           ? r.rsi > 70
                             ? "text-red-400"
@@ -143,7 +143,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
                     {/* AI SIGNAL */}
                     <td
-                      className={`py-[10px] text-right pr-3 font-semibold text-[15px] ${
+                      className={`py-[10px] px-3 text-right font-semibold text-[15px] ${
                         r.signal === "Buy"
                           ? "text-green-400"
                           : r.signal === "Sell"
@@ -167,13 +167,11 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </table>
       </div>
 
-      {/* 🔍 Modal */}
+      {/* Modal ค้นหา */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
-            <h3 className="text-lg text-emerald-400 font-bold mb-3">
-              Search Stock
-            </h3>
+            <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">🔎</span>
               <input
@@ -204,4 +202,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                       }
+            }
