@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.7 (Refined UI Edition)
+// ✅ Visionary Stock Screener — V∞.8 (AI Integrated Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -10,6 +10,8 @@ export default function Home() {
   const [favoritePrices, setFavoritePrices] = useState({});
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [aiPicks, setAiPicks] = useState([]);
+  const [discovered, setDiscovered] = useState([]);
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-30), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -69,12 +71,13 @@ export default function Home() {
       });
       const j = await res.json();
 
-      setFast((j.groups?.fast || []).slice(0, 8));
-      setEmerging((j.groups?.emerging || []).slice(0, 8));
-      setFuture((j.groups?.future || []).slice(0, 8));
-      setHidden((j.groups?.hidden || []).slice(0, 8));
+      setFast(j.groups?.fast || []);
+      setEmerging(j.groups?.emerging || []);
+      setFuture(j.groups?.future || []);
+      setHidden(j.groups?.hidden || []);
 
-      addLog(`✅ Market loaded`);
+      addLog("✅ Market loaded");
+
       const all = [
         ...j.groups.fast.map((x) => x.symbol),
         ...j.groups.emerging.map((x) => x.symbol),
@@ -87,15 +90,32 @@ export default function Home() {
     }
   }
 
+  // ✅ โหลดข้อมูล AI Picks และ AI Discovery
+  async function loadAI() {
+    try {
+      addLog("🧠 AI scanning...");
+      const res1 = await fetch(`/api/visionary-eternal?type=ai-scan`);
+      const res2 = await fetch(`/api/visionary-eternal?type=ai-discovery`);
+      const j1 = await res1.json();
+      const j2 = await res2.json();
+      setAiPicks(j1.aiPicks || []);
+      setDiscovered(j2.discovered || []);
+      addLog("✅ AI scan completed");
+    } catch (err) {
+      addLog(`⚠️ AI scan failed: ${err.message}`);
+    }
+  }
+
   useEffect(() => {
     loadMarketData();
+    loadAI();
   }, []);
 
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ✅ อัปเดตราคาอัตโนมัติทุก 1 นาที
+  // ✅ รีเฟรชทุก 1 นาที
   useEffect(() => {
     const refresh = async () => {
       addLog("🔁 Refreshing prices...");
@@ -107,14 +127,16 @@ export default function Home() {
         ...favorites,
       ];
       for (const s of all) await fetchPrice(s);
+      await loadAI();
     };
-    const interval = setInterval(refresh, 60 * 1000);
+    const interval = setInterval(refresh, 60000);
     return () => clearInterval(interval);
   }, [fast, emerging, future, hidden, favorites]);
 
   // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
+      {/* Header */}
       <header className="px-3 py-0 h-[4px] bg-[#0b1220]" />
 
       <div className="max-w-6xl mx-auto px-3 pt-2">
@@ -133,13 +155,14 @@ export default function Home() {
         {/* MARKET */}
         {active === "market" && (
           <>
-            {/* ✅ ปุ่มแนวนอนด้านบน — ขนาดเล็กลง */}
-            <div className="flex items-center gap-1.5 mb-3 overflow-x-auto scrollbar-hide px-1">
+            {/* ✅ ปุ่มแนวนอน — ขนาดเล็กลงเหมือนหน้าแรก */}
+            <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-hide px-1">
               {[
                 { id: "fast", label: "⚡ Fast" },
                 { id: "future", label: "🚀 Leaders" },
                 { id: "hidden", label: "💎 Gems" },
                 { id: "emerging", label: "🌱 Trends" },
+                { id: "ai", label: "🤖 AI Picks" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -158,40 +181,22 @@ export default function Home() {
 
             {/* ✅ แสดงเฉพาะหมวดที่เลือก */}
             {marketTab === "fast" && (
-              <MarketSection
-                title="⚡ Fast Movers"
-                rows={fast}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-                favoritePrices={favoritePrices}
-              />
+              <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
             )}
             {marketTab === "future" && (
-              <MarketSection
-                title="🚀 Future Leaders"
-                rows={future}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-                favoritePrices={favoritePrices}
-              />
+              <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
             )}
             {marketTab === "hidden" && (
-              <MarketSection
-                title="💎 Hidden Gems"
-                rows={hidden}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-                favoritePrices={favoritePrices}
-              />
+              <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
             )}
             {marketTab === "emerging" && (
-              <MarketSection
-                title="🌱 Emerging Trends"
-                rows={emerging}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-                favoritePrices={favoritePrices}
-              />
+              <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
+            )}
+            {marketTab === "ai" && (
+              <>
+                <MarketSection title="🤖 AI Picks (Top Momentum)" rows={aiPicks} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
+                <MarketSection title="🧬 Newly Discovered (ต้นน้ำ)" rows={discovered} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
+              </>
             )}
           </>
         )}
@@ -209,11 +214,7 @@ export default function Home() {
           {showLogs && (
             <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto shadow-inner">
               <ul className="space-y-0.5">
-                {logs.length ? (
-                  logs.map((l, i) => <li key={i}>{l}</li>)
-                ) : (
-                  <li className="text-gray-500">No logs yet.</li>
-                )}
+                {logs.length ? logs.map((l, i) => <li key={i}>{l}</li>) : <li className="text-gray-500">No logs yet.</li>}
               </ul>
             </div>
           )}
@@ -231,9 +232,7 @@ export default function Home() {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`py-1 flex flex-col items-center ${
-              active === t.id ? "text-emerald-400" : ""
-            }`}
+            className={`py-1 flex flex-col items-center ${active === t.id ? "text-emerald-400" : ""}`}
           >
             <span className="text-[16px]">{t.icon}</span>
             {t.label}
@@ -242,4 +241,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+                }
