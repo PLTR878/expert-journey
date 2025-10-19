@@ -1,11 +1,11 @@
-// ✅ Visionary Stock Screener — V∞.7 (Linked Edition)
+// ✅ Visionary Stock Screener — V∞.7 (Refined UI Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 
 export default function Home() {
   const [active, setActive] = useState("favorites");
-  const [marketTab, setMarketTab] = useState("fast"); // 👈 เพิ่ม state สำหรับหมวดด้านบน
+  const [marketTab, setMarketTab] = useState("fast");
   const [favorites, setFavorites] = useState([]);
   const [favoritePrices, setFavoritePrices] = useState({});
   const [logs, setLogs] = useState([]);
@@ -133,22 +133,22 @@ export default function Home() {
         {/* MARKET */}
         {active === "market" && (
           <>
-            {/* ✅ ปุ่มแนวนอนด้านบน */}
-            <div className="flex justify-between items-center gap-2 mb-4 overflow-x-auto scrollbar-hide px-1">
+            {/* ✅ ปุ่มแนวนอนด้านบน — ขนาดเล็กลง */}
+            <div className="flex items-center gap-1.5 mb-3 overflow-x-auto scrollbar-hide px-1">
               {[
-                { id: "fast", label: "⚡ Fast Movers" },
-                { id: "future", label: "🚀 Future Leaders" },
-                { id: "hidden", label: "💎 Hidden Gems" },
-                { id: "emerging", label: "🌱 Emerging Trends" },
+                { id: "fast", label: "⚡ Fast" },
+                { id: "future", label: "🚀 Leaders" },
+                { id: "hidden", label: "💎 Gems" },
+                { id: "emerging", label: "🌱 Trends" },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setMarketTab(tab.id)}
-                  className={`flex items-center justify-center flex-shrink-0 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all min-w-[90px]
+                  className={`flex items-center justify-center flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-medium tracking-tight transition-all min-w-[75px]
                     ${
                       marketTab === tab.id
-                        ? "bg-emerald-500/30 border border-emerald-400 text-emerald-300 shadow-md"
-                        : "bg-[#111827]/80 border border-gray-700 text-gray-400 hover:text-emerald-400 hover:border-emerald-400/50"
+                        ? "bg-emerald-500/25 border border-emerald-400 text-emerald-300 shadow-sm"
+                        : "bg-[#111827]/70 border border-gray-700 text-gray-400 hover:text-emerald-400 hover:border-emerald-400/40"
                     }`}
                 >
                   {tab.label}
@@ -242,4 +242,4 @@ export default function Home() {
       </nav>
     </main>
   );
-        }
+            }
