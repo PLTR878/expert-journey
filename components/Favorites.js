@@ -121,9 +121,9 @@ export default function Favorites({ favorites, setFavorites }) {
   };
 
   return (
-    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+    <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center mb-3 px-1">
+      <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🔮 My Favorite Stocks
         </h2>
@@ -135,7 +135,7 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
-      {/* ✅ Flex Layout แทน Table */}
+      {/* ✅ Flex Layout */}
       <div className="flex flex-col divide-y divide-gray-800/50">
         {favorites?.length ? (
           favorites.map((sym, i) => {
@@ -146,12 +146,12 @@ export default function Favorites({ favorites, setFavorites }) {
             return (
               <div
                 key={sym + i}
-                className="flex items-center justify-between py-[12px] px-2 hover:bg-[#111827]/40 transition-all"
+                className="flex items-center justify-between py-[12px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
-                {/* ซ้าย: โลโก้ + ชื่อ */}
+                {/* โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-gradient-to-br from-[#1e293b] to-[#0f172a] flex items-center justify-center overflow-hidden">
                     <img
@@ -192,11 +192,10 @@ export default function Favorites({ favorites, setFavorites }) {
                 </div>
 
                 {/* ขวา: ราคา / RSI / สัญญาณ */}
-                <div className="flex items-center space-x-3 font-mono">
+                <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
                   <span className="text-gray-100 text-[14px] font-semibold">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
                   </span>
-
                   <span
                     className={`text-[14px] font-semibold ${
                       typeof r?.rsi === "number"
@@ -210,7 +209,6 @@ export default function Favorites({ favorites, setFavorites }) {
                   >
                     {typeof r?.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </span>
-
                   <span
                     className={`text-[14px] font-bold ${
                       r?.signal === "Buy"
@@ -239,12 +237,12 @@ export default function Favorites({ favorites, setFavorites }) {
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
             <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">🔎</span>
+              <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">➕</span>
               <input
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
@@ -268,4 +266,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-                        }
+                                  }
