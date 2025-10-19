@@ -78,12 +78,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-[15px] border-collapse">
-          <thead className="text-[#a1a1aa] text-[12px] uppercase font-semibold">
-            <tr className="border-b border-white/10">
-              <th className="text-left pl-[60px] py-[6px] w-[40%]">TICKER</th>
-              <th className="text-right pr-4 w-[20%]">MARKET</th>
-              <th className="text-right pr-3 w-[20%]">RSI</th>
-              <th className="text-right pr-3 w-[20%]">AI</th>
+          <thead className="text-[#9ca3af] text-[12px] uppercase font-semibold">
+            <tr>
+              <th className="text-left pl-[58px] py-[6px] w-[40%] border-b border-white/10">TICKER</th>
+              <th className="text-right pr-4 w-[20%] border-b border-white/10">MARKET</th>
+              <th className="text-right pr-3 w-[20%] border-b border-white/10">RSI</th>
+              <th className="text-right pr-3 w-[20%] border-b border-white/10">AI</th>
             </tr>
           </thead>
 
@@ -95,19 +95,22 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 return (
                   <tr
                     key={r.symbol + i}
-                    className="border-b border-white/10 hover:bg-[#151821]/50 transition-all"
+                    className="hover:bg-[#111827]/60 transition-all"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
-                    {/* โลโก้ชิดซ้าย ไม่มีกรอบ ไม่มีพื้นหลัง */}
-                    <td className="py-[12px] text-left pl-[60px] font-bold text-sky-400 relative">
-                      <img
-                        src={logoUrl}
-                        alt={r.symbol}
-                        onError={(e) => (e.target.src = "/default-logo.png")}
-                        className="w-8 h-8 absolute left-[15px] top-1/2 -translate-y-1/2 rounded-full object-cover"
-                      />
+                    <td className="py-[13px] text-left pl-[60px] font-bold text-sky-400 relative border-b border-white/10">
+                      {/* โลโก้นอกเส้น ไม่มีพื้นหลัง */}
+                      <div className="absolute left-[15px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden">
+                        <img
+                          src={logoUrl}
+                          alt={r.symbol}
+                          onError={(e) => (e.target.src = '/default-logo.png')}
+                          className="w-8 h-8 object-cover"
+                        />
+                      </div>
+
                       <a
                         href={`/analyze/${r.symbol}`}
                         className="hover:text-emerald-400 transition-colors"
@@ -116,12 +119,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       </a>
                     </td>
 
-                    <td className="py-[12px] text-right pr-4 font-semibold text-gray-100 font-mono">
+                    <td className="py-[13px] text-right pr-4 font-semibold text-gray-100 font-mono border-b border-white/10">
                       {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                     </td>
 
                     <td
-                      className={`py-[12px] text-right pr-3 font-semibold font-mono ${
+                      className={`py-[13px] text-right pr-3 font-semibold font-mono border-b border-white/10 ${
                         typeof r.rsi === "number"
                           ? r.rsi > 70
                             ? "text-red-400"
@@ -135,7 +138,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     </td>
 
                     <td
-                      className={`py-[12px] text-right pr-3 font-semibold ${
+                      className={`py-[13px] text-right pr-3 font-semibold border-b border-white/10 ${
                         r.signal === "Buy"
                           ? "text-green-400"
                           : r.signal === "Sell"
@@ -194,4 +197,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-        }
+            }
