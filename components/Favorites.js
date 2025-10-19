@@ -7,6 +7,7 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
+  // 🔹 รวมโดเมนโลโก้หุ้นยอดนิยม (ใส่ fallback เผื่อ Clearbit ไม่มี)
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -22,9 +23,14 @@ export default function Favorites({ favorites, setFavorites }) {
     RXRX: "recursion.com",
     RR: "rolls-royce.com",
     API: "agora.io",
+    AEHR: "aehr.com",
+    NVO: "novonordisk.com",
+    QUBT: "quantumcomputinginc.com",
+    SLDP: "solidpowerbattery.com",
+    LAES: "sequelholdings.com",
   };
 
-  // ✅ ดึงข้อมูลจาก Visionary Eternal
+  // ✅ ดึงข้อมูลจาก Visionary Eternal API
   const fetchPrice = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
@@ -45,7 +51,6 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลหุ้นทั้งหมดเมื่อหน้าเปิด
   useEffect(() => {
     if (favorites?.length) {
       favorites.forEach((sym) => fetchPrice(sym));
@@ -102,16 +107,16 @@ export default function Favorites({ favorites, setFavorites }) {
         <table className="w-full text-[15px] text-center border-separate border-spacing-0">
           <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
             <tr>
-              <th className="py-[6px] text-left pl-[62px] w-[38%] tracking-tight border-b border-white/10">
+              <th className="py-[6px] text-left pl-[62px] w-[38%] tracking-tight">
                 TICKER
               </th>
-              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight border-b border-white/10">
+              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">
                 PRICE
               </th>
-              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight border-b border-white/10">
+              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">
                 RSI
               </th>
-              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight border-b border-white/10">
+              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">
                 AI
               </th>
             </tr>
@@ -127,18 +132,18 @@ export default function Favorites({ favorites, setFavorites }) {
                 return (
                   <tr
                     key={sym + i}
-                    className="transition-all border-b border-white/10"
+                    className="transition-all hover:bg-[#111827]/40 rounded-xl"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(sym)}
                   >
                     {/* โลโก้ + Ticker */}
-                    <td className="relative py-[12px] pl-[58px] text-left font-semibold text-sky-400">
-                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent">
+                    <td className="relative py-[13px] pl-[58px] text-left font-semibold text-sky-400">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-[#0b1220] border border-gray-700/30">
                         <img
                           src={logoUrl}
                           alt={sym}
-                          onError={(e) => (e.target.src = '/default-logo.png')}
+                          onError={(e) => (e.target.src = "https://cdn-icons-png.flaticon.com/512/2301/2301122.png")}
                           className="w-9 h-9 object-contain"
                         />
                       </div>
@@ -231,4 +236,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-            }
+      }
