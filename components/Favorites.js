@@ -6,48 +6,44 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ เพิ่มหุ้นลงรายการโปรด
+  // ✅ เพิ่มหุ้น
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
     if (!favorites.includes(sym)) {
       const updated = [...favorites, sym];
       setFavorites(updated);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("favorites", JSON.stringify(updated));
-      }
+      localStorage.setItem("favorites", JSON.stringify(updated));
       await fetchPrice(sym);
     }
     setSymbol("");
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้นออก (ใช้เมื่อปัดซ้าย)
+  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("favorites", JSON.stringify(updated));
-    }
+    localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
-  // ✅ จับ gesture ปัดซ้าย
+  // ✅ ปัดซ้ายเพื่อลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
     if (!touchStartX.current || !touchEndX.current) return;
     const distance = touchStartX.current - touchEndX.current;
-    if (distance > 70) removeFavorite(sym); // ถ้าปัดซ้ายเกิน 70px → ลบ
+    if (distance > 70) removeFavorite(sym);
     touchStartX.current = null;
     touchEndX.current = null;
   };
 
   return (
     <section className="w-full px-2 pt-1">
-      {/* 🩵 หัวข้อ */}
+      {/* 🩵 Header */}
       <div className="flex justify-between items-center mb-2 border-b border-[rgba(255,255,255,0.05)] pb-2">
         <h2 className="text-[17px] font-semibold text-emerald-400 flex items-center gap-2">
-          My Favorite Stocks
+          💙 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -57,7 +53,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </button>
       </div>
 
-      {/* 📊 ตารางหุ้น */}
+      {/* 📊 ตาราง */}
       <div className="overflow-x-auto -mt-1">
         <table className="w-full text-[15px] text-center border-collapse">
           <thead>
@@ -65,10 +61,10 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               className="text-[#9ca3af] text-[12px] uppercase select-none"
               style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
             >
-              <th className="py-2 font-medium text-left pl-3 w-[30%]">SYMBOL</th>
-              <th className="py-2 font-medium text-right pr-2 w-[23%]">PRICE</th>
-              <th className="py-2 font-medium text-right pr-2 w-[22%]">RSI</th>
-              <th className="py-2 font-medium text-right pr-2 w-[25%]">AI SIG</th>
+              <th className="py-2 font-medium text-left pl-3 w-[32%]">SYMBOL</th>
+              <th className="py-2 font-medium text-right pr-3 w-[22%]">PRICE</th>
+              <th className="py-2 font-medium text-right pr-3 w-[23%]">RSI</th>
+              <th className="py-2 font-medium text-right pr-3 w-[23%]">AI SIG</th>
             </tr>
           </thead>
 
@@ -91,11 +87,11 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       {r.symbol}
                     </a>
                   </td>
-                  <td className="py-3 text-right pr-2 font-mono text-gray-100">
+                  <td className="py-3 text-right pr-3 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
                   <td
-                    className={`py-3 text-right pr-2 font-mono ${
+                    className={`py-3 text-right pr-3 font-mono ${
                       typeof r.rsi === "number"
                         ? r.rsi > 70
                           ? "text-red-400"
@@ -108,7 +104,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                   </td>
                   <td
-                    className={`py-3 text-right pr-2 font-semibold ${
+                    className={`py-3 text-right pr-3 font-semibold ${
                       r.signal === "Buy"
                         ? "text-green-400"
                         : r.signal === "Sell"
@@ -122,10 +118,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               ))
             ) : (
               <tr>
-                <td
-                  colSpan="4"
-                  className="py-4 text-gray-500 text-center italic"
-                >
+                <td colSpan="4" className="py-4 text-gray-500 text-center italic">
                   No favorites yet. Add one by searching 🔍
                 </td>
               </tr>
@@ -134,20 +127,25 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </table>
       </div>
 
-      {/* 🔍 กล่องค้นหา */}
+      {/* 🔍 Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-[#111827] rounded-2xl shadow-xl p-6 w-[85%] max-w-sm text-center border border-gray-700">
+          <div className="bg-[#111827]/95 rounded-2xl shadow-2xl p-6 w-[85%] max-w-sm text-center border border-gray-700 -translate-y-10">
             <h3 className="text-lg text-emerald-400 font-semibold mb-4">
               Search Stock
             </h3>
+
+            {/* 💎 ช่องค้นหาแบบ Glass */}
             <input
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="(ชื่อย่อ/ชื่อหุ้น)"
-              className="w-full text-center bg-[#0d121d] border border-gray-700 text-gray-200 rounded-md py-2 focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-5"
+              placeholder="🔎 พิมพ์ชื่อย่อหุ้น (เช่น NVDA, TSLA, AAPL)"
+              className="w-full text-center bg-white/10 backdrop-blur-md border border-emerald-400/40 
+                         text-gray-100 rounded-lg py-2.5 placeholder-gray-400 
+                         focus:outline-none focus:ring-2 focus:ring-emerald-400/70 transition-all mb-5"
             />
+
             <div className="flex justify-around">
               <button
                 onClick={() => setShowModal(false)}
@@ -157,7 +155,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold"
+                className="px-4 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold shadow-md"
               >
                 Add
               </button>
@@ -167,4 +165,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                       }
+    }
