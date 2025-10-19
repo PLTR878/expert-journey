@@ -87,13 +87,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // --- News ---
-    if (type === "news") {
-      const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}`);
-      const j = await r.json();
-      return res.status(200).json({ symbol, items: j.news || [] });
-    }
-
     // --- Market Overview ---
     if (type === "market") {
       return res.status(200).json({
@@ -125,8 +118,15 @@ export default async function handler(req, res) {
       });
     }
 
+    // --- News ---
+    if (type === "news") {
+      const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}`);
+      const j = await r.json();
+      return res.status(200).json({ symbol, items: j.news || [] });
+    }
+
     return res.status(400).json({ error: "Unknown type" });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
-}
+                                           }
