@@ -7,7 +7,6 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // 🔹 รวมโดเมนโลโก้หุ้นยอดนิยม (ใส่ fallback เผื่อ Clearbit ไม่มี)
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -37,12 +36,19 @@ export default function Favorites({ favorites, setFavorites }) {
       const json = await res.json();
 
       if (json && !json.error) {
+        // 🧠 แปลง trend จาก API เป็นสัญญาณ Buy / Hold / Sell
+        let signal = "Hold";
+        if (json.trend === "Uptrend") signal = "Buy";
+        else if (json.trend === "Downtrend") signal = "Sell";
+
+        const item = { ...json, signal };
+
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
           if (existing) {
-            return prev.map((x) => (x.symbol === sym ? { ...x, ...json } : x));
+            return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
           } else {
-            return [...prev, json];
+            return [...prev, item];
           }
         });
       }
@@ -51,6 +57,7 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
+  // ✅ โหลดข้อมูลหุ้นทั้งหมดเมื่อหน้าเปิด
   useEffect(() => {
     if (favorites?.length) {
       favorites.forEach((sym) => fetchPrice(sym));
@@ -91,7 +98,7 @@ export default function Favorites({ favorites, setFavorites }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          💙 My Favorite Stocks
+          My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -175,17 +182,17 @@ export default function Favorites({ favorites, setFavorites }) {
                       {typeof r?.rsi === "number" ? Math.round(r.rsi) : "-"}
                     </td>
 
-                    {/* Trend จาก AI */}
+                    {/* AI Signal (Buy / Hold / Sell) */}
                     <td
                       className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
-                        r?.trend === "Uptrend"
+                        r?.signal === "Buy"
                           ? "text-green-400"
-                          : r?.trend === "Downtrend"
+                          : r?.signal === "Sell"
                           ? "text-red-400"
                           : "text-yellow-400"
                       }`}
                     >
-                      {r?.trend || "-"}
+                      {r?.signal || "-"}
                     </td>
                   </tr>
                 );
@@ -212,7 +219,7 @@ export default function Favorites({ favorites, setFavorites }) {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
@@ -236,4 +243,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-      }
+  }
