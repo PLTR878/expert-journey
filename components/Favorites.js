@@ -7,27 +7,32 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
+  // ✅ โลโก้หลัก (ใช้ชุดเดิมของพี่)
   const logoMap = {
-    NVDA: "nvidia.com",
-    AAPL: "apple.com",
-    TSLA: "tesla.com",
-    MSFT: "microsoft.com",
-    AMZN: "amazon.com",
-    META: "meta.com",
-    GOOG: "google.com",
-    AMD: "amd.com",
-    INTC: "intel.com",
-    PLTR: "palantir.com",
-    IREN: "irisenergy.co",
-    RXRX: "recursion.com",
-    RR: "rolls-royce.com",
-    AEHR: "aehr.com",
-    SLDP: "solidpowerbattery.com",
-    NRGV: "energystorage.com",
+    TSLA: "https://logo.clearbit.com/tesla.com",
+    NVDA: "https://logo.clearbit.com/nvidia.com",
+    AAPL: "https://logo.clearbit.com/apple.com",
+    MSFT: "https://logo.clearbit.com/microsoft.com",
+    AMZN: "https://logo.clearbit.com/amazon.com",
+    META: "https://logo.clearbit.com/meta.com",
+    GOOG: "https://logo.clearbit.com/google.com",
+    AMD: "https://logo.clearbit.com/amd.com",
+    INTC: "https://logo.clearbit.com/intel.com",
+    PLTR: "https://logo.clearbit.com/palantir.com",
+    IONQ: "https://companieslogo.com/img/orig/IONQ_BIG.png",
+    AEHR: "https://companieslogo.com/img/orig/AEHR_BIG.png",
+    SLDP: "https://companieslogo.com/img/orig/SLDP_BIG.png",
+    NRGV: "https://companieslogo.com/img/orig/NRGV_BIG.png",
     BBAI: "https://companieslogo.com/img/orig/BBAI_BIG.png",
     AMPX: "https://companieslogo.com/img/orig/AMPX_BIG.png",
     ABAT: "https://companieslogo.com/img/orig/ABAT_BIG.png",
     GWH: "https://companieslogo.com/img/orig/GWH_BIG.png",
+    RXRX: "https://companieslogo.com/img/orig/RXRX_BIG.png",
+    RR: "https://companieslogo.com/img/orig/RR_BIG.png",
+    ENVX: "https://companieslogo.com/img/orig/ENVX_BIG.png",
+    SES: "https://companieslogo.com/img/orig/SES_BIG.png",
+    BEEM: "https://companieslogo.com/img/orig/BEEM_BIG.png",
+    LWLG: "https://companieslogo.com/img/orig/LWLG_BIG.png",
   };
 
   const companyMap = {
@@ -41,9 +46,7 @@ export default function Favorites({ favorites, setFavorites }) {
     AMD: "Advanced Micro Devices",
     INTC: "Intel Corp",
     PLTR: "Palantir Technologies",
-    IREN: "Iris Energy Ltd",
-    RXRX: "Recursion Pharmaceuticals",
-    RR: "Rolls-Royce Holdings",
+    IONQ: "IonQ Inc",
     AEHR: "Aehr Test Systems",
     SLDP: "Solid Power Inc",
     NRGV: "Energy Vault Holdings",
@@ -51,8 +54,15 @@ export default function Favorites({ favorites, setFavorites }) {
     AMPX: "Amprius Technologies",
     ABAT: "American Battery Tech",
     GWH: "ESS Tech Inc",
+    RXRX: "Recursion Pharmaceuticals",
+    RR: "Rolls-Royce Holdings",
+    ENVX: "Enovix Corp",
+    SES: "SES AI Corp",
+    BEEM: "Beam Global",
+    LWLG: "Lightwave Logic Inc",
   };
 
+  // ✅ ดึงข้อมูลผ่าน API อัจฉริยะ Visionary Eternal v4
   const fetchPrice = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
@@ -64,7 +74,11 @@ export default function Favorites({ favorites, setFavorites }) {
         else if (json.trend === "Downtrend") signal = "Sell";
 
         const company = json.companyName || companyMap[sym] || sym;
-        const item = { ...json, signal, companyName: company };
+        const item = {
+          ...json,
+          signal,
+          companyName: company,
+        };
 
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
@@ -80,10 +94,12 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
+  // ✅ โหลดข้อมูลทุกตัวเมื่อเปิดหน้า
   useEffect(() => {
     if (favorites?.length) favorites.forEach((sym) => fetchPrice(sym));
   }, [favorites]);
 
+  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -97,12 +113,14 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
+  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
+  // ✅ swipe เพื่อลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -128,15 +146,16 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
+      {/* ✅ ตารางหุ้น */}
       <div className="overflow-x-auto mt-1">
         <table className="w-full text-[15px] text-center border-separate border-spacing-0">
           <tbody>
             {favorites?.length ? (
               favorites.map((sym, i) => {
                 const r = data.find((x) => x.symbol === sym);
-                const logoSrc = logoMap[sym]?.startsWith("http")
+                const logoSrc = logoMap[sym]
                   ? logoMap[sym]
-                  : `https://logo.clearbit.com/${logoMap[sym] || `${sym.toLowerCase()}.com`}`;
+                  : `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
                 const companyName = r?.companyName || companyMap[sym] || "";
 
                 return (
@@ -147,9 +166,9 @@ export default function Favorites({ favorites, setFavorites }) {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(sym)}
                   >
-                    {/* โลโก้ + ชื่อหุ้น + ชื่อบริษัท */}
-                    <td className="relative py-[13px] pl-[58px] text-left">
-                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden">
+                    {/* โลโก้ + ชื่อหุ้น */}
+                    <td className="relative py-[13px] pl-[54px] text-left">
+                      <div className="absolute left-[4px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden">
                         <img
                           src={logoSrc}
                           alt={sym}
@@ -168,7 +187,7 @@ export default function Favorites({ favorites, setFavorites }) {
                         >
                           {sym}
                         </a>
-                        <span className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                        <span className="text-[11px] text-gray-400 font-medium truncate max-w-[120px]">
                           {companyName}
                         </span>
                       </div>
@@ -220,6 +239,7 @@ export default function Favorites({ favorites, setFavorites }) {
         </table>
       </div>
 
+      {/* Modal Search */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
