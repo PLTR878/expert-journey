@@ -20,6 +20,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     IREN: "irisenergy.co",
     RXRX: "recursion.com",
     RR: "rolls-royce.com",
+    API: "agora.io",
   };
 
   const handleSubmit = async () => {
@@ -69,13 +70,15 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[15px] text-center border-separate border-spacing-0 table-fixed">
+        <table className="w-full text-[15px] text-center border-separate border-spacing-0">
           <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
-            <tr className="border-b border-white/10">
-              <th className="py-[6px] text-left pl-6 w-[38%] tracking-tight">TICKER</th>
-              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">PRICE</th>
+            <tr>
+              <th className="py-[6px] text-left pl-6 w-[40%] tracking-tight border-b border-white/10">
+                TICKER
+              </th>
+              <th className="py-[6px] text-right pr-4 w-[20%] tracking-tight">PRICE</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
-              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
+              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">AI</th>
             </tr>
           </thead>
 
@@ -88,21 +91,20 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                   <tr
                     key={r.symbol + i}
                     className="transition-all border-b border-white/10"
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={() => handleTouchEnd(r.symbol)}
                     style={{
                       background: "transparent",
                     }}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
-                    <td className="relative py-[12px] pl-[56px] text-left font-semibold text-sky-400">
-                      {/* โลโก้หุ้นสวยขนาดพอดี ไม่มีเส้นขาว */}
-                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden shadow-sm">
+                    <td className="relative py-[12px] pl-[56px] text-left font-semibold text-sky-400 border-b border-white/10">
+                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent shadow-sm">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
                           onError={(e) => (e.target.src = '/default-logo.png')}
-                          className="w-9 h-9 object-contain bg-transparent"
+                          className="w-9 h-9 object-contain"
                         />
                       </div>
                       <a
@@ -191,4 +193,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                            }
+                                  }
