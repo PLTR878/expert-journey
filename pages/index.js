@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.8 (AI Integrated Edition)
+// ✅ Visionary Stock Screener — V∞.9 (AI Fixed + Stable Edition)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -11,7 +11,6 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
   const [aiPicks, setAiPicks] = useState([]);
-  const [discovered, setDiscovered] = useState([]);
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-30), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -90,17 +89,15 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูล AI Picks และ AI Discovery
+  // ✅ โหลดข้อมูล AI Picks
   async function loadAI() {
     try {
       addLog("🧠 AI scanning...");
-      const res1 = await fetch(`/api/visionary-eternal?type=ai-scan`);
-      const res2 = await fetch(`/api/visionary-eternal?type=ai-discovery`);
-      const j1 = await res1.json();
-      const j2 = await res2.json();
-      setAiPicks(j1.aiPicks || []);
-      setDiscovered(j2.discovered || []);
+      const res = await fetch(`/api/visionary-eternal?type=ai-scan`);
+      const j = await res.json();
+      setAiPicks(j.aiPicks || []);
       addLog("✅ AI scan completed");
+      for (const s of j.aiPicks || []) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ AI scan failed: ${err.message}`);
     }
@@ -125,18 +122,18 @@ export default function Home() {
         ...future.map((x) => x.symbol),
         ...hidden.map((x) => x.symbol),
         ...favorites,
+        ...aiPicks.map((x) => x.symbol),
       ];
       for (const s of all) await fetchPrice(s);
       await loadAI();
     };
     const interval = setInterval(refresh, 60000);
     return () => clearInterval(interval);
-  }, [fast, emerging, future, hidden, favorites]);
+  }, [fast, emerging, future, hidden, favorites, aiPicks]);
 
   // ===== UI =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      {/* Header */}
       <header className="px-3 py-0 h-[4px] bg-[#0b1220]" />
 
       <div className="max-w-6xl mx-auto px-3 pt-2">
@@ -155,7 +152,7 @@ export default function Home() {
         {/* MARKET */}
         {active === "market" && (
           <>
-            {/* ✅ ปุ่มแนวนอน — ขนาดเล็กลงเหมือนหน้าแรก */}
+            {/* ✅ ปุ่มแนวนอน */}
             <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-hide px-1">
               {[
                 { id: "fast", label: "⚡ Fast" },
@@ -179,7 +176,7 @@ export default function Home() {
               ))}
             </div>
 
-            {/* ✅ แสดงเฉพาะหมวดที่เลือก */}
+            {/* ✅ เนื้อหาแต่ละหมวด */}
             {marketTab === "fast" && (
               <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
             )}
@@ -193,10 +190,7 @@ export default function Home() {
               <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
             )}
             {marketTab === "ai" && (
-              <>
-                <MarketSection title="🤖 AI Picks (Top Momentum)" rows={aiPicks} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-                <MarketSection title="🧬 Newly Discovered (ต้นน้ำ)" rows={discovered} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-              </>
+              <MarketSection title="🤖 AI Picks (Top Momentum)" rows={aiPicks} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
             )}
           </>
         )}
@@ -241,4 +235,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                }
+      }
