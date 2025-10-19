@@ -100,7 +100,8 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
                     <td className="relative py-[12px] pl-[54px] text-left font-bold text-sky-400">
-                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-7 h-7 rounded-full overflow-hidden bg-[#1e293b]/60">
+                      {/* โลโก้ใส ไม่มีกรอบ */}
+                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-7 h-7 rounded-full overflow-hidden">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
@@ -201,4 +202,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-          }
+                                                                         }
