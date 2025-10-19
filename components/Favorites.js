@@ -6,7 +6,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // 🔹 mapping หุ้นหลักๆ ให้โลโก้แม่น
+  // 🔹 Mapping โลโก้หุ้นหลัก
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -31,6 +31,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     GM: "gm.com",
   };
 
+  // ✅ เพิ่มหุ้น
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -44,12 +45,14 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
     setShowModal(false);
   };
 
+  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
+  // ✅ ปัดซ้ายเพื่อลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -62,29 +65,28 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
   return (
     <section className="w-full px-3 pt-2">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-1">
-        <h2 className="text-[17px] font-bold text-emerald-400 tracking-tight flex items-center gap-1">
-          My Favorite Stocks
+      {/* 🩵 Header */}
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
+          💙 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
-          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 
-                     border border-gray-700 rounded-md px-3 py-1 bg-[#0f172a]/70 hover:bg-[#162032]"
+          className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
         >
           🔍 Search
         </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto -mt-[2px]">
-        <table className="w-full text-[15px] text-center border-collapse">
-          <thead className="text-[#9ca3af] text-[12px] uppercase select-none font-semibold">
+      {/* 📊 ตาราง */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[15px] text-center border-collapse table-fixed">
+          <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
             <tr className="border-b border-white/5">
-              <th className="py-[6px] text-left pl-1.5 w-[38%] tracking-tight">TICKER</th>
+              <th className="py-[6px] text-left pl-2 w-[38%] tracking-tight">TICKER</th>
               <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
-              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI SIG</th>
+              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
             </tr>
           </thead>
 
@@ -101,13 +103,16 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
-                    <td className="py-3 text-left pl-1.5 font-bold text-sky-400 tracking-tight flex items-center gap-2">
-                      <img
-                        src={logoUrl}
-                        alt={r.symbol}
-                        onError={(e) => (e.target.src = "/default-logo.png")}
-                        className="w-5 h-5 rounded-full object-cover bg-[#1e293b]/50 shadow-sm"
-                      />
+                    {/* โลโก้ + ชื่อหุ้น */}
+                    <td className="py-[10px] text-left pl-2 font-bold text-sky-400 flex items-center gap-3">
+                      <div className="w-6 h-6 flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-[#1e293b]/60">
+                        <img
+                          src={logoUrl}
+                          alt={r.symbol}
+                          onError={(e) => (e.target.src = "/default-logo.png")}
+                          className="w-6 h-6 object-cover"
+                        />
+                      </div>
                       <a
                         href={`/analyze/${r.symbol}`}
                         className="hover:text-emerald-400 transition-colors"
@@ -116,12 +121,14 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       </a>
                     </td>
 
-                    <td className="py-3 text-right pr-4 font-bold text-gray-100 font-mono tracking-tight">
+                    {/* ราคา */}
+                    <td className="py-[10px] text-right pr-4 font-semibold text-gray-100 font-mono text-[15px]">
                       {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                     </td>
 
+                    {/* RSI */}
                     <td
-                      className={`py-3 text-right pr-3 font-bold font-mono tracking-tight ${
+                      className={`py-[10px] text-right pr-3 font-semibold font-mono text-[15px] ${
                         typeof r.rsi === "number"
                           ? r.rsi > 70
                             ? "text-red-400"
@@ -134,8 +141,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                     </td>
 
+                    {/* AI SIGNAL */}
                     <td
-                      className={`py-3 text-right pr-3 font-bold tracking-tight ${
+                      className={`py-[10px] text-right pr-3 font-semibold text-[15px] ${
                         r.signal === "Buy"
                           ? "text-green-400"
                           : r.signal === "Sell"
@@ -159,34 +167,34 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </table>
       </div>
 
-      {/* Search Modal */}
+      {/* 🔍 Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-16">
-            <h3 className="text-lg text-emerald-400 font-bold mb-3 tracking-tight">
+          <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
+            <h3 className="text-lg text-emerald-400 font-bold mb-3">
               Search Stock
             </h3>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-emerald-400">🔎</span>
+              <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">🔎</span>
               <input
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
                 placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
-                className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-2 
-                           focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] tracking-tight font-bold"
+                className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
+                           focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
             </div>
             <div className="flex justify-around">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm tracking-tight"
+                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-sm tracking-tight"
+                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-sm"
               >
                 Add
               </button>
@@ -196,4 +204,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-            }
+                       }
