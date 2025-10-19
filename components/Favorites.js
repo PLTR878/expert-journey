@@ -59,7 +59,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               <th className="py-[6px] text-left pl-1.5 w-[35%] tracking-tight">TICKER</th>
               <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
-              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
+              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI SIG</th>
             </tr>
           </thead>
 
@@ -155,4 +155,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-        }
+            }
