@@ -56,7 +56,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          💙 My Favorite Stocks
+          My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
