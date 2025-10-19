@@ -6,7 +6,6 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // โลโก้หุ้นหลัก
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -61,9 +60,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   };
 
   return (
-    <section className="w-full px-3 pt-2">
+    <section className="w-full px-0 pt-2">
       {/* Header */}
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center px-4 mb-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           💙 My Favorite Stocks
         </h2>
@@ -76,12 +75,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </button>
       </div>
 
-      {/* ตารางหุ้น */}
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-[15px] text-center border-separate border-spacing-0 table-fixed">
           <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
             <tr className="border-b border-white/10">
-              <th className="py-[6px] text-left pl-3 w-[38%] tracking-tight">TICKER</th>
+              <th className="py-[6px] text-left pl-6 w-[38%] tracking-tight">TICKER</th>
               <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
               <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
@@ -103,14 +102,14 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
-                    {/* โลโก้ + ชื่อหุ้น */}
-                    <td className="py-[10px] px-3 text-left font-bold text-sky-400 flex items-center gap-3">
-                      <div className="w-6 h-6 flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-[#1e293b]/60">
+                    {/* โลโก้อยู่นอกเส้น */}
+                    <td className="relative py-[12px] pl-[54px] text-left font-bold text-sky-400">
+                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-7 h-7 rounded-full overflow-hidden bg-[#1e293b]/60 shadow-md">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
                           onError={(e) => (e.target.src = "/default-logo.png")}
-                          className="w-6 h-6 object-cover"
+                          className="w-7 h-7 object-cover"
                         />
                       </div>
                       <a
@@ -121,14 +120,12 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       </a>
                     </td>
 
-                    {/* ราคา */}
-                    <td className="py-[10px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
+                    <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
                       {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                     </td>
 
-                    {/* RSI */}
                     <td
-                      className={`py-[10px] px-3 text-right font-semibold font-mono text-[15px] ${
+                      className={`py-[12px] px-3 text-right font-semibold font-mono text-[15px] ${
                         typeof r.rsi === "number"
                           ? r.rsi > 70
                             ? "text-red-400"
@@ -141,9 +138,8 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                     </td>
 
-                    {/* AI SIGNAL */}
                     <td
-                      className={`py-[10px] px-3 text-right font-semibold text-[15px] ${
+                      className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
                         r.signal === "Buy"
                           ? "text-green-400"
                           : r.signal === "Sell"
@@ -167,7 +163,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </table>
       </div>
 
-      {/* Modal ค้นหา */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
@@ -202,4 +198,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-            }
+        }
