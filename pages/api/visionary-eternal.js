@@ -1,5 +1,5 @@
-// ✅ Visionary Eternal API — AI Core (V∞.4)
-// รวมทุกระบบ daily, news, history, price, market, signal
+// ✅ Visionary Eternal API — AI Core (V∞.5)
+// ครอบคลุม: daily, news, history, price, market, logo (รวมทุกระบบใน API เดียว)
 export default async function handler(req, res) {
   const { type = "daily", symbol = "AAPL", range = "6mo", interval = "1d" } = req.query;
 
@@ -43,7 +43,8 @@ export default async function handler(req, res) {
         let gains = 0, losses = 0;
         for (let i = 1; i <= period; i++) {
           const diff = arr[i] - arr[i - 1];
-          if (diff >= 0) gains += diff; else losses -= diff;
+          if (diff >= 0) gains += diff;
+          else losses -= diff;
         }
         const rs = gains / (losses || 1);
         return 100 - 100 / (1 + rs);
@@ -104,6 +105,29 @@ export default async function handler(req, res) {
           future: [{ symbol: "PLTR" }, { symbol: "GWH" }, { symbol: "LWLG" }],
           hidden: [{ symbol: "AEHR" }, { symbol: "ENVX" }, { symbol: "SES" }],
         },
+      });
+    }
+
+    // --- Logo (new, free, all U.S. stocks) ---
+    if (type === "logo") {
+      const upper = symbol.toUpperCase();
+      const logoUrls = [
+        `https://companieslogo.com/img/orig/${upper}-logo.png`,
+        `https://companieslogo.com/img/orig/${upper}_BIG.png`,
+        `https://logo.clearbit.com/${upper.toLowerCase()}.com`,
+        `https://cdn.jsdelivr.net/gh/andreasbm/company-logos/logos/${upper}.svg`,
+      ];
+
+      for (const url of logoUrls) {
+        try {
+          const r = await fetch(url);
+          if (r.ok) return res.status(200).json({ symbol: upper, logo: url });
+        } catch {}
+      }
+
+      return res.status(200).json({
+        symbol: upper,
+        logo: "https://cdn-icons-png.flaticon.com/512/2301/2301122.png",
       });
     }
 
