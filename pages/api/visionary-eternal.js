@@ -1,10 +1,14 @@
 // ✅ Visionary Eternal API — AI Core (V∞.5)
-// ครอบคลุม: daily, news, history, price, market, logo (รวมทุกระบบใน API เดียว)
+// ครอบคลุมทุกระบบ: daily, history, news, market, price, logo
+
 export default async function handler(req, res) {
   const { type = "daily", symbol = "AAPL", range = "6mo", interval = "1d" } = req.query;
 
   try {
-    // --- History ---
+    const symbolUpper = symbol.toUpperCase();
+    const symbolLower = symbol.toLowerCase();
+
+    // --- 1️⃣ ดึงประวัติราคา ---
     if (type === "history") {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
       const r = await fetch(url);
@@ -22,7 +26,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ symbol, rows });
     }
 
-    // --- Daily (Indicators + AI Signal) ---
+    // --- 2️⃣ ดึงข้อมูลรายวัน + สัญญาณ AI ---
     if (type === "daily") {
       const base = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
       const r = await fetch(base);
@@ -40,7 +44,8 @@ export default async function handler(req, res) {
       };
       const rsi = (arr, period = 14) => {
         if (arr.length < period + 1) return 50;
-        let gains = 0, losses = 0;
+        let gains = 0,
+          losses = 0;
         for (let i = 1; i <= period; i++) {
           const diff = arr[i] - arr[i - 1];
           if (diff >= 0) gains += diff;
@@ -64,7 +69,7 @@ export default async function handler(req, res) {
           : "Sideway";
 
       return res.status(200).json({
-        symbol,
+        symbol: symbolUpper,
         lastClose,
         ema20,
         ema50,
@@ -75,7 +80,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // --- News ---
+    // --- 3️⃣ ข่าวหุ้น ---
     if (type === "news") {
       const newsUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}`;
       const r = await fetch(newsUrl);
@@ -83,7 +88,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ symbol, items: j.news || [] });
     }
 
-    // --- Price only ---
+    // --- 4️⃣ ราคาปัจจุบัน ---
     if (type === "price") {
       const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`);
       const j = await r.json();
@@ -96,7 +101,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // --- Market (default 4 groups) ---
+    // --- 5️⃣ กลุ่มตลาด ---
     if (type === "market") {
       return res.status(200).json({
         groups: {
@@ -108,32 +113,27 @@ export default async function handler(req, res) {
       });
     }
 
-    // --- Logo (new, free, all U.S. stocks) ---
+    // --- 6️⃣ ดึงโลโก้ (free, fast, auto) ---
     if (type === "logo") {
-      const upper = symbol.toUpperCase();
-      const logoUrls = [
-        `https://companieslogo.com/img/orig/${upper}-logo.png`,
-        `https://companieslogo.com/img/orig/${upper}_BIG.png`,
-        `https://logo.clearbit.com/${upper.toLowerCase()}.com`,
-        `https://cdn.jsdelivr.net/gh/andreasbm/company-logos/logos/${upper}.svg`,
+      const companies = [
+        `https://companieslogo.com/img/orig/${symbolUpper}_BIG.png`,
+        `https://logo.clearbit.com/${symbolLower}.com`,
       ];
-
-      for (const url of logoUrls) {
+      for (const url of companies) {
         try {
-          const r = await fetch(url);
-          if (r.ok) return res.status(200).json({ symbol: upper, logo: url });
+          const head = await fetch(url, { method: "HEAD" });
+          if (head.ok) return res.status(200).json({ symbol, logo: url });
         } catch {}
       }
-
       return res.status(200).json({
-        symbol: upper,
+        symbol,
         logo: "https://cdn-icons-png.flaticon.com/512/2301/2301122.png",
       });
     }
 
-    // --- Default fallback ---
+    // --- fallback ---
     res.status(400).json({ error: "Unknown type" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-        }
+                     }
