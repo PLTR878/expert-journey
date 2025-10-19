@@ -84,19 +84,19 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 return (
                   <tr
                     key={r.symbol + i}
-                    className="border-b border-white/10 bg-transparent" // ❌ ไม่มี hover
+                    className="border-b border-white/10 bg-transparent"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(r.symbol)}
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
                     <td className="relative py-[12px] pl-[54px] text-left font-bold text-sky-400 bg-transparent">
-                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden bg-transparent">
+                      <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full overflow-hidden">
                         <img
                           src={logoUrl}
                           alt={r.symbol}
                           onError={(e) => (e.target.src = '/default-logo.png')}
-                          className="w-8 h-8 object-contain"
+                          className="w-8 h-8 object-cover"
                         />
                       </div>
                       <a
@@ -188,4 +188,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-            }
+                                                                         }
