@@ -1,219 +1,100 @@
-// ✅ Visionary Stock Screener — V∞.9 (AI Fixed + Stable Edition)
+// ✅ Visionary AI Discovery — V∞.11 (Hidden Gems + Bottom Navigation)
 import { useEffect, useState } from "react";
-import MarketSection from "../components/MarketSection";
-import Favorites from "../components/Favorites";
 
 export default function Home() {
-  const [active, setActive] = useState("favorites");
-  const [marketTab, setMarketTab] = useState("fast");
-  const [favorites, setFavorites] = useState([]);
-  const [favoritePrices, setFavoritePrices] = useState({});
+  const [active, setActive] = useState("ai"); // เริ่มต้นหน้า AI Discovery
+  const [discoveries, setDiscoveries] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [showLogs, setShowLogs] = useState(false);
-  const [aiPicks, setAiPicks] = useState([]);
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-30), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // ===== FAVORITES =====
-  useEffect(() => {
-    const s = localStorage.getItem("favorites");
-    if (s) setFavorites(JSON.parse(s));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
-
-  const toggleFavorite = async (sym) => {
-    setFavorites((p) =>
-      p.includes(sym) ? p.filter((x) => x !== sym) : [...p, sym]
-    );
-    await fetchPrice(sym);
-  };
-
-  // ✅ ดึงราคาหุ้นรายตัวจาก API
-  async function fetchPrice(sym) {
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
+  async function loadDiscovery() {
     try {
-      const r = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
-      const j = await r.json();
-      setFavoritePrices((p) => ({
-        ...p,
-        [sym]: {
-          symbol: sym,
-          price: j.lastClose || 0,
-          rsi: j.rsi || 0,
-          signal:
-            j.trend === "Uptrend"
-              ? "Buy"
-              : j.trend === "Downtrend"
-              ? "Sell"
-              : "Hold",
-        },
-      }));
-    } catch (err) {
-      console.error("Fetch error:", sym, err.message);
-    }
-  }
-
-  // ✅ โหลดข้อมูลตลาด
-  const [fast, setFast] = useState([]);
-  const [emerging, setEmerging] = useState([]);
-  const [future, setFuture] = useState([]);
-  const [hidden, setHidden] = useState([]);
-
-  async function loadMarketData() {
-    try {
-      addLog("📡 Loading AI Market...");
-      const res = await fetch(`/api/visionary-eternal?type=market`, {
-        cache: "no-store",
-      });
+      setLoading(true);
+      addLog("🧠 AI scanning for early-stage opportunities...");
+      const res = await fetch(`/api/visionary-eternal?type=ai-discovery`);
       const j = await res.json();
 
-      setFast(j.groups?.fast || []);
-      setEmerging(j.groups?.emerging || []);
-      setFuture(j.groups?.future || []);
-      setHidden(j.groups?.hidden || []);
-
-      addLog("✅ Market loaded");
-
-      const all = [
-        ...j.groups.fast.map((x) => x.symbol),
-        ...j.groups.emerging.map((x) => x.symbol),
-        ...j.groups.future.map((x) => x.symbol),
-        ...j.groups.hidden.map((x) => x.symbol),
-      ];
-      for (const s of all) await fetchPrice(s);
+      if (j?.discovered?.length) {
+        setDiscoveries(j.discovered);
+        addLog(`✅ Found ${j.discovered.length} future leaders`);
+      } else {
+        addLog("⚠️ No discoveries found");
+      }
     } catch (err) {
-      addLog(`❌ Load failed: ${err.message}`);
-    }
-  }
-
-  // ✅ โหลดข้อมูล AI Picks
-  async function loadAI() {
-    try {
-      addLog("🧠 AI scanning...");
-      const res = await fetch(`/api/visionary-eternal?type=ai-scan`);
-      const j = await res.json();
-      setAiPicks(j.aiPicks || []);
-      addLog("✅ AI scan completed");
-      for (const s of j.aiPicks || []) await fetchPrice(s.symbol);
-    } catch (err) {
-      addLog(`⚠️ AI scan failed: ${err.message}`);
+      addLog("❌ Failed to fetch AI data: " + err.message);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadMarketData();
-    loadAI();
+    loadDiscovery();
+    const timer = setInterval(loadDiscovery, 120000); // รีเฟรชทุก 2 นาที
+    return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    favorites.forEach(fetchPrice);
-  }, [favorites]);
-
-  // ✅ รีเฟรชทุก 1 นาที
-  useEffect(() => {
-    const refresh = async () => {
-      addLog("🔁 Refreshing prices...");
-      const all = [
-        ...fast.map((x) => x.symbol),
-        ...emerging.map((x) => x.symbol),
-        ...future.map((x) => x.symbol),
-        ...hidden.map((x) => x.symbol),
-        ...favorites,
-        ...aiPicks.map((x) => x.symbol),
-      ];
-      for (const s of all) await fetchPrice(s);
-      await loadAI();
-    };
-    const interval = setInterval(refresh, 60000);
-    return () => clearInterval(interval);
-  }, [fast, emerging, future, hidden, favorites, aiPicks]);
 
   // ===== UI =====
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      <header className="px-3 py-0 h-[4px] bg-[#0b1220]" />
+    <main className="min-h-screen bg-[#0b1220] text-white pb-20">
+      {/* ✅ แสดงเฉพาะหน้า AI Discovery */}
+      {active === "ai" && (
+        <div className="max-w-6xl mx-auto px-3 pt-4">
+          <h1 className="text-emerald-400 text-[18px] font-bold mb-2">
+            🌋 AI Hidden Discovery — หุ้นต้นน้ำ อนาคตไกล
+          </h1>
+          <p className="text-gray-400 text-[13px] mb-3">
+            AI วิเคราะห์หุ้นระยะยาวที่ยังไม่มีใครเห็น แต่มีศักยภาพเติบโตสูง
+          </p>
 
-      <div className="max-w-6xl mx-auto px-3 pt-2">
-        {/* FAVORITES */}
-        {active === "favorites" && (
-          <section className="mt-2">
-            <Favorites
-              data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
-              favorites={favorites}
-              setFavorites={setFavorites}
-              fetchPrice={fetchPrice}
-            />
-          </section>
-        )}
+          {loading && <p className="text-gray-500 text-[13px] italic">AI กำลังสแกนตลาด...</p>}
 
-        {/* MARKET */}
-        {active === "market" && (
-          <>
-            {/* ✅ ปุ่มแนวนอน */}
-            <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-hide px-1">
-              {[
-                { id: "fast", label: "⚡ Fast" },
-                { id: "future", label: "🚀 Leaders" },
-                { id: "hidden", label: "💎 Gems" },
-                { id: "emerging", label: "🌱 Trends" },
-                { id: "ai", label: "🤖 AI Picks" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setMarketTab(tab.id)}
-                  className={`flex items-center justify-center flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-medium tracking-tight transition-all min-w-[75px]
-                    ${
-                      marketTab === tab.id
-                        ? "bg-emerald-500/25 border border-emerald-400 text-emerald-300 shadow-sm"
-                        : "bg-[#111827]/70 border border-gray-700 text-gray-400 hover:text-emerald-400 hover:border-emerald-400/40"
-                    }`}
+          {/* ✅ แสดงหุ้นที่ค้นพบ */}
+          <div className="mt-3 space-y-2">
+            {discoveries.map((d, i) => (
+              <div
+                key={i}
+                className="flex justify-between items-center bg-[#111827]/70 p-3 rounded-lg border border-gray-800 hover:border-emerald-400/40 transition-all"
+              >
+                <div>
+                  <h2 className="text-[15px] font-bold text-white">{d.symbol}</h2>
+                  <p className="text-[12px] text-gray-400">{d.name || "AI Discovery Candidate"}</p>
+                </div>
+                <a
+                  href={`/analyze/${d.symbol}`}
+                  className="text-emerald-400 text-[13px] hover:underline"
                 >
-                  {tab.label}
-                </button>
-              ))}
+                  View
+                </a>
+              </div>
+            ))}
+
+            {!loading && discoveries.length === 0 && (
+              <p className="text-gray-500 italic text-[13px]">ไม่มีข้อมูลในขณะนี้</p>
+            )}
+          </div>
+
+          {/* 🧠 Logs */}
+          <section className="mt-6">
+            <button
+              onClick={() => setLogs([])}
+              className="border border-emerald-400/40 text-emerald-400 rounded-md px-2 py-1 text-[12px] hover:bg-emerald-500/10"
+            >
+              Clear Logs
+            </button>
+            <div className="mt-2 bg-[#141b2d]/70 rounded-md border border-gray-800 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto">
+              {logs.length ? (
+                logs.map((l, i) => <div key={i}>{l}</div>)
+              ) : (
+                <p className="text-gray-500 italic">No logs yet.</p>
+              )}
             </div>
-
-            {/* ✅ เนื้อหาแต่ละหมวด */}
-            {marketTab === "fast" && (
-              <MarketSection title="⚡ Fast Movers" rows={fast} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            )}
-            {marketTab === "future" && (
-              <MarketSection title="🚀 Future Leaders" rows={future} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            )}
-            {marketTab === "hidden" && (
-              <MarketSection title="💎 Hidden Gems" rows={hidden} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            )}
-            {marketTab === "emerging" && (
-              <MarketSection title="🌱 Emerging Trends" rows={emerging} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            )}
-            {marketTab === "ai" && (
-              <MarketSection title="🤖 AI Picks (Top Momentum)" rows={aiPicks} favorites={favorites} toggleFavorite={toggleFavorite} favoritePrices={favoritePrices} />
-            )}
-          </>
-        )}
-
-        {/* 🧠 Logs */}
-        <section className="mt-5">
-          <button
-            onClick={() => setShowLogs((p) => !p)}
-            className="flex items-center gap-2 bg-[#141b2d] border border-white/10 px-2 py-1 rounded-md text-[11px] text-emerald-400 hover:bg-emerald-500/10 transition-all"
-          >
-            <span className="text-[12px]">🧠</span>
-            <span>{showLogs ? "Hide Logs" : "Show Logs"}</span>
-          </button>
-
-          {showLogs && (
-            <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto shadow-inner">
-              <ul className="space-y-0.5">
-                {logs.length ? logs.map((l, i) => <li key={i}>{l}</li>) : <li className="text-gray-500">No logs yet.</li>}
-              </ul>
-            </div>
-          )}
-        </section>
-      </div>
+          </section>
+        </div>
+      )}
 
       {/* ✅ Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0b1220] border-t border-white/5 flex justify-around text-gray-400 text-[11px] z-50">
@@ -221,12 +102,14 @@ export default function Home() {
           { id: "favorites", label: "Favorites", icon: "💙" },
           { id: "market", label: "Market", icon: "🌐" },
           { id: "scan", label: "Scanner", icon: "📡" },
-          { id: "trade", label: "AI Trade", icon: "🤖" },
+          { id: "ai", label: "AI Trade", icon: "🤖" },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`py-1 flex flex-col items-center ${active === t.id ? "text-emerald-400" : ""}`}
+            className={`py-1 flex flex-col items-center ${
+              active === t.id ? "text-emerald-400" : ""
+            }`}
           >
             <span className="text-[16px]">{t.icon}</span>
             {t.label}
@@ -235,4 +118,4 @@ export default function Home() {
       </nav>
     </main>
   );
-      }
+              }
