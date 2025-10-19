@@ -60,60 +60,64 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   };
 
   return (
-    <section className="w-full px-3 pt-3 bg-[#0b0f17] text-gray-200 min-h-screen">
+    <section className="w-full px-2 pt-3 bg-[#0b0f17] text-gray-200 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
+      <div className="flex justify-between items-center mb-4 px-2">
+        <h2 className="text-[18px] font-bold text-emerald-400 flex items-center gap-1">
           💙 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
           className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 
-                     border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
+                     border border-gray-700 rounded-md px-3 py-[5px] bg-[#0f172a]/70 hover:bg-[#162032]"
         >
           🔍 Search
         </button>
       </div>
 
-      {/* List */}
-      <div className="divide-y divide-white/10">
+      {/* รายการหุ้น */}
+      <div>
         {data?.length ? (
           data.map((r, i) => {
             const domain = logoMap[r.symbol] || `${r.symbol.toLowerCase()}.com`;
             const logoUrl = `https://logo.clearbit.com/${domain}`;
-
             return (
               <div
                 key={r.symbol + i}
-                className="flex items-center justify-between py-3 px-1 hover:bg-[#101626]/60 transition-all"
+                className="flex items-center justify-between py-3 pl-2 pr-3 hover:bg-[#111827]/50 transition-all relative"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(r.symbol)}
               >
-                {/* โลโก้ */}
-                <div className="flex items-center gap-3 min-w-[38%] relative">
-                  <img
-                    src={logoUrl}
-                    alt={r.symbol}
-                    onError={(e) => (e.target.src = "/default-logo.png")}
-                    className="w-8 h-8 rounded-full object-cover absolute -left-9 shadow-md"
-                  />
+                {/* เส้นสีขาวบางสุดถึงชื่อหุ้น */}
+                <div className="absolute left-0 top-[95%] h-[1px] w-[45%] bg-white/10"></div>
+
+                {/* โลโก้ + ชื่อหุ้น */}
+                <div className="flex items-center gap-3 min-w-[40%]">
+                  <div className="relative w-9 h-9">
+                    <img
+                      src={logoUrl}
+                      alt={r.symbol}
+                      onError={(e) => (e.target.src = "/default-logo.png")}
+                      className="w-9 h-9 rounded-full object-cover shadow-sm"
+                    />
+                  </div>
                   <a
                     href={`/analyze/${r.symbol}`}
-                    className="text-sky-400 font-bold text-[15px] ml-10 hover:text-emerald-400 transition-colors"
+                    className="text-sky-400 font-extrabold text-[17px] tracking-tight hover:text-emerald-400 transition-colors"
                   >
                     {r.symbol}
                   </a>
                 </div>
 
                 {/* ราคา */}
-                <div className="w-[25%] text-right font-bold text-gray-100 font-mono">
+                <div className="w-[23%] text-right font-bold text-[16px] text-gray-100 font-mono">
                   {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                 </div>
 
                 {/* RSI */}
                 <div
-                  className={`w-[20%] text-right font-bold font-mono ${
+                  className={`w-[18%] text-right font-bold text-[16px] font-mono ${
                     typeof r.rsi === "number"
                       ? r.rsi > 70
                         ? "text-red-400"
@@ -126,9 +130,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                   {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
                 </div>
 
-                {/* สัญญาณ */}
+                {/* AI Signal */}
                 <div
-                  className={`w-[20%] text-right font-bold ${
+                  className={`w-[19%] text-right font-extrabold text-[16px] ${
                     r.signal === "Buy"
                       ? "text-green-400"
                       : r.signal === "Sell"
@@ -183,4 +187,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-            }
+                    }
