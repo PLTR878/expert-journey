@@ -7,32 +7,46 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ ดึงข้อมูลจาก Visionary Eternal (daily + logo)
+  // ✅ โลโก้ถาวรแบบสวยตรงแบรนด์
+  const perfectLogo = {
+    NVDA: "https://logo.clearbit.com/nvidia.com",
+    TSLA: "https://logo.clearbit.com/tesla.com",
+    AAPL: "https://logo.clearbit.com/apple.com",
+    MSFT: "https://logo.clearbit.com/microsoft.com",
+    AMZN: "https://logo.clearbit.com/amazon.com",
+    META: "https://logo.clearbit.com/meta.com",
+    GOOG: "https://logo.clearbit.com/google.com",
+    AMD: "https://logo.clearbit.com/amd.com",
+    INTC: "https://logo.clearbit.com/intel.com",
+    PLTR: "https://logo.clearbit.com/palantir.com",
+    IONQ: "https://companieslogo.com/img/orig/IONQ_BIG.png",
+    AEHR: "https://companieslogo.com/img/orig/AEHR_BIG.png",
+    SLDP: "https://companieslogo.com/img/orig/SLDP_BIG.png",
+    NRGV: "https://companieslogo.com/img/orig/NRGV_BIG.png",
+    BBAI: "https://companieslogo.com/img/orig/BBAI_BIG.png",
+    AMPX: "https://companieslogo.com/img/orig/AMPX_BIG.png",
+    ABAT: "https://companieslogo.com/img/orig/ABAT_BIG.png",
+    GWH: "https://companieslogo.com/img/orig/GWH_BIG.png",
+    RXRX: "https://companieslogo.com/img/orig/RXRX_BIG.png",
+  };
+
+  // ✅ ดึงข้อมูลราคาอย่างเดียว (ไม่ต้องดึงโลโก้จาก API แล้ว)
   const fetchStockData = async (sym) => {
     try {
-      // ดึงข้อมูลราคา
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
       const json = await res.json();
-
-      // ดึงโลโก้จาก API ใหม่
-      const logoRes = await fetch(`/api/visionary-eternal?type=logo&symbol=${sym}`);
-      const logoJson = await logoRes.json();
 
       if (json && !json.error) {
         let signal = "Hold";
         if (json.trend === "Uptrend") signal = "Buy";
         else if (json.trend === "Downtrend") signal = "Sell";
 
-        const companyName =
-          json.companyName ||
-          sym.toUpperCase() ||
-          "";
-
         const item = {
           ...json,
           signal,
-          logo: logoJson.logo,
-          companyName,
+          logo:
+            perfectLogo[sym] ||
+            `https://logo.clearbit.com/${sym.toLowerCase()}.com`,
         };
 
         setData((prev) => {
@@ -49,12 +63,10 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลทั้งหมดจากรายการโปรด
   useEffect(() => {
     if (favorites?.length) favorites.forEach((sym) => fetchStockData(sym));
   }, [favorites]);
 
-  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -68,7 +80,6 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น (ปัดซ้าย)
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -85,7 +96,6 @@ export default function Favorites({ favorites, setFavorites }) {
     touchEndX.current = null;
   };
 
-  // ✅ UI
   return (
     <section className="w-full px-2 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
@@ -109,8 +119,10 @@ export default function Favorites({ favorites, setFavorites }) {
             {favorites?.length ? (
               favorites.map((sym, i) => {
                 const r = data.find((x) => x.symbol === sym);
-                const logo = r?.logo || "https://cdn-icons-png.flaticon.com/512/2301/2301122.png";
-                const company = r?.companyName || sym;
+                const logo =
+                  r?.logo ||
+                  perfectLogo[sym] ||
+                  "https://cdn-icons-png.flaticon.com/512/2301/2301122.png";
 
                 return (
                   <tr
@@ -120,34 +132,26 @@ export default function Favorites({ favorites, setFavorites }) {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(sym)}
                   >
-                    {/* โลโก้ + ชื่อหุ้น + ชื่อบริษัท */}
-                    <td className="relative py-[13px] pl-[48px] text-left align-middle">
+                    {/* โลโก้ + ชื่อหุ้น */}
+                    <td className="relative py-[13px] pl-[50px] text-left">
                       <div className="absolute left-[4px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden">
                         <img
                           src={logo}
                           alt={sym}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "https://cdn-icons-png.flaticon.com/512/2301/2301122.png";
-                          }}
+                          onError={(e) => (e.target.src = "https://cdn-icons-png.flaticon.com/512/2301/2301122.png")}
                           className="w-9 h-9 object-contain"
                         />
                       </div>
-                      <div className="flex flex-col leading-tight max-w-[120px]">
-                        <a
-                          href={`/analyze/${sym}`}
-                          className="text-white hover:text-emerald-400 font-semibold tracking-tight text-[15px] truncate"
-                        >
-                          {sym}
-                        </a>
-                        <span className="text-[11px] text-gray-400 font-medium truncate">
-                          {company}
-                        </span>
-                      </div>
+                      <a
+                        href={`/analyze/${sym}`}
+                        className="hover:text-emerald-400 transition-colors font-semibold tracking-tight text-white"
+                      >
+                        {sym}
+                      </a>
                     </td>
 
                     {/* ราคา */}
-                    <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px] whitespace-nowrap">
+                    <td className="py-[12px] px-3 text-right font-semibold text-gray-100 font-mono text-[15px]">
                       {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
                     </td>
 
@@ -168,7 +172,7 @@ export default function Favorites({ favorites, setFavorites }) {
 
                     {/* สัญญาณ AI */}
                     <td
-                      className={`py-[12px] px-3 text-right font-semibold text-[15px] whitespace-nowrap ${
+                      className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
                         r?.signal === "Buy"
                           ? "text-green-400"
                           : r?.signal === "Sell"
@@ -198,7 +202,7 @@ export default function Favorites({ favorites, setFavorites }) {
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
             <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">➕</span>
+              <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">🔍</span>
               <input
                 type="text"
                 value={symbol}
@@ -227,4 +231,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-          }
+            }
