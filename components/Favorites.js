@@ -7,32 +7,30 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หลัก (ใช้ชุดเดิมของพี่)
+  // ✅ แหล่งโลโก้หลัก (ใช้ domain จริง)
   const logoMap = {
-    TSLA: "https://logo.clearbit.com/tesla.com",
-    NVDA: "https://logo.clearbit.com/nvidia.com",
-    AAPL: "https://logo.clearbit.com/apple.com",
-    MSFT: "https://logo.clearbit.com/microsoft.com",
-    AMZN: "https://logo.clearbit.com/amazon.com",
-    META: "https://logo.clearbit.com/meta.com",
-    GOOG: "https://logo.clearbit.com/google.com",
-    AMD: "https://logo.clearbit.com/amd.com",
-    INTC: "https://logo.clearbit.com/intel.com",
-    PLTR: "https://logo.clearbit.com/palantir.com",
-    IONQ: "https://companieslogo.com/img/orig/IONQ_BIG.png",
-    AEHR: "https://companieslogo.com/img/orig/AEHR_BIG.png",
-    SLDP: "https://companieslogo.com/img/orig/SLDP_BIG.png",
-    NRGV: "https://companieslogo.com/img/orig/NRGV_BIG.png",
-    BBAI: "https://companieslogo.com/img/orig/BBAI_BIG.png",
-    AMPX: "https://companieslogo.com/img/orig/AMPX_BIG.png",
-    ABAT: "https://companieslogo.com/img/orig/ABAT_BIG.png",
-    GWH: "https://companieslogo.com/img/orig/GWH_BIG.png",
-    RXRX: "https://companieslogo.com/img/orig/RXRX_BIG.png",
-    RR: "https://companieslogo.com/img/orig/RR_BIG.png",
-    ENVX: "https://companieslogo.com/img/orig/ENVX_BIG.png",
-    SES: "https://companieslogo.com/img/orig/SES_BIG.png",
-    BEEM: "https://companieslogo.com/img/orig/BEEM_BIG.png",
-    LWLG: "https://companieslogo.com/img/orig/LWLG_BIG.png",
+    NVDA: "nvidia.com",
+    AAPL: "apple.com",
+    TSLA: "tesla.com",
+    MSFT: "microsoft.com",
+    AMZN: "amazon.com",
+    META: "meta.com",
+    GOOG: "google.com",
+    AMD: "amd.com",
+    INTC: "intel.com",
+    PLTR: "palantir.com",
+    RXRX: "recursion.com",
+    RR: "rolls-royce.com",
+    AEHR: "aehr.com",
+    SLDP: "solidpowerbattery.com",
+    NRGV: "energyvault.com",
+    BBAI: "bigbear.ai",
+    IREN: "irisenergy.co",
+    NVO: "novonordisk.com",
+    GWH: "esstech.com",
+    LWLG: "lightwaveLogic.com",
+    ENVX: "enovix.com",
+    SES: "ses.ai",
   };
 
   const companyMap = {
@@ -46,23 +44,20 @@ export default function Favorites({ favorites, setFavorites }) {
     AMD: "Advanced Micro Devices",
     INTC: "Intel Corp",
     PLTR: "Palantir Technologies",
-    IONQ: "IonQ Inc",
+    RXRX: "Recursion Pharmaceuticals",
+    RR: "Rolls-Royce Holdings",
     AEHR: "Aehr Test Systems",
     SLDP: "Solid Power Inc",
     NRGV: "Energy Vault Holdings",
     BBAI: "BigBear.ai Holdings",
-    AMPX: "Amprius Technologies",
-    ABAT: "American Battery Tech",
+    IREN: "Iris Energy Ltd",
+    NVO: "Novo Nordisk A/S",
     GWH: "ESS Tech Inc",
-    RXRX: "Recursion Pharmaceuticals",
-    RR: "Rolls-Royce Holdings",
+    LWLG: "Lightwave Logic Inc",
     ENVX: "Enovix Corp",
     SES: "SES AI Corp",
-    BEEM: "Beam Global",
-    LWLG: "Lightwave Logic Inc",
   };
 
-  // ✅ ดึงข้อมูลผ่าน API อัจฉริยะ Visionary Eternal v4
   const fetchPrice = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
@@ -74,11 +69,7 @@ export default function Favorites({ favorites, setFavorites }) {
         else if (json.trend === "Downtrend") signal = "Sell";
 
         const company = json.companyName || companyMap[sym] || sym;
-        const item = {
-          ...json,
-          signal,
-          companyName: company,
-        };
+        const item = { ...json, signal, companyName: company };
 
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
@@ -94,12 +85,10 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลทุกตัวเมื่อเปิดหน้า
   useEffect(() => {
     if (favorites?.length) favorites.forEach((sym) => fetchPrice(sym));
   }, [favorites]);
 
-  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -113,14 +102,12 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
-  // ✅ swipe เพื่อลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -133,6 +120,7 @@ export default function Favorites({ favorites, setFavorites }) {
 
   return (
     <section className="w-full px-2 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+      {/* Header */}
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🔮 My Favorite Stocks
@@ -146,16 +134,14 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
-      {/* ✅ ตารางหุ้น */}
+      {/* Table */}
       <div className="overflow-x-auto mt-1">
         <table className="w-full text-[15px] text-center border-separate border-spacing-0">
           <tbody>
             {favorites?.length ? (
               favorites.map((sym, i) => {
                 const r = data.find((x) => x.symbol === sym);
-                const logoSrc = logoMap[sym]
-                  ? logoMap[sym]
-                  : `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
+                const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
                 const companyName = r?.companyName || companyMap[sym] || "";
 
                 return (
@@ -167,10 +153,10 @@ export default function Favorites({ favorites, setFavorites }) {
                     onTouchEnd={() => handleTouchEnd(sym)}
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
-                    <td className="relative py-[13px] pl-[54px] text-left">
-                      <div className="absolute left-[4px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden">
+                    <td className="relative py-[13px] pl-[58px] text-left">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden border border-gray-700 bg-[#0b1220]">
                         <img
-                          src={logoSrc}
+                          src={`https://logo.clearbit.com/${domain}`}
                           alt={sym}
                           onError={(e) => {
                             e.target.onerror = null;
@@ -187,7 +173,7 @@ export default function Favorites({ favorites, setFavorites }) {
                         >
                           {sym}
                         </a>
-                        <span className="text-[11px] text-gray-400 font-medium truncate max-w-[120px]">
+                        <span className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
                           {companyName}
                         </span>
                       </div>
@@ -239,7 +225,7 @@ export default function Favorites({ favorites, setFavorites }) {
         </table>
       </div>
 
-      {/* Modal Search */}
+      {/* Search Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
@@ -250,7 +236,7 @@ export default function Favorites({ favorites, setFavorites }) {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
@@ -274,4 +260,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-            }
+    }
