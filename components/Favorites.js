@@ -7,7 +7,7 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หุ้น
+  // ✅ โลโก้หุ้น (รวม fallback สำหรับหุ้นยอดนิยม)
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -28,6 +28,14 @@ export default function Favorites({ favorites, setFavorites }) {
     QUBT: "quantumcomputinginc.com",
     SLDP: "solidpowerbattery.com",
     LAES: "sequelholdings.com",
+
+    // 🪙 เพิ่มโลโก้สำหรับหุ้นที่ Clearbit ไม่มี
+    NIO: "https://upload.wikimedia.org/wikipedia/commons/3/3e/NIO_Inc._logo.svg",
+    AI: "https://companieslogo.com/img/orig/AI_BIG-0c574b44.png",
+    SOFI: "https://companieslogo.com/img/orig/SOFI-0183b6ce.png",
+    UPST: "https://companieslogo.com/img/orig/UPST-3d37b1f0.png",
+    PATH: "https://companieslogo.com/img/orig/PATH-8b7b37d6.png",
+    RIVN: "https://companieslogo.com/img/orig/RIVN-01b0f4e0.png",
   };
 
   // ✅ ดึงข้อมูลจาก Visionary Eternal API (AI Core)
@@ -37,14 +45,12 @@ export default function Favorites({ favorites, setFavorites }) {
       const json = await res.json();
 
       if (json && !json.error) {
-        // แปลงค่า trend → signal
         let signal = "Hold";
         if (json.trend === "Uptrend") signal = "Buy";
         else if (json.trend === "Downtrend") signal = "Sell";
 
         const item = { ...json, signal };
 
-        // อัปเดตข้อมูลหุ้น
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
           if (existing) {
@@ -64,7 +70,7 @@ export default function Favorites({ favorites, setFavorites }) {
     if (favorites?.length) favorites.forEach((sym) => fetchPrice(sym));
   }, [favorites]);
 
-  // ✅ เพิ่มหุ้น
+  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -100,7 +106,7 @@ export default function Favorites({ favorites, setFavorites }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          🔮My Favorite Stocks
+          🔮 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -118,8 +124,9 @@ export default function Favorites({ favorites, setFavorites }) {
             {favorites?.length ? (
               favorites.map((sym, i) => {
                 const r = data.find((x) => x.symbol === sym);
-                const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
-                const logoUrl = `https://logo.clearbit.com/${domain}`;
+                const logoSrc = logoMap[sym]?.startsWith("http")
+                  ? logoMap[sym]
+                  : `https://logo.clearbit.com/${logoMap[sym] || `${sym.toLowerCase()}.com`}`;
 
                 return (
                   <tr
@@ -133,7 +140,7 @@ export default function Favorites({ favorites, setFavorites }) {
                     <td className="relative py-[13px] pl-[58px] text-left font-semibold text-sky-400">
                       <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent">
                         <img
-                          src={logoUrl}
+                          src={logoSrc}
                           alt={sym}
                           onError={(e) =>
                             (e.target.src =
@@ -202,7 +209,7 @@ export default function Favorites({ favorites, setFavorites }) {
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
             <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">🔎</span>
+              <span className="absolute left-3 top-2.5 text-emerald-400 text-[15px]">➕</span>
               <input
                 type="text"
                 value={symbol}
