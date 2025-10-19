@@ -40,7 +40,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       {/* Header */}
       <div className="flex justify-between items-center mb-1">
         <h2 className="text-[17px] font-bold text-emerald-400 tracking-tight flex items-center gap-1">
-          💙 My Favorite Stocks
+           My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -57,7 +57,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
           <thead className="text-[#9ca3af] text-[12px] uppercase select-none font-semibold">
             <tr className="border-b border-white/5">
               <th className="py-[6px] text-left pl-1.5 w-[35%] tracking-tight">TICKER</th>
-              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">$</th>
+              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
               <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI</th>
             </tr>
@@ -131,7 +131,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-2 
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] tracking-tight font-bold"
               />
@@ -155,4 +155,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-                                                                                           }
+        }
