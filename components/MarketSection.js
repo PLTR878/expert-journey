@@ -1,8 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef } from "react";
 
-export default function MarketLikeFavorites({ dataList = [] }) {
+export default function MarketLikeFavorites({ dataList = [], rows = [] }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
+
+  // ✅ รวมข้อมูลจาก props ให้แน่ใจว่าไม่ว่าง
+  const list = dataList.length ? dataList : rows;
 
   // ✅ โลโก้หลัก
   const logoMap = {
@@ -80,14 +83,20 @@ export default function MarketLikeFavorites({ dataList = [] }) {
 
       {/* ✅ Layout เหมือน Favorites */}
       <div className="flex flex-col divide-y divide-gray-800/50">
-        {dataList?.length ? (
-          dataList.map((r, i) => {
+        {list?.length ? (
+          list.map((r, i) => {
             const sym = r.symbol;
-            const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
+            const domain = logoMap[sym] || `${sym?.toLowerCase?.()}.com`;
             const companyName = r.companyName || companyMap[sym] || sym;
             const price = r.lastClose || r.price || 0;
             const rsi = r.rsi;
-            const signal = r.signal || (r.trend === "Uptrend" ? "Buy" : r.trend === "Downtrend" ? "Sell" : "Hold");
+            const signal =
+              r.signal ||
+              (r.trend === "Uptrend"
+                ? "Buy"
+                : r.trend === "Downtrend"
+                ? "Sell"
+                : "Hold");
 
             return (
               <div
@@ -134,6 +143,13 @@ export default function MarketLikeFavorites({ dataList = [] }) {
                     <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
                       {companyName}
                     </div>
+
+                    {/* ✅ เหตุผลจาก AI */}
+                    {r.reason && (
+                      <div className="text-[10px] text-emerald-400 mt-[2px] max-w-[160px] truncate">
+                        📈 {r.reason}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -178,4 +194,4 @@ export default function MarketLikeFavorites({ dataList = [] }) {
       </div>
     </section>
   );
-}
+                  }
