@@ -7,7 +7,7 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ แหล่งโลโก้หลัก (ใช้ domain จริง)
+  // ✅ Domain map สำหรับโลโก้หลัก
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -19,20 +19,23 @@ export default function Favorites({ favorites, setFavorites }) {
     AMD: "amd.com",
     INTC: "intel.com",
     PLTR: "palantir.com",
+    IREN: "irisenergy.co",
     RXRX: "recursion.com",
     RR: "rolls-royce.com",
     AEHR: "aehr.com",
     SLDP: "solidpowerbattery.com",
     NRGV: "energyvault.com",
     BBAI: "bigbear.ai",
-    IREN: "irisenergy.co",
     NVO: "novonordisk.com",
     GWH: "esstech.com",
-    LWLG: "lightwaveLogic.com",
-    ENVX: "enovix.com",
-    SES: "ses.ai",
+    COST: "costco.com",
+    QUBT: "quantumcomputinginc.com",
+    UNH: "uhc.com",
+    EZGO: "ezgoev.com",
+    QMCO: "quantum.com",
   };
 
+  // ✅ Map ชื่อบริษัท
   const companyMap = {
     NVDA: "NVIDIA Corp",
     AAPL: "Apple Inc.",
@@ -44,40 +47,37 @@ export default function Favorites({ favorites, setFavorites }) {
     AMD: "Advanced Micro Devices",
     INTC: "Intel Corp",
     PLTR: "Palantir Technologies",
+    IREN: "Iris Energy Ltd",
     RXRX: "Recursion Pharmaceuticals",
     RR: "Rolls-Royce Holdings",
     AEHR: "Aehr Test Systems",
     SLDP: "Solid Power Inc",
     NRGV: "Energy Vault Holdings",
     BBAI: "BigBear.ai Holdings",
-    IREN: "Iris Energy Ltd",
     NVO: "Novo Nordisk A/S",
     GWH: "ESS Tech Inc",
-    LWLG: "Lightwave Logic Inc",
-    ENVX: "Enovix Corp",
-    SES: "SES AI Corp",
+    COST: "Costco Wholesale Corp",
+    QUBT: "Quantum Computing Inc",
+    UNH: "UnitedHealth Group",
+    EZGO: "EZGO Technologies",
+    QMCO: "Quantum Corp",
   };
 
   const fetchPrice = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
       const json = await res.json();
-
       if (json && !json.error) {
         let signal = "Hold";
         if (json.trend === "Uptrend") signal = "Buy";
         else if (json.trend === "Downtrend") signal = "Sell";
-
         const company = json.companyName || companyMap[sym] || sym;
         const item = { ...json, signal, companyName: company };
 
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
-          if (existing) {
-            return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
-          } else {
-            return [...prev, item];
-          }
+          if (existing) return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
+          return [...prev, item];
         });
       }
     } catch (err) {
@@ -154,13 +154,26 @@ export default function Favorites({ favorites, setFavorites }) {
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
                     <td className="relative py-[13px] pl-[58px] text-left">
-                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden border border-gray-700 bg-[#0b1220]">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full border border-gray-700 bg-gradient-to-br from-[#1e293b] to-[#0f172a] flex items-center justify-center overflow-hidden">
                         <img
                           src={`https://logo.clearbit.com/${domain}`}
                           alt={sym}
                           onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = `https://companieslogo.com/img/orig/${sym.toUpperCase()}_BIG.png`;
+                            setTimeout(() => {
+                              if (e.target.naturalWidth === 0 || e.target.naturalHeight === 0) {
+                                e.target.style.display = "none";
+                                const parent = e.target.parentNode;
+                                if (parent && !parent.querySelector(".fallback-logo")) {
+                                  const span = document.createElement("span");
+                                  span.className =
+                                    "fallback-logo text-emerald-400 font-bold text-[13px]";
+                                  span.textContent = sym[0];
+                                  parent.appendChild(span);
+                                }
+                              }
+                            }, 800);
                           }}
                           className="w-9 h-9 object-contain transition-opacity duration-700 ease-in-out opacity-0"
                           onLoad={(e) => (e.target.style.opacity = 1)}
@@ -260,4 +273,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-    }
+      }
