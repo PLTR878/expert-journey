@@ -36,7 +36,6 @@ export default function Favorites({ favorites, setFavorites }) {
       const json = await res.json();
 
       if (json && !json.error) {
-        // 🧠 แปลง trend จาก API เป็นสัญญาณ Buy / Hold / Sell
         let signal = "Hold";
         if (json.trend === "Uptrend") signal = "Buy";
         else if (json.trend === "Downtrend") signal = "Sell";
@@ -57,11 +56,8 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลหุ้นทั้งหมดเมื่อหน้าเปิด
   useEffect(() => {
-    if (favorites?.length) {
-      favorites.forEach((sym) => fetchPrice(sym));
-    }
+    if (favorites?.length) favorites.forEach((sym) => fetchPrice(sym));
   }, [favorites]);
 
   const handleSubmit = async () => {
@@ -98,7 +94,7 @@ export default function Favorites({ favorites, setFavorites }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          My Favorite Stocks
+          💙 My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -110,25 +106,8 @@ export default function Favorites({ favorites, setFavorites }) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto mt-1">
         <table className="w-full text-[15px] text-center border-separate border-spacing-0">
-          <thead className="text-[#a1a1aa] text-[12px] uppercase select-none font-semibold">
-            <tr>
-              <th className="py-[6px] text-left pl-[62px] w-[38%] tracking-tight">
-                TICKER
-              </th>
-              <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">
-                PRICE
-              </th>
-              <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">
-                RSI
-              </th>
-              <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">
-                AI
-              </th>
-            </tr>
-          </thead>
-
           <tbody>
             {favorites?.length ? (
               favorites.map((sym, i) => {
@@ -139,18 +118,21 @@ export default function Favorites({ favorites, setFavorites }) {
                 return (
                   <tr
                     key={sym + i}
-                    className="transition-all hover:bg-[#111827]/40 rounded-xl"
+                    className="transition-all hover:bg-[#111827]/40 rounded-xl border-b border-gray-800/40"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(sym)}
                   >
-                    {/* โลโก้ + Ticker */}
+                    {/* โลโก้ + ชื่อหุ้น */}
                     <td className="relative py-[13px] pl-[58px] text-left font-semibold text-sky-400">
-                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-[#0b1220] border border-gray-700/30">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-[#0b1220] border border-gray-700/20">
                         <img
                           src={logoUrl}
                           alt={sym}
-                          onError={(e) => (e.target.src = "https://cdn-icons-png.flaticon.com/512/2301/2301122.png")}
+                          onError={(e) =>
+                            (e.target.src =
+                              "https://cdn-icons-png.flaticon.com/512/2301/2301122.png")
+                          }
                           className="w-9 h-9 object-contain"
                         />
                       </div>
@@ -182,7 +164,7 @@ export default function Favorites({ favorites, setFavorites }) {
                       {typeof r?.rsi === "number" ? Math.round(r.rsi) : "-"}
                     </td>
 
-                    {/* AI Signal (Buy / Hold / Sell) */}
+                    {/* สัญญาณ AI */}
                     <td
                       className={`py-[12px] px-3 text-right font-semibold text-[15px] ${
                         r?.signal === "Buy"
@@ -219,7 +201,7 @@ export default function Favorites({ favorites, setFavorites }) {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
@@ -243,4 +225,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-  }
+            }
