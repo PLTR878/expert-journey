@@ -7,7 +7,7 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หุ้น (รวม fallback สำหรับหุ้นยอดนิยม)
+  // ✅ โลโก้หุ้น (Smart Logo Engine)
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -29,13 +29,30 @@ export default function Favorites({ favorites, setFavorites }) {
     SLDP: "solidpowerbattery.com",
     LAES: "sequelholdings.com",
 
-    // 🪙 เพิ่มโลโก้สำหรับหุ้นที่ Clearbit ไม่มี
-    NIO: "https://upload.wikimedia.org/wikipedia/commons/3/3e/NIO_Inc._logo.svg",
+    // 🧠 เพิ่มโลโก้ fallback สำหรับหุ้นที่ Clearbit ไม่มี
+    NIO: "https://companieslogo.com/img/orig/NIO_BIG.png",
     AI: "https://companieslogo.com/img/orig/AI_BIG-0c574b44.png",
+    BBAI: "https://companieslogo.com/img/orig/BBAI_BIG-1efdab34.png",
     SOFI: "https://companieslogo.com/img/orig/SOFI-0183b6ce.png",
     UPST: "https://companieslogo.com/img/orig/UPST-3d37b1f0.png",
     PATH: "https://companieslogo.com/img/orig/PATH-8b7b37d6.png",
     RIVN: "https://companieslogo.com/img/orig/RIVN-01b0f4e0.png",
+    CHPT: "https://companieslogo.com/img/orig/CHPT_BIG.png",
+    BEEM: "https://companieslogo.com/img/orig/BEEM_BIG.png",
+    GWH: "https://companieslogo.com/img/orig/GWH_BIG.png",
+    ENVX: "https://companieslogo.com/img/orig/ENVX_BIG.png",
+    FREY: "https://companieslogo.com/img/orig/FREY_BIG.png",
+    QS: "https://companieslogo.com/img/orig/QS_BIG.png",
+    ENPH: "https://companieslogo.com/img/orig/ENPH_BIG.png",
+    RUN: "https://companieslogo.com/img/orig/RUN_BIG.png",
+    FSLR: "https://companieslogo.com/img/orig/FSLR_BIG.png",
+    BLNK: "https://companieslogo.com/img/orig/BLNK_BIG.png",
+    STEM: "https://companieslogo.com/img/orig/STEM_BIG.png",
+    SES: "https://companieslogo.com/img/orig/SES_BIG.png",
+    LWLG: "https://companieslogo.com/img/orig/LWLG_BIG.png",
+    WOLF: "https://companieslogo.com/img/orig/WOLF_BIG.png",
+    LICY: "https://companieslogo.com/img/orig/LICY_BIG.png",
+    NRGV: "https://companieslogo.com/img/orig/NRGV_BIG.png",
   };
 
   // ✅ ดึงข้อมูลจาก Visionary Eternal API (AI Core)
@@ -124,6 +141,7 @@ export default function Favorites({ favorites, setFavorites }) {
             {favorites?.length ? (
               favorites.map((sym, i) => {
                 const r = data.find((x) => x.symbol === sym);
+                // ✅ ใช้ระบบโลโก้อัจฉริยะ
                 const logoSrc = logoMap[sym]?.startsWith("http")
                   ? logoMap[sym]
                   : `https://logo.clearbit.com/${logoMap[sym] || `${sym.toLowerCase()}.com`}`;
@@ -142,11 +160,12 @@ export default function Favorites({ favorites, setFavorites }) {
                         <img
                           src={logoSrc}
                           alt={sym}
-                          onError={(e) =>
-                            (e.target.src =
-                              "https://cdn-icons-png.flaticon.com/512/2301/2301122.png")
-                          }
-                          className="w-9 h-9 object-contain"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://companieslogo.com/img/orig/${sym.toUpperCase()}_BIG.png`;
+                          }}
+                          className="w-9 h-9 object-contain transition-opacity duration-700 ease-in-out opacity-0"
+                          onLoad={(e) => (e.target.style.opacity = 1)}
                         />
                       </div>
                       <a
@@ -214,7 +233,7 @@ export default function Favorites({ favorites, setFavorites }) {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
@@ -238,4 +257,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-            }
+                   }
