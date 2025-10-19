@@ -7,10 +7,10 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้ถาวรแบบสวยตรงแบรนด์
-  const perfectLogo = {
-    NVDA: "https://logo.clearbit.com/nvidia.com",
+  // ✅ โลโก้สวยถาวร (ครบชุด)
+  const logoMap = {
     TSLA: "https://logo.clearbit.com/tesla.com",
+    NVDA: "https://logo.clearbit.com/nvidia.com",
     AAPL: "https://logo.clearbit.com/apple.com",
     MSFT: "https://logo.clearbit.com/microsoft.com",
     AMZN: "https://logo.clearbit.com/amazon.com",
@@ -28,10 +28,19 @@ export default function Favorites({ favorites, setFavorites }) {
     ABAT: "https://companieslogo.com/img/orig/ABAT_BIG.png",
     GWH: "https://companieslogo.com/img/orig/GWH_BIG.png",
     RXRX: "https://companieslogo.com/img/orig/RXRX_BIG.png",
+    RR: "https://companieslogo.com/img/orig/RR_BIG.png",
+    ENVX: "https://companieslogo.com/img/orig/ENVX_BIG.png",
+    SES: "https://companieslogo.com/img/orig/SES_BIG.png",
+    BEEM: "https://companieslogo.com/img/orig/BEEM_BIG.png",
+    LWLG: "https://companieslogo.com/img/orig/LWLG_BIG.png",
+    NIO: "https://logo.clearbit.com/nio.com",
+    SOFI: "https://companieslogo.com/img/orig/SOFI_BIG.png",
+    PATH: "https://companieslogo.com/img/orig/PATH_BIG.png",
+    UPST: "https://companieslogo.com/img/orig/UPST_BIG.png",
   };
 
-  // ✅ ดึงข้อมูลราคาอย่างเดียว (ไม่ต้องดึงโลโก้จาก API แล้ว)
-  const fetchStockData = async (sym) => {
+  // ✅ ดึงข้อมูลจาก API
+  const fetchData = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
       const json = await res.json();
@@ -44,18 +53,12 @@ export default function Favorites({ favorites, setFavorites }) {
         const item = {
           ...json,
           signal,
-          logo:
-            perfectLogo[sym] ||
-            `https://logo.clearbit.com/${sym.toLowerCase()}.com`,
         };
 
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
-          if (existing) {
-            return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
-          } else {
-            return [...prev, item];
-          }
+          if (existing) return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
+          else return [...prev, item];
         });
       }
     } catch (err) {
@@ -63,10 +66,12 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
+  // ✅ โหลดข้อมูลทั้งหมด
   useEffect(() => {
-    if (favorites?.length) favorites.forEach((sym) => fetchStockData(sym));
+    if (favorites?.length) favorites.forEach((sym) => fetchData(sym));
   }, [favorites]);
 
+  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -74,12 +79,13 @@ export default function Favorites({ favorites, setFavorites }) {
       const updated = [...favorites, sym];
       setFavorites(updated);
       localStorage.setItem("favorites", JSON.stringify(updated));
-      await fetchStockData(sym);
+      await fetchData(sym);
     }
     setSymbol("");
     setShowModal(false);
   };
 
+  // ✅ ลบหุ้น (ปัดซ้าย)
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -119,10 +125,9 @@ export default function Favorites({ favorites, setFavorites }) {
             {favorites?.length ? (
               favorites.map((sym, i) => {
                 const r = data.find((x) => x.symbol === sym);
-                const logo =
-                  r?.logo ||
-                  perfectLogo[sym] ||
-                  "https://cdn-icons-png.flaticon.com/512/2301/2301122.png";
+                const logoSrc =
+                  logoMap[sym] ||
+                  `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
 
                 return (
                   <tr
@@ -134,11 +139,14 @@ export default function Favorites({ favorites, setFavorites }) {
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
                     <td className="relative py-[13px] pl-[50px] text-left">
-                      <div className="absolute left-[4px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden">
+                      <div className="absolute left-[6px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent">
                         <img
-                          src={logo}
+                          src={logoSrc}
                           alt={sym}
-                          onError={(e) => (e.target.src = "https://cdn-icons-png.flaticon.com/512/2301/2301122.png")}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://companieslogo.com/img/orig/${sym.toUpperCase()}_BIG.png`;
+                          }}
                           className="w-9 h-9 object-contain"
                         />
                       </div>
