@@ -7,6 +7,7 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
+  // ✅ โลโก้หุ้น
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -29,19 +30,21 @@ export default function Favorites({ favorites, setFavorites }) {
     LAES: "sequelholdings.com",
   };
 
-  // ✅ ดึงข้อมูลจาก Visionary Eternal API
+  // ✅ ดึงข้อมูลจาก Visionary Eternal API (AI Core)
   const fetchPrice = async (sym) => {
     try {
       const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
       const json = await res.json();
 
       if (json && !json.error) {
+        // แปลงค่า trend → signal
         let signal = "Hold";
         if (json.trend === "Uptrend") signal = "Buy";
         else if (json.trend === "Downtrend") signal = "Sell";
 
         const item = { ...json, signal };
 
+        // อัปเดตข้อมูลหุ้น
         setData((prev) => {
           const existing = prev.find((x) => x.symbol === sym);
           if (existing) {
@@ -56,10 +59,12 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
+  // ✅ โหลดข้อมูลทั้งหมดจากรายการโปรด
   useEffect(() => {
     if (favorites?.length) favorites.forEach((sym) => fetchPrice(sym));
   }, [favorites]);
 
+  // ✅ เพิ่มหุ้น
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -73,6 +78,7 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
+  // ✅ ลบหุ้น (ปัดซ้าย)
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -94,14 +100,14 @@ export default function Favorites({ favorites, setFavorites }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          💙 My Favorite Stocks
+          🔮My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
           className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 
                      border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
         >
-          🔍 Search
+          ➕ Search
         </button>
       </div>
 
@@ -118,14 +124,14 @@ export default function Favorites({ favorites, setFavorites }) {
                 return (
                   <tr
                     key={sym + i}
-                    className="transition-all hover:bg-[#111827]/40 rounded-xl border-b border-gray-800/40"
+                    className="transition-all hover:bg-[#111827]/40 border-b border-gray-800/40"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd(sym)}
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
                     <td className="relative py-[13px] pl-[58px] text-left font-semibold text-sky-400">
-                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-[#0b1220] border border-gray-700/20">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full overflow-hidden bg-transparent">
                         <img
                           src={logoUrl}
                           alt={sym}
@@ -182,7 +188,7 @@ export default function Favorites({ favorites, setFavorites }) {
             ) : (
               <tr>
                 <td colSpan="4" className="py-4 text-gray-500 text-center italic">
-                  No favorites yet. Add one by searching 🔍
+                  No favorites yet. Add one by searching ➕
                 </td>
               </tr>
             )}
@@ -201,7 +207,7 @@ export default function Favorites({ favorites, setFavorites }) {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
               />
