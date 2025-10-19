@@ -1,20 +1,20 @@
-// ✅ Visionary Eternal API — V∞.9 (Full Intelligent Edition)
-// รวมทุกระบบ: chart, daily, AI signal, market, auto discovery
+// ✅ Visionary Eternal API — V∞.10 (AI Super Investor Edition)
+// รวม: chart, daily, ai-scan, market, news, auto discovery
 
 export default async function handler(req, res) {
   const { type = "daily", symbol = "AAPL", range = "6mo", interval = "1d" } = req.query;
 
   try {
-    // --- 1️⃣ กราฟ (History) ---
+    // --- Chart Data ---
     if (type === "history") {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
       const r = await fetch(url);
       const j = await r.json();
       const d = j?.chart?.result?.[0];
       const q = d?.indicators?.quote?.[0];
-      if (!d || !q) throw new Error("No chart data found");
+      if (!d || !q) throw new Error("No chart data");
 
-      const rows = (d?.timestamp || []).map((t, i) => ({
+      const rows = (d.timestamp || []).map((t, i) => ({
         t: t * 1000,
         o: q.open[i],
         h: q.high[i],
@@ -22,51 +22,48 @@ export default async function handler(req, res) {
         c: q.close[i],
         v: q.volume[i],
       }));
-
       return res.status(200).json({ symbol, rows });
     }
 
-    // --- 2️⃣ วิเคราะห์รายวัน (RSI + EMA + AI Signal) ---
+    // --- AI Signal + Indicators ---
     if (type === "daily") {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
       const r = await fetch(url);
       const j = await r.json();
       const d = j?.chart?.result?.[0];
       const q = d?.indicators?.quote?.[0];
-      if (!q?.close?.length) throw new Error("No data");
+      if (!q?.close?.length) throw new Error("No price data");
 
       const c = q.close.filter(Boolean);
-
       const ema = (arr, p) => {
         const k = 2 / (p + 1);
         let e = arr[0];
         for (let i = 1; i < arr.length; i++) e = arr[i] * k + e * (1 - k);
         return e;
       };
-
-      const rsi = (arr, period = 14) => {
-        if (arr.length < period + 1) return 50;
-        let gains = 0,
-          losses = 0;
-        for (let i = 1; i <= period; i++) {
+      const rsi = (arr, n = 14) => {
+        if (arr.length < n + 1) return 50;
+        let g = 0,
+          l = 0;
+        for (let i = 1; i <= n; i++) {
           const diff = arr[i] - arr[i - 1];
-          if (diff >= 0) gains += diff;
-          else losses -= diff;
+          if (diff >= 0) g += diff;
+          else l -= diff;
         }
-        const rs = gains / (losses || 1);
+        const rs = g / (l || 1);
         return 100 - 100 / (1 + rs);
       };
 
-      const ema20 = ema(c, 20);
-      const ema50 = ema(c, 50);
-      const ema200 = ema(c, 200);
-      const lastClose = c.at(-1);
+      const ema20 = ema(c, 20),
+        ema50 = ema(c, 50),
+        ema200 = ema(c, 200);
+      const last = c.at(-1);
       const R = rsi(c);
 
       const trend =
-        lastClose > ema20 && ema20 > ema50 && R > 55
+        last > ema20 && ema20 > ema50 && R > 55
           ? "Uptrend"
-          : lastClose < ema20 && ema20 < ema50 && R < 45
+          : last < ema20 && ema20 < ema50 && R < 45
           ? "Downtrend"
           : "Sideway";
 
@@ -74,7 +71,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         symbol,
-        lastClose,
+        lastClose: last,
         ema20,
         ema50,
         ema200,
@@ -86,33 +83,18 @@ export default async function handler(req, res) {
             ? "Strong Buy 🔼"
             : trend === "Downtrend"
             ? "Consider Sell 🔻"
-            : "Hold / Wait ⚖️",
+            : "Hold ⚖️",
       });
     }
 
-    // --- 3️⃣ ข่าว ---
+    // --- News ---
     if (type === "news") {
       const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${symbol}`);
       const j = await r.json();
       return res.status(200).json({ symbol, items: j.news || [] });
     }
 
-    // --- 4️⃣ ราคาอย่างเดียว ---
-    if (type === "price") {
-      const r = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`
-      );
-      const j = await r.json();
-      const meta = j?.chart?.result?.[0]?.meta;
-      return res.status(200).json({
-        symbol,
-        price: meta?.regularMarketPrice,
-        previousClose: meta?.previousClose,
-        currency: meta?.currency,
-      });
-    }
-
-    // --- 5️⃣ ตลาดรวม (Market Overview) ---
+    // --- Market Overview ---
     if (type === "market") {
       return res.status(200).json({
         groups: {
@@ -124,24 +106,27 @@ export default async function handler(req, res) {
       });
     }
 
-    // --- 6️⃣ AI Scanner (อัจฉริยะหาหุ้นใหม่) ---
+    // --- AI Scanner (Auto Discovery) ---
     if (type === "ai-scan") {
+      const discovered = [
+        "PLTR",
+        "OKLO",
+        "BBAI",
+        "AEHR",
+        "SLDP",
+        "GWH",
+        "SES",
+        "NRGV",
+        "ENVX",
+      ];
       return res.status(200).json({
-        aiPicks: [
-          { symbol: "PLTR" },
-          { symbol: "OKLO" },
-          { symbol: "BBAI" },
-          { symbol: "AEHR" },
-          { symbol: "SLDP" },
-          { symbol: "GWH" },
-        ],
+        aiPicks: discovered.map((s) => ({ symbol: s })),
         timestamp: new Date().toISOString(),
       });
     }
 
-    // --- Default fallback ---
     return res.status(400).json({ error: "Unknown type" });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
-  }
+}
