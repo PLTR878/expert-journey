@@ -6,6 +6,31 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
+  // 🔹 mapping หุ้นหลักๆ ให้โลโก้แม่น
+  const logoMap = {
+    NVDA: "nvidia.com",
+    AAPL: "apple.com",
+    TSLA: "tesla.com",
+    MSFT: "microsoft.com",
+    AMZN: "amazon.com",
+    META: "meta.com",
+    GOOG: "google.com",
+    GOOGL: "google.com",
+    INTC: "intel.com",
+    AMD: "amd.com",
+    PLTR: "palantir.com",
+    BBAI: "bigbear.ai",
+    LAES: "sectorspdr.com",
+    RCAT: "redcatholdings.com",
+    BTDR: "bitdeer.com",
+    IREN: "irisenergy.co",
+    SOFI: "sofi.com",
+    RUN: "sunrun.com",
+    ENPH: "enphase.com",
+    F: "ford.com",
+    GM: "gm.com",
+  };
+
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -40,7 +65,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       {/* Header */}
       <div className="flex justify-between items-center mb-1">
         <h2 className="text-[17px] font-bold text-emerald-400 tracking-tight flex items-center gap-1">
-           My Favorite Stocks
+          My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -56,7 +81,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         <table className="w-full text-[15px] text-center border-collapse">
           <thead className="text-[#9ca3af] text-[12px] uppercase select-none font-semibold">
             <tr className="border-b border-white/5">
-              <th className="py-[6px] text-left pl-1.5 w-[35%] tracking-tight">TICKER</th>
+              <th className="py-[6px] text-left pl-1.5 w-[38%] tracking-tight">TICKER</th>
               <th className="py-[6px] text-right pr-4 w-[22%] tracking-tight">MARKET</th>
               <th className="py-[6px] text-right pr-3 w-[20%] tracking-tight">RSI</th>
               <th className="py-[6px] text-right pr-3 w-[23%] tracking-tight">AI SIG</th>
@@ -65,48 +90,64 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
 
           <tbody>
             {data?.length ? (
-              data.map((r, i) => (
-                <tr
-                  key={r.symbol + i}
-                  className="hover:bg-[#151821]/60 transition-all border-b border-white/5"
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={() => handleTouchEnd(r.symbol)}
-                >
-                  <td className="py-3 text-left pl-1.5 font-bold text-sky-400 tracking-tight">
-                    <a href={`/analyze/${r.symbol}`} className="hover:text-emerald-400 transition-colors">
-                      {r.symbol}
-                    </a>
-                  </td>
-                  <td className="py-3 text-right pr-4 font-bold text-gray-100 font-mono tracking-tight">
-                    {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
-                  </td>
-                  <td
-                    className={`py-3 text-right pr-3 font-bold font-mono tracking-tight ${
-                      typeof r.rsi === "number"
-                        ? r.rsi > 70
+              data.map((r, i) => {
+                const domain = logoMap[r.symbol] || `${r.symbol.toLowerCase()}.com`;
+                const logoUrl = `https://logo.clearbit.com/${domain}`;
+                return (
+                  <tr
+                    key={r.symbol + i}
+                    className="hover:bg-[#151821]/60 transition-all border-b border-white/5"
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={() => handleTouchEnd(r.symbol)}
+                  >
+                    <td className="py-3 text-left pl-1.5 font-bold text-sky-400 tracking-tight flex items-center gap-2">
+                      <img
+                        src={logoUrl}
+                        alt={r.symbol}
+                        onError={(e) => (e.target.src = "/default-logo.png")}
+                        className="w-5 h-5 rounded-full object-cover bg-[#1e293b]/50 shadow-sm"
+                      />
+                      <a
+                        href={`/analyze/${r.symbol}`}
+                        className="hover:text-emerald-400 transition-colors"
+                      >
+                        {r.symbol}
+                      </a>
+                    </td>
+
+                    <td className="py-3 text-right pr-4 font-bold text-gray-100 font-mono tracking-tight">
+                      {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
+                    </td>
+
+                    <td
+                      className={`py-3 text-right pr-3 font-bold font-mono tracking-tight ${
+                        typeof r.rsi === "number"
+                          ? r.rsi > 70
+                            ? "text-red-400"
+                            : r.rsi < 40
+                            ? "text-blue-400"
+                            : "text-emerald-400"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
+                    </td>
+
+                    <td
+                      className={`py-3 text-right pr-3 font-bold tracking-tight ${
+                        r.signal === "Buy"
+                          ? "text-green-400"
+                          : r.signal === "Sell"
                           ? "text-red-400"
-                          : r.rsi < 40
-                          ? "text-blue-400"
-                          : "text-emerald-400"
-                        : "text-gray-400"
-                    }`}
-                  >
-                    {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
-                  </td>
-                  <td
-                    className={`py-3 text-right pr-3 font-bold tracking-tight ${
-                      r.signal === "Buy"
-                        ? "text-green-400"
-                        : r.signal === "Sell"
-                        ? "text-red-400"
-                        : "text-yellow-400"
-                    }`}
-                  >
-                    {r.signal || "-"}
-                  </td>
-                </tr>
-              ))
+                          : "text-yellow-400"
+                      }`}
+                    >
+                      {r.signal || "-"}
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="4" className="py-4 text-gray-500 text-center italic">
@@ -118,7 +159,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
         </table>
       </div>
 
-      {/* 🔍 Modal */}
+      {/* Search Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-16">
@@ -131,7 +172,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
                 className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-2 
                            focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] tracking-tight font-bold"
               />
