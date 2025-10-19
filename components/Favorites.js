@@ -61,9 +61,9 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
               className="text-[#9ca3af] text-[12px] uppercase select-none"
               style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
             >
-              <th className="py-2 font-medium text-left pl-3 w-[32%]">SYMBOL</th>
-              <th className="py-2 font-medium text-right pr-3 w-[22%]">PRICE</th>
-              <th className="py-2 font-medium text-right pr-3 w-[23%]">RSI</th>
+              <th className="py-2 font-medium text-left pl-2 w-[34%]">SYMBOL</th>
+              <th className="py-2 font-medium text-right pr-4 w-[21%]">PRICE</th>
+              <th className="py-2 font-medium text-right pr-3 w-[22%]">RSI</th>
               <th className="py-2 font-medium text-right pr-3 w-[23%]">AI SIG</th>
             </tr>
           </thead>
@@ -79,7 +79,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                   onTouchEnd={() => handleTouchEnd(r.symbol)}
                   style={{ borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}
                 >
-                  <td className="py-3 text-left pl-3 font-semibold text-sky-400">
+                  <td className="py-3 text-left pl-2 font-semibold text-sky-400">
                     <a
                       href={`/analyze/${r.symbol}`}
                       className="hover:text-emerald-400 transition-colors"
@@ -87,7 +87,7 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
                       {r.symbol}
                     </a>
                   </td>
-                  <td className="py-3 text-right pr-3 font-mono text-gray-100">
+                  <td className="py-3 text-right pr-4 font-mono text-gray-100">
                     {r.price != null ? `$${Number(r.price).toFixed(2)}` : "-"}
                   </td>
                   <td
@@ -130,32 +130,37 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       {/* 🔍 Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-[#111827]/95 rounded-2xl shadow-2xl p-6 w-[85%] max-w-sm text-center border border-gray-700 -translate-y-10">
+          {/* 🔹 ยกขึ้น + ทำให้เล็กและหรู */}
+          <div className="bg-[#111827]/95 rounded-2xl shadow-2xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-16">
             <h3 className="text-lg text-emerald-400 font-semibold mb-4">
               Search Stock
             </h3>
 
-            {/* 💎 ช่องค้นหาแบบ Glass */}
-            <input
-              type="text"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              placeholder="🔎 พิมพ์ชื่อย่อหุ้น (เช่น NVDA, TSLA, AAPL)"
-              className="w-full text-center bg-white/10 backdrop-blur-md border border-emerald-400/40 
-                         text-gray-100 rounded-lg py-2.5 placeholder-gray-400 
-                         focus:outline-none focus:ring-2 focus:ring-emerald-400/70 transition-all mb-5"
-            />
+            {/* 💎 ช่องค้นหาแบบ Glass Pro */}
+            <div className="relative">
+              <span className="absolute left-3 top-2.5 text-emerald-400">🔎</span>
+              <input
+                type="text"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value)}
+                placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+                className="w-full pl-9 pr-3 text-center bg-[#0d121d]/90 border border-emerald-400/40 
+                           text-gray-100 rounded-lg py-2 text-[14px] placeholder-gray-400 
+                           focus:outline-none focus:ring-2 focus:ring-emerald-400/70 
+                           focus:shadow-[0_0_10px_rgba(16,185,129,0.4)] transition-all mb-4"
+              />
+            </div>
 
             <div className="flex justify-around">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700"
+                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold shadow-md"
+                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold text-sm shadow-md"
               >
                 Add
               </button>
@@ -165,4 +170,4 @@ export default function Favorites({ data, favorites, setFavorites, fetchPrice })
       )}
     </section>
   );
-    }
+              }
