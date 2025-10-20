@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.13 (AI Discovery + Market Scanner Fixed)
+// ✅ Visionary Stock Screener — V∞.14 (AI Discovery + Full Market Scanner Fixed)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -10,10 +10,10 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
-  const [scannerData, setScannerData] = useState([]); // ✅ เพิ่ม state สำหรับสแกนหุ้นทั้งตลาด
+  const [scannerData, setScannerData] = useState([]); // ✅ ข้อมูลจากสแกนหุ้นทั้งตลาด
 
   const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-40), `${new Date().toLocaleTimeString()} ${msg}`]);
+    setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
 
   // ✅ โหลด Favorites จาก LocalStorage
   useEffect(() => {
@@ -65,7 +65,8 @@ export default function Home() {
         cache: "no-store",
       });
       const j = await res.json();
-      const list = j.discovered || j.aiPicks || [];
+
+      const list = j.discovered || j.aiPicks || j.results || j.data || [];
       if (!Array.isArray(list) || list.length === 0)
         throw new Error("No discovery data");
 
@@ -93,11 +94,31 @@ export default function Home() {
       const res = await fetch(`/api/visionary-eternal?type=scanner`, { cache: "no-store" });
       const j = await res.json();
 
-      const list = j.stocks || j.results || j.data || [];
-      if (!Array.isArray(list) || list.length === 0)
+      // ✅ รองรับทุกโครงสร้าง API ที่อาจเจอ
+      const list =
+        j.stocks ||
+        j.results ||
+        j.data ||
+        j.scanner ||
+        j.list ||
+        j.all ||
+        j.market ||
+        j.aiScanner ||
+        (Array.isArray(j) ? j : []);
+
+      // ✅ ตรวจว่าคือ array จริงไหม
+      const realList = Array.isArray(list)
+        ? list
+        : Array.isArray(j)
+        ? j
+        : Array.isArray(j?.stocks)
+        ? j.stocks
+        : [];
+
+      if (!Array.isArray(realList) || realList.length === 0)
         throw new Error("No scanner data");
 
-      const formatted = list.map((r) => ({
+      const formatted = realList.map((r) => ({
         symbol: r.symbol,
         lastClose: r.lastClose || r.price || 0,
         rsi: r.rsi || 0,
@@ -114,8 +135,10 @@ export default function Home() {
 
       setScannerData(formatted);
       addLog(`✅ สแกนเจอหุ้นทั้งหมด ${formatted.length} ตัว`);
+      console.log("✅ Scanner raw:", j);
     } catch (err) {
       addLog(`⚠️ Scanner failed: ${err.message}`);
+      console.error("⚠️ Scanner error:", err);
     }
   }
 
@@ -133,9 +156,9 @@ export default function Home() {
   // ✅ รีเฟรชทุก 2 นาที
   useEffect(() => {
     const interval = setInterval(() => {
-      addLog("🔁 Auto-refreshing AI discovery...");
+      addLog("🔁 Auto-refreshing AI discovery + scanner...");
       loadDiscovery();
-      loadScannerData(); // ✅ รีเฟรช scanner ด้วย
+      loadScannerData();
     }, 120000);
     return () => clearInterval(interval);
   }, []);
@@ -244,4 +267,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+          }
