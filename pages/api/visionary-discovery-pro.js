@@ -1,43 +1,53 @@
-// ✅ AI Discovery Pro — V∞.Full-Auto (สแกนหุ้นต้นน้ำ 7000 ตัว + วิเคราะห์เต็มระบบ)
+// ✅ AI Discovery Pro — V∞.Batch (สแกนรอบละ 300 ตัว จนครบ 7000)
 import stockList from "../../lib/stocklist";
 import { analyzeStock } from "../../lib/aiAnalyzer";
 
 export default async function handler(req, res) {
   try {
-    const limit = 7000; // ✅ จำนวนหุ้นที่จะสแกน (เต็มตลาด)
-    const selected = stockList.slice(0, limit);
+    const batchSize = 300; // ✅ สแกนต่อรอบ
+    const totalLimit = 7200; // ✅ รวมทั้งหมด
+    const selected = stockList.slice(0, totalLimit);
 
+    const allResults = [];
     const logs = [];
-    const results = [];
 
-    console.time("AI Discovery Scan");
+    console.time("AI Discovery Full Scan");
 
-    for (let i = 0; i < selected.length; i++) {
-      const sym = selected[i];
-      logs.push(`🧠 (${i + 1}/${selected.length}) กำลังวิเคราะห์ ${sym} ...`);
-      const r = await analyzeStock(sym);
+    // 🔁 แบ่งรอบเป็นชุดๆ
+    for (let i = 0; i < selected.length; i += batchSize) {
+      const batch = selected.slice(i, i + batchSize);
+      logs.push(`🚀 เริ่มรอบที่ ${Math.floor(i / batchSize) + 1} (${batch.length} ตัว)`);
 
-      if (r) {
-        logs.push(`✅ ${sym} → Score: ${r.aiScore} | ${r.signal} | ${r.reason}`);
-        if (r.aiScore > 60) results.push(r); // ✅ คัดเฉพาะหุ้นที่ AI มองว่าเด่น
-      } else {
-        logs.push(`⚠️ ${sym} ไม่มีข้อมูลราคาหรือวิเคราะห์ไม่ได้`);
-      }
+      const batchResults = await Promise.all(
+        batch.map(async (sym) => {
+          const r = await analyzeStock(sym);
+          if (r && r.aiScore >= 60) {
+            return { ...r, batch: Math.floor(i / batchSize) + 1 };
+          }
+          return null;
+        })
+      );
+
+      const filtered = batchResults.filter(Boolean);
+      allResults.push(...filtered);
+
+      logs.push(`✅ รอบที่ ${Math.floor(i / batchSize) + 1} เสร็จสิ้น: พบ ${filtered.length} ตัวเด่น`);
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // ⏳ พัก 3 วิ ป้องกัน API ลิมิต
     }
 
-    console.timeEnd("AI Discovery Scan");
+    console.timeEnd("AI Discovery Full Scan");
 
-    // ✅ เรียงคะแนนจากสูงไปต่ำ แล้วเลือก 50 ตัวที่ดีที่สุด
-    const top50 = results.sort((a, b) => b.aiScore - a.aiScore).slice(0, 50);
+    // ✅ เลือก Top 50 จากทั้งหมด
+    const top50 = allResults.sort((a, b) => b.aiScore - a.aiScore).slice(0, 50);
 
     res.status(200).json({
-      source: "AI Discovery Pro V∞.Full-Auto",
-      totalScanned: selected.length,
-      found: results.length,
+      source: "AI Discovery Pro (Batch 24x300)",
+      scanned: selected.length,
+      found: allResults.length,
       topCount: top50.length,
       discovered: top50,
-      timestamp: new Date().toLocaleString("th-TH"),
       logs,
+      timestamp: new Date().toLocaleString("th-TH"),
     });
   } catch (err) {
     console.error("❌ AI Discovery Error:", err);
