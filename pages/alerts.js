@@ -1,4 +1,4 @@
-// ✅ /pages/alerts.js — AI Market Scanner (works with visionary-eternal.js)
+// ✅ /pages/alerts.js — AI Market Scanner (works with visionary-scanner.js)
 import { useState, useMemo } from "react";
 
 export default function AlertsPage() {
@@ -45,9 +45,9 @@ export default function AlertsPage() {
     }
   };
 
-  // 🔹 Batchscan Mode
+  // 🔹 Batchscan Mode (ใช้ visionary-scanner.js)
   const scanBatch = async (batch = 1) => {
-    const res = await fetch(`/api/visionary-eternal?type=ai-batchscan&batch=${batch}`, {
+    const res = await fetch(`/api/visionary-scanner?type=ai-batchscan&batch=${batch}`, {
       cache: "no-store",
     });
     const data = await res.json();
@@ -73,24 +73,24 @@ export default function AlertsPage() {
     }
   };
 
-  // 🔹 Quick Scan Mode
+  // 🔹 Quick Scan Mode (ใช้ visionary-scanner.js)
   const quickScan = async () => {
-    const res = await fetch(`/api/visionary-eternal?type=ai-discovery`, {
+    const res = await fetch(`/api/visionary-scanner?type=scanner`, {
       cache: "no-store",
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    addLog(`📡 Quick Scan: พบ ${data.discovered?.length || 0} ตัวที่โดดเด่น`);
-    if (Array.isArray(data.discovered)) {
-      upsertMatches(data.discovered);
-      if (data.discovered.length) await playSound();
+    addLog(`📡 Quick Scan: พบ ${data.stocks?.length || 0} ตัวที่โดดเด่น`);
+    if (Array.isArray(data.stocks)) {
+      upsertMatches(data.stocks);
+      if (data.stocks.length) await playSound();
     }
     setProgress(100);
     setRunning(false);
   };
 
-  // 🔹 Actions
+  // 🔹 Run Actions
   const run = async () => {
     setRunning(true);
     setError("");
@@ -233,4 +233,4 @@ export default function AlertsPage() {
       </div>
     </div>
   );
-}
+              }
