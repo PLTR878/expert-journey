@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.12 (AI Discovery Fixed)
+// ✅ Visionary Stock Screener — V∞.13 (AI Discovery + Market Scanner Fixed)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -10,6 +10,7 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
+  const [scannerData, setScannerData] = useState([]); // ✅ เพิ่ม state สำหรับสแกนหุ้นทั้งตลาด
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-40), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -64,13 +65,10 @@ export default function Home() {
         cache: "no-store",
       });
       const j = await res.json();
-
-      // ✅ แก้ให้รองรับข้อมูลทั้งแบบ discovered และ aiPicks
       const list = j.discovered || j.aiPicks || [];
       if (!Array.isArray(list) || list.length === 0)
         throw new Error("No discovery data");
 
-      // ✅ แปลงข้อมูลให้อยู่ในรูปเดียวกัน
       const formatted = list.map((r) => ({
         symbol: r.symbol,
         lastClose: r.lastClose || 0,
@@ -82,17 +80,49 @@ export default function Home() {
 
       setFutureDiscovery(formatted);
       addLog(`✅ พบหุ้น ${formatted.length} ตัวจาก AI`);
-
-      // ✅ ดึงราคาทั้งหมดเพิ่ม
       for (const s of formatted) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
     }
   }
 
+  // ✅ โหลดข้อมูลหุ้นทั้งตลาด (AI Market Scanner)
+  async function loadScannerData() {
+    try {
+      addLog("📡 กำลังสแกนหุ้นทั้งตลาด...");
+      const res = await fetch(`/api/visionary-eternal?type=scanner`, { cache: "no-store" });
+      const j = await res.json();
+
+      const list = j.stocks || j.results || j.data || [];
+      if (!Array.isArray(list) || list.length === 0)
+        throw new Error("No scanner data");
+
+      const formatted = list.map((r) => ({
+        symbol: r.symbol,
+        lastClose: r.lastClose || r.price || 0,
+        rsi: r.rsi || 0,
+        trend: r.trend || (r.rsi > 55 ? "Uptrend" : "Sideway"),
+        reason: r.reason || "AI-scan detected potential move",
+        signal:
+          r.signal ||
+          (r.trend === "Uptrend"
+            ? "Buy"
+            : r.trend === "Downtrend"
+            ? "Sell"
+            : "Hold"),
+      }));
+
+      setScannerData(formatted);
+      addLog(`✅ สแกนเจอหุ้นทั้งหมด ${formatted.length} ตัว`);
+    } catch (err) {
+      addLog(`⚠️ Scanner failed: ${err.message}`);
+    }
+  }
+
   // ✅ โหลดตอนเปิดหน้า
   useEffect(() => {
     loadDiscovery();
+    loadScannerData(); // ✅ โหลด Scanner ด้วย
   }, []);
 
   // ✅ ดึงราคาหุ้นใน Favorites
@@ -105,6 +135,7 @@ export default function Home() {
     const interval = setInterval(() => {
       addLog("🔁 Auto-refreshing AI discovery...");
       loadDiscovery();
+      loadScannerData(); // ✅ รีเฟรช scanner ด้วย
     }, 120000);
     return () => clearInterval(interval);
   }, []);
@@ -129,27 +160,42 @@ export default function Home() {
 
         {/* 🌋 หุ้นต้นน้ำ อนาคตไกล */}
         {active === "market" && (
-          <>
-            <MarketSection
-              title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Future Discovery)"
-              rows={futureDiscovery.map((r) => ({
-                symbol: r.symbol,
-                price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
-                rsi: favoritePrices[r.symbol]?.rsi || r.rsi || 0,
-                reason: r.reason,
-                signal:
-                  favoritePrices[r.symbol]?.signal ||
-                  (r.trend === "Uptrend"
-                    ? "Buy"
-                    : r.trend === "Downtrend"
-                    ? "Sell"
-                    : "Hold"),
-              }))}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-              favoritePrices={favoritePrices}
-            />
-          </>
+          <MarketSection
+            title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Future Discovery)"
+            rows={futureDiscovery.map((r) => ({
+              symbol: r.symbol,
+              price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
+              rsi: favoritePrices[r.symbol]?.rsi || r.rsi || 0,
+              reason: r.reason,
+              signal:
+                favoritePrices[r.symbol]?.signal ||
+                (r.trend === "Uptrend"
+                  ? "Buy"
+                  : r.trend === "Downtrend"
+                  ? "Sell"
+                  : "Hold"),
+            }))}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+            favoritePrices={favoritePrices}
+          />
+        )}
+
+        {/* 📡 สแกนหุ้นทั้งตลาด */}
+        {active === "scan" && (
+          <MarketSection
+            title="📡 สแกนหุ้นทั้งตลาด (AI Market Scanner)"
+            rows={scannerData.map((r) => ({
+              symbol: r.symbol,
+              price: r.lastClose || 0,
+              rsi: r.rsi || 0,
+              reason: r.reason,
+              signal: r.signal,
+            }))}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+            favoritePrices={favoritePrices}
+          />
         )}
 
         {/* 🧠 Logs */}
