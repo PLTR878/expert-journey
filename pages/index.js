@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.22 (ใช้ API ใหม่: visionary-core + visionary-scanner)
+// ✅ Visionary Stock Screener — V∞.23 (แยกระบบ AI Discovery ออกเป็นอิสระ)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -56,16 +56,14 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (AI Discovery)
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (AI Discovery ใหม่)
   async function loadDiscovery() {
     try {
       addLog("🌋 AI กำลังค้นหาหุ้นต้นน้ำ...");
-      const res = await fetch(`/api/visionary-scanner?type=ai-discovery`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/visionary-discovery`, { cache: "no-store" });
       const j = await res.json();
 
-      const list = j.discovered || [];
+      const list = j.discovered || j.stocks || [];
       if (!list.length) throw new Error("No discovery data");
 
       const formatted = list.map((r) => ({
@@ -74,11 +72,11 @@ export default function Home() {
         rsi: r.rsi || 0,
         trend: r.trend || (r.rsi > 55 ? "Uptrend" : "Sideway"),
         reason: r.reason || "AI-detected potential growth",
-        sentiment: r.sentiment || 0,
+        sentiment: r.aiScore || r.sentiment || 0,
       }));
 
       setFutureDiscovery(formatted);
-      addLog(`✅ พบหุ้น ${formatted.length} ตัวจาก AI`);
+      addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery`);
       for (const s of formatted) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
@@ -238,4 +236,4 @@ export default function Home() {
       </nav>
     </main>
   );
-              }
+        }
