@@ -1,4 +1,5 @@
-// ✅ Visionary Stock Screener — V∞.24 (AI Discovery + Scanner UI เปล่า)
+// ✅ Visionary Stock Screener — V∞.25
+// (AI Discovery Pro + Scanner UI เปล่า)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -55,27 +56,28 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (AI Discovery)
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (เชื่อม API ตัวใหม่)
   async function loadDiscovery() {
     try {
-      addLog("🌋 AI กำลังค้นหาหุ้นต้นน้ำ...");
-      const res = await fetch(`/api/visionary-discovery`, { cache: "no-store" });
+      addLog("🌋 AI Discovery Pro กำลังค้นหาหุ้นต้นน้ำ...");
+      const res = await fetch(`/api/visionary-discovery-pro`, { cache: "no-store" });
       const j = await res.json();
 
-      const list = j.discovered || j.stocks || [];
-      if (!list.length) throw new Error("No discovery data");
+      const list = j.discovered || [];
+      if (!list.length) throw new Error("ไม่พบข้อมูลหุ้นจาก AI Discovery");
 
       const formatted = list.map((r) => ({
         symbol: r.symbol,
-        lastClose: r.lastClose || 0,
+        lastClose: r.price || 0,
         rsi: r.rsi || 0,
-        trend: r.trend || (r.rsi > 55 ? "Uptrend" : "Sideway"),
-        reason: r.reason || "AI-detected future growth potential",
-        sentiment: r.aiScore || 0,
+        reason: r.reason,
+        aiScore: r.aiScore,
+        trend: r.aiScore > 80 ? "Uptrend" : "Sideway",
       }));
 
       setFutureDiscovery(formatted);
-      addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery`);
+      addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery Pro`);
+
       for (const s of formatted) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
@@ -96,7 +98,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <header className="px-3 py-1 h-[4px] bg-[#0b1220]" />
+
       <div className="max-w-6xl mx-auto px-3 pt-2">
+        {/* ❤️ Favorites */}
         {active === "favorites" && (
           <section className="mt-2">
             <Favorites
@@ -108,9 +112,10 @@ export default function Home() {
           </section>
         )}
 
+        {/* 🌋 หุ้นต้นน้ำ */}
         {active === "market" && (
           <MarketSection
-            title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Future Discovery)"
+            title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)"
             rows={futureDiscovery.map((r) => ({
               symbol: r.symbol,
               price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
@@ -130,7 +135,7 @@ export default function Home() {
           />
         )}
 
-        {/* ✅ Scanner UI ว่าง */}
+        {/* 📡 Scanner UI ว่าง */}
         {active === "scan" && (
           <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 text-center mt-4">
             <h2 className="text-lg font-semibold text-emerald-400 mb-2">
@@ -154,6 +159,7 @@ export default function Home() {
             <span className="text-[12px]">🧠</span>
             <span>{showLogs ? "Hide Logs" : "Show Logs"}</span>
           </button>
+
           {showLogs && (
             <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto shadow-inner">
               <ul className="space-y-0.5">
@@ -190,4 +196,4 @@ export default function Home() {
       </nav>
     </main>
   );
-          }
+              }
