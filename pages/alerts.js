@@ -1,13 +1,12 @@
-// ✅ /pages/alerts.js — AI Market Scanner UI (works with visionary-eternal.js)
-// รองรับ 2 โหมด: Batchscan (ทั้งตลาดหลาย batch) และ Quick Scan (ชุดย่อยทันที)
+// ✅ /pages/alerts.js — AI Market Scanner (works with visionary-eternal.js)
 import { useState, useMemo } from "react";
 
 export default function AlertsPage() {
   const [running, setRunning] = useState(false);
-  const [mode, setMode] = useState("batch"); // 'batch' | 'scanner'
+  const [mode, setMode] = useState("batch"); // 'batch' | 'quick'
   const [progress, setProgress] = useState(0);
   const [batchNow, setBatchNow] = useState(0);
-  const [batchTotal, setBatchTotal] = useState(null); // unknown until message has X/Y
+  const [batchTotal, setBatchTotal] = useState(null);
   const [matches, setMatches] = useState([]);
   const [log, setLog] = useState([]);
   const [error, setError] = useState("");
@@ -22,9 +21,7 @@ export default function AlertsPage() {
     } catch (_) {}
   };
 
-  // ---------- Helpers ----------
   const upsertMatches = (arr) => {
-    // รวมผลใหม่ + กันซ้ำตาม symbol
     setMatches((prev) => {
       const map = new Map(prev.map((x) => [x.symbol, x]));
       for (const m of arr || []) {
@@ -36,93 +33,68 @@ export default function AlertsPage() {
   };
 
   const computeProgressFromMessage = (message) => {
-    // message ตัวอย่าง:
-    // "✅ สแกน Batch 3/24 เสร็จแล้ว" หรือ "✅ สแกนครบทุกตัวแล้ว!"
     const m = /Batch\s+(\d+)\s*\/\s*(\d+)/i.exec(message || "");
     if (m) {
       const cur = Number(m[1]);
       const tot = Number(m[2]);
       setBatchNow(cur);
       setBatchTotal(tot);
-      setProgress(Math.max(0, Math.min(100, Math.round((cur / tot) * 100))));
+      setProgress(Math.min(100, Math.round((cur / tot) * 100)));
     } else if (/ครบทุกตัว/i.test(message || "")) {
       setProgress(100);
     }
   };
 
-  // ---------- API calls ----------
-  // โหมด Batchscan (เรียกซ้ำทีละ batch จนจบ)
+  // 🔹 Batchscan Mode
   const scanBatch = async (batch = 1) => {
-    const url = `/api/visionary-eternal?type=ai-batchscan&batch=${batch}`;
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(`/api/visionary-eternal?type=ai-batchscan&batch=${batch}`, {
+      cache: "no-store",
+    });
     const data = await res.json();
-
     if (data.error) throw new Error(data.error);
 
-    // logs
     if (data.message) {
-      addLog(`🚀 ${data.message} | วิเคราะห์ ${data.analyzed} ตัว พบ ${data.found}`);
+      addLog(`🚀 ${data.message} | วิเคราะห์ ${data.analyzed} พบ ${data.found}`);
       computeProgressFromMessage(data.message);
-    } else {
-      addLog(`🚀 Batch ${batch}: วิเคราะห์ ${data.analyzed} พบ ${data.found}`);
     }
 
-    // รวมหุ้นที่เจอ (field: top)
-    if (Array.isArray(data.top) && data.top.length) {
-      upsertMatches(
-        data.top.map((x) => ({
-          symbol: x.symbol,
-          price: x.price,
-          rsi: x.rsi,
-          aiScore: x.aiScore,
-          sentiment: x.sentiment,
-        }))
-      );
-      await playSound();
+    if (Array.isArray(data.top)) {
+      upsertMatches(data.top);
+      if (data.top.length) await playSound();
     }
 
     if (data.nextBatch) {
-      setBatchNow((n) => (n ? Math.max(n, batch) : batch));
       await scanBatch(data.nextBatch);
     } else {
-      setRunning(false);
       addLog("✅ สแกนครบทุกตัวแล้ว!");
       setProgress(100);
+      setRunning(false);
       await playSound();
     }
   };
 
-  // โหมด Quick Scanner (ยิงครั้งเดียว)
-  const quickScanner = async () => {
-    const url = `/api/visionary-eternal?type=scanner`;
-    const res = await fetch(url, { cache: "no-store" });
+  // 🔹 Quick Scan Mode
+  const quickScan = async () => {
+    const res = await fetch(`/api/visionary-eternal?type=ai-discovery`, {
+      cache: "no-store",
+    });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    addLog(`📡 Quick Scan: พบ ${data.scanned} ตัว`);
-    if (Array.isArray(data.stocks) && data.stocks.length) {
-      upsertMatches(
-        data.stocks.map((x) => ({
-          symbol: x.symbol,
-          price: x.lastClose,
-          rsi: x.rsi,
-          signal: x.signal,
-          trend: x.trend,
-        }))
-      );
-      await playSound();
+    addLog(`📡 Quick Scan: พบ ${data.discovered?.length || 0} ตัวที่โดดเด่น`);
+    if (Array.isArray(data.discovered)) {
+      upsertMatches(data.discovered);
+      if (data.discovered.length) await playSound();
     }
     setProgress(100);
     setRunning(false);
   };
 
-  // ---------- Actions ----------
+  // 🔹 Actions
   const run = async () => {
     setRunning(true);
     setError("");
     setProgress(0);
-    setBatchNow(0);
-    setBatchTotal(null);
     setMatches([]);
     setLog([]);
     addLog(mode === "batch" ? "🧠 เริ่มสแกนตลาดแบบ Batch..." : "📡 เริ่ม Quick Scan...");
@@ -131,25 +103,24 @@ export default function AlertsPage() {
       if (mode === "batch") {
         await scanBatch(1);
       } else {
-        await quickScanner();
+        await quickScan();
       }
     } catch (err) {
       setRunning(false);
-      setError(err.message || String(err));
-      addLog(`❌ Error: ${err.message || err}`);
+      setError(err.message);
+      addLog(`❌ Error: ${err.message}`);
     }
   };
 
   const stop = () => {
-    // ไม่มี cancel fetch ง่าย ๆ ในเบราว์เซอร์ (ต้องใช้ AbortController)
-    // ให้ถือว่าหยุด UI ไว้ก่อน
     setRunning(false);
     addLog("⏹️ ผู้ใช้กดหยุดการสแกน");
   };
 
   const headerNote = useMemo(() => {
     if (mode === "batch") {
-      if (batchTotal) return `Progress: ${progress}% (Batch ${batchNow}/${batchTotal})`;
+      if (batchTotal)
+        return `Progress: ${progress}% (Batch ${batchNow}/${batchTotal})`;
       return `Progress: ${progress}%`;
     }
     return `Quick Scan`;
@@ -162,8 +133,6 @@ export default function AlertsPage() {
         <h2 className="text-xl font-bold text-emerald-400">
           🛰️ AI Market Scanner
         </h2>
-
-        {/* Mode toggle */}
         <div className="flex items-center gap-1 text-[12px]">
           <button
             className={`px-2 py-[6px] rounded-md border ${
@@ -178,11 +147,11 @@ export default function AlertsPage() {
           </button>
           <button
             className={`px-2 py-[6px] rounded-md border ${
-              mode === "scanner"
+              mode === "quick"
                 ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
                 : "text-gray-300 border-white/15 hover:bg-white/5"
             }`}
-            onClick={() => setMode("scanner")}
+            onClick={() => setMode("quick")}
             disabled={running}
           >
             Quick Scan
@@ -223,12 +192,9 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* Error */}
-      {error ? (
-        <div className="mt-3 text-[12px] text-red-400">
-          ❌ {error}
-        </div>
-      ) : null}
+      {error && (
+        <div className="mt-3 text-[12px] text-red-400">❌ {error}</div>
+      )}
 
       {/* Logs */}
       <div className="mt-3">
@@ -257,7 +223,6 @@ export default function AlertsPage() {
                 <span className="font-mono">
                   {typeof m.price === "number" ? `$${m.price.toFixed(2)}` : ""}
                   {typeof m.aiScore === "number" ? ` · AI ${m.aiScore}` : ""}
-                  {m.signal ? ` · ${m.signal}` : ""}
                 </span>
               </li>
             ))
@@ -268,4 +233,4 @@ export default function AlertsPage() {
       </div>
     </div>
   );
-    }
+}
