@@ -1,6 +1,6 @@
-// ✅ Visionary Eternal API — V∞.16 (No-FS / 100% Compatible with Vercel)
+// ✅ Visionary Eternal API — V∞.17 (Discovery + Full Market Batchscan)
 export default async function handler(req, res) {
-  const { type = "ai-batchscan", batch = "1" } = req.query;
+  const { type = "ai-discovery", batch = "1" } = req.query;
 
   const BATCH_SIZE = 300;
   const stockListPath = "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv";
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     try {
       const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${sym}`);
       const j = await r.json();
-      const items = (j.news || []).slice(0, 5);
+      const items = (j.news || []).slice(0, 6);
       let score = 0;
       for (const n of items) {
         const t = `${n.title || ""} ${(n.summary || "")}`.toLowerCase();
@@ -47,6 +47,40 @@ export default async function handler(req, res) {
     }
   };
 
+  // ✅ แบบเร็ว (หุ้นต้นน้ำ 10 ตัวแรก)
+  if (type === "ai-discovery") {
+    const universe = [
+      "PLTR", "NVDA", "AMD", "TSLA", "GWH", "SLDP", "AEHR", "OKLO", "NRGV", "BBAI", "SOFI", "IREN", "INTC", "BTDR", "LAES"
+    ];
+
+    const picks = [];
+    for (const sym of universe) {
+      try {
+        const d = await yfChart(sym);
+        const q = d?.indicators?.quote?.[0];
+        const closes = q?.close?.filter((x) => typeof x === "number");
+        if (!closes?.length) continue;
+        const ema20 = calcEMA(closes, 20);
+        const ema50 = calcEMA(closes, 50);
+        const last = closes.at(-1);
+        const rsi = calcRSI(closes);
+        const sentiment = await newsSentiment(sym);
+        const up = last > ema20 && ema20 > ema50 && rsi > 55 && last <= 35 && sentiment > 0;
+        if (up) {
+          const score = (rsi - 50) * 2 + sentiment * 10;
+          picks.push({ symbol: sym, price: last.toFixed(2), rsi, sentiment, score });
+        }
+      } catch {}
+    }
+
+    picks.sort((a, b) => b.score - a.score);
+    return res.status(200).json({
+      discovered: picks,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  // ✅ แบบสแกนทั้งตลาด 7000 ตัว (แบ่งรอบละ 300)
   if (type === "ai-batchscan") {
     try {
       const raw = await fetch(stockListPath).then(r => r.text());
@@ -69,23 +103,19 @@ export default async function handler(req, res) {
           const q = d?.indicators?.quote?.[0];
           const closes = q?.close?.filter((x) => typeof x === "number");
           if (!closes?.length) continue;
-
           const ema20 = calcEMA(closes, 20);
           const ema50 = calcEMA(closes, 50);
           const last = closes.at(-1);
           const rsi = calcRSI(closes);
           if (last > 35 || rsi < 55 || ema20 <= ema50) continue;
-
           const sentiment = await newsSentiment(sym);
           if (sentiment <= 0) continue;
-
           const aiScore = (rsi - 50) * 2 + sentiment * 10;
           results.push({ symbol: sym, price: Number(last.toFixed(2)), rsi, sentiment, aiScore });
         } catch {}
       }
 
       const completed = batchIndex === totalBatches;
-
       return res.status(200).json({
         message: completed
           ? "✅ สแกนครบทุกตัวแล้ว!"
@@ -101,4 +131,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(400).json({ error: "Unknown type" });
-}
+    }
