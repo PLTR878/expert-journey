@@ -1,32 +1,40 @@
-// ✅ MarketLikeFavorites — ใช้กับ visionary-core + visionary-discovery-pro (V∞.7)
+// ✅ MarketLikeFavorites — ใช้กับ visionary-core + visionary-discovery-pro (V∞.8)
 import { useRef, useState, useEffect } from "react";
 
-export default function MarketLikeFavorites({
-  mode = "discovery", // 'scanner' | 'discovery'
-}) {
+export default function MarketLikeFavorites({ mode = "discovery" }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โหลดข้อมูลจาก API ใหม่ (AI Discovery Pro)
+  // ✅ โหลดข้อมูลจาก API (AI Discovery Pro)
   const fetchMarketData = async () => {
     try {
       setLoading(true);
-      let url =
+      setErrorMsg("");
+
+      const url =
         mode === "scanner"
-          ? "/api/visionary-scanner?type=scanner" // ถ้าอยากสแกนในอนาคต
-          : "/api/visionary-discovery-pro"; // ✅ ใช้ตัวใหม่
+          ? "/api/visionary-scanner?type=scanner"
+          : "/api/visionary-discovery-pro";
 
       const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const j = await res.json();
 
       const arr =
-        j.discovered || j.stocks || j.results || j.data || j.list || [];
-      if (!Array.isArray(arr) || arr.length === 0)
-        throw new Error("ไม่พบข้อมูลตลาด");
+        j.discovered ||
+        j.stocks ||
+        j.results ||
+        j.data ||
+        j.list ||
+        [];
 
-      const merged = arr.map((r) => ({
+      if (!Array.isArray(arr) || arr.length === 0)
+        throw new Error("ไม่พบข้อมูลหุ้นจาก AI");
+
+      const formatted = arr.map((r) => ({
         symbol: r.symbol,
         name: r.name || r.company || "Unknown Company",
         price: r.price || r.lastClose || 0,
@@ -40,20 +48,23 @@ export default function MarketLikeFavorites({
             : "Hold",
       }));
 
-      setList(merged);
-      console.log(`✅ Loaded ${merged.length} items from ${mode}`);
+      setList(formatted);
+      console.log(`✅ Loaded ${formatted.length} หุ้นจากโหมด: ${mode}`);
     } catch (err) {
-      console.error(`⚠️ Load ${mode} failed:`, err);
+      console.error("⚠️ Error loading data:", err);
       setList([]);
+      setErrorMsg(err.message || "โหลดข้อมูลล้มเหลว");
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ โหลดตอนเปิดหน้า
   useEffect(() => {
     fetchMarketData();
   }, [mode]);
 
+  // ✅ รีโหลดใหม่
   const handleReload = async () => {
     await fetchMarketData();
   };
@@ -81,7 +92,13 @@ export default function MarketLikeFavorites({
 
       {/* แสดงจำนวนหุ้น */}
       <div className="text-[12px] text-gray-400 px-[4px] mb-2">
-        {list?.length ? `พบหุ้นทั้งหมด ${list.length} ตัว` : "ไม่มีข้อมูลตลาด"}
+        {list?.length
+          ? `พบหุ้นทั้งหมด ${list.length} ตัว`
+          : loading
+          ? "กำลังโหลดข้อมูล..."
+          : errorMsg
+          ? `⚠️ ${errorMsg}`
+          : "ไม่มีข้อมูลตลาด"}
       </div>
 
       {/* Layout */}
@@ -103,7 +120,9 @@ export default function MarketLikeFavorites({
                 </div>
               </div>
               <div className="text-right font-mono">
-                <div className="text-[13px]">${r.price?.toFixed(2)}</div>
+                <div className="text-[13px]">
+                  ${Number(r.price).toFixed(2)}
+                </div>
                 <div
                   className={`text-[12px] font-bold ${
                     r.signal === "Buy"
@@ -122,11 +141,13 @@ export default function MarketLikeFavorites({
             </a>
           ))
         ) : (
-          <div className="py-6 text-center text-gray-500 italic">
-            {loading ? "⏳ กำลังโหลดข้อมูล..." : "No market data available."}
-          </div>
+          !loading && (
+            <div className="py-6 text-center text-gray-500 italic">
+              {errorMsg || "No market data available."}
+            </div>
+          )
         )}
       </div>
     </section>
   );
-                   }
+}
