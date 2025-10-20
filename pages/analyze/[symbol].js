@@ -14,19 +14,21 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ===== ดึงข้อมูลหลักจาก API ตัวเดียว =====
+  // ===== ดึงข้อมูลหลักจาก API =====
   useEffect(() => {
     if (!symbol) return;
     (async () => {
       setLoading(true);
       try {
         const [daily, n, h] = await Promise.all([
-          fetch(`/api/visionary-eternal?type=daily&symbol=${symbol}`).then(r => r.json()),
-          fetch(`/api/visionary-eternal?type=news&symbol=${symbol}`).then(r => r.json()),
-          fetch(`/api/visionary-eternal?type=history&symbol=${symbol}&range=6mo&interval=1d`).then(r => r.json())
+          fetch(`/api/visionary-eternal?type=daily&symbol=${symbol}`).then((r) => r.json()),
+          fetch(`/api/visionary-eternal?type=ai-news&symbol=${symbol}`).then((r) => r.json()),
+          fetch(`/api/visionary-eternal?type=history&symbol=${symbol}&range=6mo&interval=1d`).then((r) =>
+            r.json()
+          ),
         ]);
         setInd(daily);
-        setNews(n.items || []);
+        setNews(n.news || []);
         setHist(h.rows || []);
       } catch (e) {
         console.error(e);
@@ -39,7 +41,7 @@ export default function Analyze() {
   const price = ind?.lastClose || hist?.at(-1)?.c || 0;
   const sig = computeSignal(ind || {});
 
-  // ===== Marker สำหรับจุด BUY / SELL บนกราฟ =====
+  // ===== Marker BUY/SELL =====
   const markers = useMemo(() => {
     if (!ind || !hist.length) return [];
     const t = Math.floor((hist.at(-1)?.t || Date.now()) / 1000);
@@ -66,9 +68,7 @@ export default function Analyze() {
             </button>
 
             <div className="absolute left-1/2 transform -translate-x-1/2 mt-0.5 text-center">
-              <h1 className="text-lg font-bold text-white tracking-widest">
-                {symbol || "—"}
-              </h1>
+              <h1 className="text-lg font-bold text-white tracking-widest">{symbol || "—"}</h1>
             </div>
 
             <div className="ml-auto bg-transparent border border-emerald-400/30 text-emerald-400 font-semibold text-[14px] px-2.5 py-0.5 rounded-md">
@@ -91,9 +91,9 @@ export default function Analyze() {
   );
 }
 
-// ===== AI คำนวณสัญญาณ =====
+// ===== AI Logic =====
 function computeSignal({ lastClose, ema20, ema50, ema200, rsi }) {
-  if (![lastClose, ema20, ema50, ema200, rsi].every(v => Number.isFinite(v))) {
+  if (![lastClose, ema20, ema50, ema200, rsi].every((v) => Number.isFinite(v))) {
     return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
   }
   let score = 0;
@@ -107,7 +107,7 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi }) {
   return { action: "Hold", confidence: 0.5, reason: "สัญญาณเป็นกลาง" };
 }
 
-// ===== ส่วนแสดงผล =====
+// ===== Components =====
 function Info({ label, value, className = "" }) {
   const color = value?.includes("%")
     ? value.includes("-")
@@ -137,13 +137,20 @@ function AISignalSection({ ind, sig, price }) {
                 : "text-yellow-300"
             }
           >
-            {sig.action === "Buy" ? "ซื้อ (Buy)" : sig.action === "Sell" ? "ขาย (Sell)" : "ถือ (Hold)"}
+            {sig.action === "Buy"
+              ? "ซื้อ (Buy)"
+              : sig.action === "Sell"
+              ? "ขาย (Sell)"
+              : "ถือ (Hold)"}
           </span>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Info label="🎯 Target Price" value={`$${fmt(ind?.targetPrice ?? price * 1.08, 2)}`} />
-          <Info label="🤖 Confidence" value={`${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`} />
+          <Info
+            label="🤖 Confidence"
+            value={`${fmt(ind?.confidencePercent ?? sig.confidence * 100, 0)}%`}
+          />
           <Info label="📋 Reason" value={ind?.trend || sig.reason} className="col-span-2" />
         </div>
       </div>
@@ -222,11 +229,11 @@ function MarketNews({ news }) {
               <a href={n.link || n.url} target="_blank" rel="noreferrer" className="hover:text-emerald-400">
                 {n.title}
               </a>
-              <div className="text-xs text-gray-400 mt-1">{n.source || ""}</div>
+              <div className="text-xs text-gray-400 mt-1">{n.publisher || n.source || ""}</div>
             </li>
           ))}
         </ul>
       )}
     </section>
   );
-    }
+          }
