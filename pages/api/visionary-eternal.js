@@ -308,3 +308,43 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message || String(err) });
   }
           }
+// --- 8) AI Market News feed ---
+  if (type === "ai-news") {
+    try {
+      const keyword = symbol?.toUpperCase() || "AAPL";
+      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${keyword}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      const items = (data.news || []).slice(0, 10);
+
+      // วิเคราะห์ข่าว + ให้คะแนน AI sentiment
+      const parsed = items.map((n) => {
+        const text = `${n.title || ""} ${(n.summary || "")}`.toLowerCase();
+        let sentiment = 0;
+        if (/(ai|growth|record|expand|beat|contract|approval|partnership|award|upgrade|launch)/.test(text))
+          sentiment += 2;
+        if (/(fraud|lawsuit|cut|layoff|probe|miss|downgrade|halt|decline|warning)/.test(text))
+          sentiment -= 2;
+
+        return {
+          title: n.title || "",
+          publisher: n.publisher || "",
+          link: n.link || n.url || "",
+          summary: n.summary || "",
+          sentiment,
+          time: n.providerPublishTime
+            ? new Date(n.providerPublishTime * 1000).toISOString()
+            : "",
+        };
+      });
+
+      return res.status(200).json({
+        symbol: keyword,
+        total: parsed.length,
+        news: parsed,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      return res.status(500).json({ error: "Cannot fetch news", detail: err.message });
+    }
+  }
