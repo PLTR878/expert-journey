@@ -1,4 +1,4 @@
-// ✅ Visionary Eternal API — V∞.20 (Full: daily/history + discovery + batchscan + ai-news)
+// ✅ Visionary Eternal API — V∞.21 (Full with Scanner)
 export default async function handler(req, res) {
   const {
     type = "daily",
@@ -207,6 +207,58 @@ export default async function handler(req, res) {
       });
     }
 
+    // 5.5️⃣ SCANNER (ตลาดทั้งหมด - สำหรับหน้า Market/Scanner)
+    if (type === "scanner") {
+      try {
+        const symbols = [
+          "AAPL", "TSLA", "NVDA", "PLTR", "GWH", "NRGV", "SLDP", "BBAI", "OKLO", "AMD", "MSFT"
+        ];
+        const results = [];
+
+        for (const sym of symbols) {
+          try {
+            const d = await yfChart(sym, "3mo", "1d");
+            const q = d?.indicators?.quote?.[0];
+            const closes = q?.close?.filter((x) => typeof x === "number");
+            if (!closes?.length) continue;
+
+            const ema20 = EMA(closes, 20);
+            const ema50 = EMA(closes, 50);
+            const last = closes.at(-1);
+            const rsi = RSI(closes);
+            const trend =
+              last > ema20 && ema20 > ema50 && rsi > 55
+                ? "Uptrend"
+                : last < ema20 && ema20 < ema50 && rsi < 45
+                ? "Downtrend"
+                : "Sideway";
+
+            results.push({
+              symbol: sym,
+              lastClose: Number(last.toFixed(2)),
+              rsi: Math.round(rsi),
+              trend,
+              reason: "AI-scan detected potential move",
+              signal:
+                trend === "Uptrend"
+                  ? "Buy"
+                  : trend === "Downtrend"
+                  ? "Sell"
+                  : "Hold",
+            });
+          } catch {}
+        }
+
+        return res.status(200).json({
+          scanned: results.length,
+          stocks: results,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        return res.status(500).json({ error: "Scanner failed", detail: err.message });
+      }
+    }
+
     // 6️⃣ AI NEWS
     if (type === "ai-news") {
       try {
@@ -268,4 +320,4 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ error: err.message || String(err) });
   }
-            }
+        }
