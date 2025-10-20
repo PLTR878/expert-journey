@@ -4,8 +4,12 @@ export default function MarketLikeFavorites({ dataList = [], rows = [] }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ รวมข้อมูลจาก props ให้แน่ใจว่าไม่ว่าง
-  const list = dataList.length ? dataList : rows;
+  // ✅ รวมข้อมูลจาก props ให้แน่ใจว่าไม่ว่าง และป้องกัน array ซ้อน
+  let list = dataList?.length ? dataList : rows || [];
+  if (Array.isArray(list[0])) list = list.flat();
+
+  // ✅ Debug ดูว่ามีกี่หุ้นที่โหลดมา
+  console.log("📊 MarketLikeFavorites loaded:", list.length, "stocks");
 
   // ✅ โลโก้หลัก
   const logoMap = {
@@ -194,4 +198,4 @@ export default function MarketLikeFavorites({ dataList = [], rows = [] }) {
       </div>
     </section>
   );
-                  }
+}
