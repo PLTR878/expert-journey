@@ -1,6 +1,4 @@
 // ✅ Visionary Eternal API — V∞.15 (Full Market Deep Scanner — Batch AI)
-// สแกนหุ้นทั้งตลาดอเมริกา ~7,000 ตัว โดยแบ่งรอบละ 300
-
 import fs from "fs";
 
 export default async function handler(req, res) {
@@ -10,7 +8,6 @@ export default async function handler(req, res) {
   const memoryPath = "/tmp/ai_full_scan.json";
   const stockListPath = "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv";
 
-  // ===== Helper Functions =====
   const yfChart = async (sym, range = "3mo", interval = "1d") => {
     const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${range}&interval=${interval}`);
     const j = await r.json();
@@ -62,10 +59,8 @@ export default async function handler(req, res) {
     try { fs.writeFileSync(memoryPath, JSON.stringify(data, null, 2)); } catch {}
   };
 
-  // ====== ขั้นตอนหลัก: AI Batch Scan ======
   if (type === "ai-batchscan") {
     try {
-      // โหลดรายการหุ้นทั้งหมด (NASDAQ)
       const raw = await fetch(stockListPath).then(r => r.text());
       const allSymbols = raw
         .split("\n")
@@ -75,8 +70,8 @@ export default async function handler(req, res) {
 
       const totalBatches = Math.ceil(allSymbols.length / BATCH_SIZE);
       const batchIndex = Math.min(Number(batch), totalBatches);
-
       const mem = loadMemory();
+
       const start = (batchIndex - 1) * BATCH_SIZE;
       const symbols = allSymbols.slice(start, start + BATCH_SIZE);
 
@@ -100,15 +95,12 @@ export default async function handler(req, res) {
         } catch {}
       }
 
-      // รวมผลเข้าหน่วยความจำ
       mem.done = [...(mem.done || []), ...results];
       mem.lastBatch = batchIndex;
       saveMemory(mem);
 
       const completed = batchIndex === totalBatches;
-
       if (completed) {
-        // รวมผลลัพธ์สุดท้ายทั้งหมด
         mem.done.sort((a, b) => b.aiScore - a.aiScore);
         saveMemory(mem);
         return res.status(200).json({
@@ -132,4 +124,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(400).json({ error: "Unknown type" });
-    }
+}
