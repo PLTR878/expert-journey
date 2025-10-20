@@ -1,5 +1,5 @@
-// ✅ Visionary Stock Screener — V∞.25
-// (AI Discovery Pro + Scanner UI เปล่า)
+// ✅ Visionary Stock Screener — V∞.26 (Stable)
+// รวมระบบ Favorites + AI Discovery + Scanner UI (เปล่า)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -11,26 +11,23 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
+  const [loadingDiscovery, setLoadingDiscovery] = useState(false);
 
   const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
+    setLogs((p) => [
+      ...p.slice(-50),
+      `${new Date().toLocaleTimeString()} ${msg}`,
+    ]);
 
   // ✅ โหลด Favorites จาก LocalStorage
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
+
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
-
-  // ✅ Toggle Favorite
-  const toggleFavorite = async (sym) => {
-    setFavorites((prev) =>
-      prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
-    );
-    await fetchPrice(sym);
-  };
 
   // ✅ ดึงราคาหุ้นรายตัวจาก visionary-core
   async function fetchPrice(sym) {
@@ -56,11 +53,24 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (เชื่อม API ตัวใหม่)
-  async function loadDiscovery() {
+  // ✅ Toggle Favorite
+  const toggleFavorite = async (sym) => {
+    setFavorites((prev) =>
+      prev.includes(sym)
+        ? prev.filter((x) => x !== sym)
+        : [...prev, sym]
+    );
+    await fetchPrice(sym);
+  };
+
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (AI Discovery)
+  async function loadDiscovery(retry = 0) {
     try {
+      setLoadingDiscovery(true);
       addLog("🌋 AI Discovery Pro กำลังค้นหาหุ้นต้นน้ำ...");
       const res = await fetch(`/api/visionary-discovery-pro`, { cache: "no-store" });
+
+      if (!res.ok) throw new Error(`API ${res.status}`);
       const j = await res.json();
 
       const list = j.discovered || [];
@@ -78,9 +88,16 @@ export default function Home() {
       setFutureDiscovery(formatted);
       addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery Pro`);
 
-      for (const s of formatted) await fetchPrice(s.symbol);
+      // โหลดราคาหุ้นแต่ละตัว
+      for (const s of formatted.slice(0, 30)) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
+      // ✅ ลองใหม่อัตโนมัติ 1 ครั้งถ้า error
+      if (retry < 1) {
+        setTimeout(() => loadDiscovery(retry + 1), 3000);
+      }
+    } finally {
+      setLoadingDiscovery(false);
     }
   }
 
@@ -94,61 +111,69 @@ export default function Home() {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ===== UI =====
+  // ✅ ฟังก์ชันแสดงหน้า
+  const renderPage = () => {
+    if (active === "favorites") {
+      return (
+        <Favorites
+          data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
+          favorites={favorites}
+          setFavorites={setFavorites}
+          fetchPrice={fetchPrice}
+        />
+      );
+    }
+
+    if (active === "market") {
+      return (
+        <MarketSection
+          title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)"
+          loading={loadingDiscovery}
+          rows={futureDiscovery.map((r) => ({
+            symbol: r.symbol,
+            price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
+            rsi: favoritePrices[r.symbol]?.rsi || r.rsi || 0,
+            reason: r.reason,
+            signal:
+              favoritePrices[r.symbol]?.signal ||
+              (r.trend === "Uptrend"
+                ? "Buy"
+                : r.trend === "Downtrend"
+                ? "Sell"
+                : "Hold"),
+          }))}
+          favorites={favorites}
+          toggleFavorite={toggleFavorite}
+          favoritePrices={favoritePrices}
+        />
+      );
+    }
+
+    if (active === "scan") {
+      return (
+        <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 text-center mt-4">
+          <h2 className="text-lg font-semibold text-emerald-400 mb-2">
+            📡 AI Market Scanner (กำลังอยู่ในช่วงพัฒนา)
+          </h2>
+          <p className="text-sm text-gray-400">
+            หน้านี้จะใช้สำหรับระบบสแกนหุ้นทั่วตลาดในอนาคต
+          </p>
+          <div className="mt-4 text-gray-500 text-[13px] italic">
+            “Coming soon — ระบบ AI Scan หุ้นทั้งตลาดแบบเรียลไทม์”
+          </div>
+        </section>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <header className="px-3 py-1 h-[4px] bg-[#0b1220]" />
 
       <div className="max-w-6xl mx-auto px-3 pt-2">
-        {/* ❤️ Favorites */}
-        {active === "favorites" && (
-          <section className="mt-2">
-            <Favorites
-              data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
-              favorites={favorites}
-              setFavorites={setFavorites}
-              fetchPrice={fetchPrice}
-            />
-          </section>
-        )}
-
-        {/* 🌋 หุ้นต้นน้ำ */}
-        {active === "market" && (
-          <MarketSection
-            title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)"
-            rows={futureDiscovery.map((r) => ({
-              symbol: r.symbol,
-              price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
-              rsi: favoritePrices[r.symbol]?.rsi || r.rsi || 0,
-              reason: r.reason,
-              signal:
-                favoritePrices[r.symbol]?.signal ||
-                (r.trend === "Uptrend"
-                  ? "Buy"
-                  : r.trend === "Downtrend"
-                  ? "Sell"
-                  : "Hold"),
-            }))}
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-            favoritePrices={favoritePrices}
-          />
-        )}
-
-        {/* 📡 Scanner UI ว่าง */}
-        {active === "scan" && (
-          <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 text-center mt-4">
-            <h2 className="text-lg font-semibold text-emerald-400 mb-2">
-              📡 AI Market Scanner (กำลังอยู่ในช่วงพัฒนา)
-            </h2>
-            <p className="text-sm text-gray-400">
-              หน้านี้จะใช้สำหรับระบบสแกนหุ้นทั่วตลาดในอนาคต
-            </p>
-            <div className="mt-4 text-gray-500 text-[13px] italic">
-              “Coming soon — ระบบ AI Scan หุ้นทั้งตลาดแบบเรียลไทม์”
-            </div>
-          </section>
-        )}
+        {renderPage()}
 
         {/* 🧠 Logs */}
         <section className="mt-5 mb-10">
@@ -196,4 +221,4 @@ export default function Home() {
       </nav>
     </main>
   );
-              }
+            }
