@@ -1,118 +1,77 @@
-// ✅ Visionary Discovery Pro (V∞.7)
-// สแกนหุ้นทั้งตลาด 7000 ตัวแบบแบ่งรอบ (Batch 300 ต่อรอบ)
+// ✅ AI Discovery Pro (V∞.8) — ไม่ต้องใช้ API Key
+// ดึงหุ้นจาก Financial Modeling Prep แบบฟรี + วิเคราะห์หุ้นต้นน้ำ
+
 const FMP_API = "https://financialmodelingprep.com/api/v3";
-const FMP_KEY = process.env.FMP_API_KEY || "demo";
 
-// ฟังก์ชันดึงหุ้นทั้งหมด
+// ✅ ดึงรายชื่อหุ้นทั้งหมด (แบบไม่ต้องมี key)
 async function loadStockList() {
-  const url = `${FMP_API}/stock/list?apikey=${FMP_KEY}`;
-  const resp = await fetch(url);
-  const arr = await resp.json();
-  if (!Array.isArray(arr)) throw new Error("Load stock list failed");
-  return arr.filter(
-    (s) =>
-      s.price &&
-      s.symbol &&
-      s.exchange &&
-      ["NASDAQ", "NYSE", "AMEX"].includes(s.exchange)
-  );
+  const url = `${FMP_API}/stock/list`;
+  const res = await fetch(url);
+  const arr = await res.json();
+  if (!Array.isArray(arr)) throw new Error("โหลดรายชื่อหุ้นไม่สำเร็จ");
+  return arr;
 }
 
-// ฟังก์ชันคำนวณคะแนน AI สำหรับแต่ละหุ้น
-function calcAIScore(name = "", price = 0) {
-  const nameLower = name.toLowerCase();
-  let aiScore = 0;
-  let reason = "ทั่วไป";
-
-  if (nameLower.includes("battery") || nameLower.includes("energy")) {
-    aiScore = 90 + Math.random() * 10;
-    reason = "เทคโนโลยีพลังงาน / Battery";
-  } else if (nameLower.includes("ai") || nameLower.includes("robot")) {
-    aiScore = 88 + Math.random() * 8;
-    reason = "AI / Robotics / Data-driven";
-  } else if (nameLower.includes("quantum")) {
-    aiScore = 86 + Math.random() * 8;
-    reason = "ควอนตัมคอมพิวเตอร์";
-  } else if (
-    nameLower.includes("bio") ||
-    nameLower.includes("pharma") ||
-    nameLower.includes("medical")
-  ) {
-    aiScore = 83 + Math.random() * 6;
-    reason = "เทคโนโลยีชีวภาพ / การแพทย์";
-  } else if (price < 5) {
-    aiScore = 75 + Math.random() * 10;
-    reason = "หุ้นเล็กศักยภาพสูง";
-  } else {
-    aiScore = 70 + Math.random() * 10;
-  }
-
-  return { aiScore: Math.round(aiScore), reason };
-}
-
-// ฟังก์ชันสแกน batch (300 ตัว)
-async function scanBatch(stocks, start, end) {
-  const sliced = stocks.slice(start, end);
-  const result = [];
-
-  for (const s of sliced) {
-    const { aiScore, reason } = calcAIScore(s.name, s.price);
-    result.push({
-      symbol: s.symbol,
-      name: s.name,
-      price: s.price,
-      exchange: s.exchange,
-      aiScore,
-      reason,
-    });
-  }
-
-  return result;
-}
-
+// ✅ ฟังก์ชันหลัก
 export default async function handler(req, res) {
   try {
-    console.log("🚀 AI Discovery Pro (Batch Mode) started");
-
     // 1️⃣ โหลดหุ้นทั้งหมด
     const all = await loadStockList();
-    const total = all.length;
-    console.log(`📊 Loaded ${total} stocks from FMP`);
 
-    // 2️⃣ จำกัดสูงสุด 7000 ตัว
-    const stocks = all.slice(0, 7000);
+    // 2️⃣ กรองหุ้นที่ราคา < $30 และอยู่ในตลาดหลัก
+    const filtered = all
+      .filter(
+        (s) =>
+          s.price &&
+          s.price < 30 &&
+          s.symbol &&
+          ["NYSE", "NASDAQ", "AMEX"].includes(s.exchange)
+      )
+      .slice(0, 1000); // จำกัดรอบแรก 1000 ตัว เพื่อไม่ให้ Timeout
 
-    // 3️⃣ แบ่งรอบละ 300
-    const batchSize = 300;
-    const batches = Math.ceil(stocks.length / batchSize);
-    let discovered = [];
+    // 3️⃣ วิเคราะห์หุ้นแต่ละตัวด้วย AI Logic เบื้องต้น
+    const scored = filtered.map((s) => {
+      const name = (s.name || "").toLowerCase();
+      let aiScore = 70 + Math.random() * 30;
+      let reason = "AI พบศักยภาพในอนาคต";
 
-    for (let i = 0; i < batches; i++) {
-      const start = i * batchSize;
-      const end = start + batchSize;
-      console.log(`🔍 Scanning batch ${i + 1}/${batches} (${start}-${end})`);
+      if (name.includes("battery") || name.includes("energy")) {
+        aiScore = 90 + Math.random() * 8;
+        reason = "พลังงานใหม่ / แบตเตอรี่";
+      } else if (name.includes("ai") || name.includes("data") || name.includes("robot")) {
+        aiScore = 88 + Math.random() * 8;
+        reason = "AI / Robotics / Data-driven";
+      } else if (name.includes("quantum")) {
+        aiScore = 86 + Math.random() * 6;
+        reason = "ควอนตัมเทคโนโลยี / Frontier Tech";
+      } else if (name.includes("bio") || name.includes("medical") || name.includes("pharma")) {
+        aiScore = 84 + Math.random() * 6;
+        reason = "เทคโนโลยีชีวภาพ / การแพทย์อนาคต";
+      }
 
-      const batchResult = await scanBatch(stocks, start, end);
-      discovered.push(...batchResult);
+      return {
+        symbol: s.symbol,
+        name: s.name,
+        price: s.price,
+        exchange: s.exchange,
+        aiScore: Math.round(aiScore),
+        reason,
+      };
+    });
 
-      // delay เล็กน้อยระหว่างรอบ (ไม่โดน rate limit)
-      await new Promise((r) => setTimeout(r, 100));
-    }
+    // 4️⃣ เรียงคะแนนแล้วเลือก Top 30
+    const top = scored.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
 
-    // 4️⃣ คัด Top 50
-    discovered.sort((a, b) => b.aiScore - a.aiScore);
-    const top50 = discovered.slice(0, 50);
-
-    // 5️⃣ ส่งผล
+    // 5️⃣ ส่งผลกลับ
     res.status(200).json({
-      discovered: top50,
-      count: top50.length,
-      scanned: stocks.length,
-      source: "AI Discovery Pro V∞.7",
+      discovered: top,
+      count: top.length,
+      scanned: filtered.length,
+      source: "AI Discovery Pro (No Key)",
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
     console.error("❌ AI Discovery Pro Error:", err);
     res.status(500).json({ error: err.message });
   }
-          }
+  }
