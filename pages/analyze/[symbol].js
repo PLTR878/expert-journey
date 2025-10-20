@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Connected to Eternal API V∞.4)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Connected to Visionary Core + Scanner V∞.6)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -14,24 +14,23 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ===== ดึงข้อมูลหลักจาก API =====
+  // ===== ดึงข้อมูลหลักจาก API ใหม่ =====
   useEffect(() => {
     if (!symbol) return;
     (async () => {
       setLoading(true);
       try {
-        const [daily, n, h] = await Promise.all([
-          fetch(`/api/visionary-eternal?type=daily&symbol=${symbol}`).then((r) => r.json()),
-          fetch(`/api/visionary-eternal?type=ai-news&symbol=${symbol}`).then((r) => r.json()),
-          fetch(`/api/visionary-eternal?type=history&symbol=${symbol}&range=6mo&interval=1d`).then((r) =>
-            r.json()
-          ),
+        const [core, n, h] = await Promise.all([
+          fetch(`/api/visionary-core?type=daily&symbol=${symbol}`).then((r) => r.json()),
+          fetch(`/api/visionary-scanner?type=ai-news&symbol=${symbol}`).then((r) => r.json()),
+          fetch(`/api/visionary-core?type=history&symbol=${symbol}&range=6mo`).then((r) => r.json()),
         ]);
-        setInd(daily);
-        setNews(n.news || []);
-        setHist(h.rows || []);
+
+        setInd(core || {});
+        setNews(n.news || n.data || []);
+        setHist(h.rows || h.data || []);
       } catch (e) {
-        console.error(e);
+        console.error("⚠️ Analyzer fetch error:", e);
       } finally {
         setLoading(false);
       }
@@ -92,15 +91,19 @@ export default function Analyze() {
 }
 
 // ===== AI Logic =====
-function computeSignal({ lastClose, ema20, ema50, ema200, rsi }) {
+function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   if (![lastClose, ema20, ema50, ema200, rsi].every((v) => Number.isFinite(v))) {
     return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
   }
+
   let score = 0;
   if (lastClose > ema20) score++;
   if (ema20 > ema50) score++;
   if (ema50 > ema200) score++;
   if (rsi > 55) score++;
+
+  if (trend === "Uptrend") score += 0.5;
+  if (trend === "Downtrend") score -= 0.5;
 
   if (score >= 3) return { action: "Buy", confidence: score / 4, reason: "แนวโน้มขาขึ้น" };
   if (score <= 1) return { action: "Sell", confidence: (2 - score) / 2, reason: "แรงขายกดดัน" };
