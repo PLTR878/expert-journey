@@ -1,11 +1,8 @@
-// ✅ Visionary Eternal API — V∞.15 (Full Market Deep Scanner — Batch AI)
-import fs from "fs";
-
+// ✅ Visionary Eternal API — V∞.16 (No-FS / 100% Compatible with Vercel)
 export default async function handler(req, res) {
   const { type = "ai-batchscan", batch = "1" } = req.query;
 
   const BATCH_SIZE = 300;
-  const memoryPath = "/tmp/ai_full_scan.json";
   const stockListPath = "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv";
 
   const yfChart = async (sym, range = "3mo", interval = "1d") => {
@@ -37,7 +34,7 @@ export default async function handler(req, res) {
     try {
       const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${sym}`);
       const j = await r.json();
-      const items = (j.news || []).slice(0, 6);
+      const items = (j.news || []).slice(0, 5);
       let score = 0;
       for (const n of items) {
         const t = `${n.title || ""} ${(n.summary || "")}`.toLowerCase();
@@ -48,15 +45,6 @@ export default async function handler(req, res) {
     } catch {
       return 0;
     }
-  };
-
-  const loadMemory = () => {
-    try { return JSON.parse(fs.readFileSync(memoryPath, "utf8")); }
-    catch { return { done: [], total: [], lastBatch: 0 }; }
-  };
-
-  const saveMemory = (data) => {
-    try { fs.writeFileSync(memoryPath, JSON.stringify(data, null, 2)); } catch {}
   };
 
   if (type === "ai-batchscan") {
@@ -70,7 +58,6 @@ export default async function handler(req, res) {
 
       const totalBatches = Math.ceil(allSymbols.length / BATCH_SIZE);
       const batchIndex = Math.min(Number(batch), totalBatches);
-      const mem = loadMemory();
 
       const start = (batchIndex - 1) * BATCH_SIZE;
       const symbols = allSymbols.slice(start, start + BATCH_SIZE);
@@ -82,11 +69,13 @@ export default async function handler(req, res) {
           const q = d?.indicators?.quote?.[0];
           const closes = q?.close?.filter((x) => typeof x === "number");
           if (!closes?.length) continue;
+
           const ema20 = calcEMA(closes, 20);
           const ema50 = calcEMA(closes, 50);
           const last = closes.at(-1);
           const rsi = calcRSI(closes);
           if (last > 35 || rsi < 55 || ema20 <= ema50) continue;
+
           const sentiment = await newsSentiment(sym);
           if (sentiment <= 0) continue;
 
@@ -95,33 +84,21 @@ export default async function handler(req, res) {
         } catch {}
       }
 
-      mem.done = [...(mem.done || []), ...results];
-      mem.lastBatch = batchIndex;
-      saveMemory(mem);
-
       const completed = batchIndex === totalBatches;
-      if (completed) {
-        mem.done.sort((a, b) => b.aiScore - a.aiScore);
-        saveMemory(mem);
-        return res.status(200).json({
-          message: "✅ สแกนครบทุกตัวแล้ว!",
-          totalAnalyzed: allSymbols.length,
-          found: mem.done.length,
-          top: mem.done.slice(0, 50),
-        });
-      } else {
-        return res.status(200).json({
-          message: `✅ สแกน Batch ${batchIndex}/${totalBatches} เสร็จแล้ว`,
-          analyzed: symbols.length,
-          found: results.length,
-          nextBatch: batchIndex + 1,
-          top: results.slice(0, 10),
-        });
-      }
+
+      return res.status(200).json({
+        message: completed
+          ? "✅ สแกนครบทุกตัวแล้ว!"
+          : `✅ สแกน Batch ${batchIndex}/${totalBatches} เสร็จแล้ว`,
+        analyzed: symbols.length,
+        found: results.length,
+        nextBatch: completed ? null : batchIndex + 1,
+        top: results.slice(0, 10),
+      });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   }
 
   return res.status(400).json({ error: "Unknown type" });
-          }
+}
