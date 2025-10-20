@@ -1,15 +1,16 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
-export default function MarketLikeFavorites({ dataList = [], rows = [] }) {
+export default function MarketLikeFavorites({ dataList = [], rows = [], mode = "market", onReload }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
+  const [loading, setLoading] = useState(false);
 
   // ✅ รวมข้อมูลจาก props ให้แน่ใจว่าไม่ว่าง และป้องกัน array ซ้อน
   let list = dataList?.length ? dataList : rows || [];
   if (Array.isArray(list[0])) list = list.flat();
 
   // ✅ Debug ดูว่ามีกี่หุ้นที่โหลดมา
-  console.log("📊 MarketLikeFavorites loaded:", list.length, "stocks");
+  console.log(`📊 ${mode.toUpperCase()} UI loaded:`, list.length, "stocks");
 
   // ✅ โลโก้หลัก
   const logoMap = {
@@ -76,22 +77,52 @@ export default function MarketLikeFavorites({ dataList = [], rows = [] }) {
     touchEndX.current = null;
   };
 
+  // ✅ ฟังก์ชันรีโหลดข้อมูล
+  const handleReload = async () => {
+    if (!onReload) return;
+    setLoading(true);
+    try {
+      await onReload();
+    } catch (err) {
+      console.error("🔁 Reload failed:", err);
+    } finally {
+      setTimeout(() => setLoading(false), 400);
+    }
+  };
+
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          ⚡ Market Overview
+          {mode === "scanner" ? "📡 Market Scanner" : "⚡ Market Overview"}
         </h2>
+
+        {/* ปุ่มรีโหลด */}
+        {onReload && (
+          <button
+            onClick={handleReload}
+            className={`text-[12px] px-2 py-[3px] rounded-md border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10 transition-all ${
+              loading ? "opacity-60 pointer-events-none" : ""
+            }`}
+          >
+            {loading ? "⏳ Loading..." : "🔄 Refresh"}
+          </button>
+        )}
       </div>
 
-      {/* ✅ Layout เหมือน Favorites */}
+      {/* ✅ แสดงจำนวนหุ้น */}
+      <div className="text-[12px] text-gray-400 px-[4px] mb-2">
+        {list?.length ? `พบหุ้นทั้งหมด ${list.length} ตัว` : "ไม่มีข้อมูลตลาด"}
+      </div>
+
+      {/* ✅ Layout */}
       <div className="flex flex-col divide-y divide-gray-800/50">
         {list?.length ? (
           list.map((r, i) => {
-            const sym = r.symbol;
+            const sym = r.symbol || "-";
             const domain = logoMap[sym] || `${sym?.toLowerCase?.()}.com`;
-            const companyName = r.companyName || companyMap[sym] || sym;
+            const companyName = r.companyName || companyMap[sym] || "Unknown Company";
             const price = r.lastClose || r.price || 0;
             const rsi = r.rsi;
             const signal =
@@ -148,7 +179,6 @@ export default function MarketLikeFavorites({ dataList = [], rows = [] }) {
                       {companyName}
                     </div>
 
-                    {/* ✅ เหตุผลจาก AI */}
                     {r.reason && (
                       <div className="text-[10px] text-emerald-400 mt-[2px] max-w-[160px] truncate">
                         📈 {r.reason}
@@ -192,10 +222,10 @@ export default function MarketLikeFavorites({ dataList = [], rows = [] }) {
           })
         ) : (
           <div className="py-6 text-center text-gray-500 italic">
-            No market data available.
+            {loading ? "⏳ กำลังโหลดข้อมูลตลาด..." : "No market data available."}
           </div>
         )}
       </div>
     </section>
   );
-}
+                   }
