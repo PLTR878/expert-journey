@@ -1,18 +1,85 @@
-import { useRef, useState } from "react";
+// ✅ MarketLikeFavorites — เชื่อมกับ visionary-core + visionary-scanner (V∞.6)
+import { useRef, useState, useEffect } from "react";
 
-export default function MarketLikeFavorites({ dataList = [], rows = [], mode = "market", onReload }) {
+export default function MarketLikeFavorites({
+  dataList = [],
+  rows = [],
+  mode = "scanner", // 'scanner' | 'discovery'
+}) {
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(false);
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
-  const [loading, setLoading] = useState(false);
 
-  // ✅ รวมข้อมูลจาก props ให้แน่ใจว่าไม่ว่าง และป้องกัน array ซ้อน
-  let list = dataList?.length ? dataList : rows || [];
-  if (Array.isArray(list[0])) list = list.flat();
+  // ✅ โหลดข้อมูลจาก API ใหม่
+  const fetchMarketData = async () => {
+    try {
+      setLoading(true);
+      let url =
+        mode === "scanner"
+          ? `/api/visionary-scanner?type=scanner`
+          : `/api/visionary-scanner?type=ai-discovery`;
 
-  // ✅ Debug ดูว่ามีกี่หุ้นที่โหลดมา
-  console.log(`📊 ${mode.toUpperCase()} UI loaded:`, list.length, "stocks");
+      const res = await fetch(url, { cache: "no-store" });
+      const j = await res.json();
 
-  // ✅ โลโก้หลัก
+      const arr =
+        j.stocks || j.discovered || j.results || j.data || j.list || [];
+      if (!Array.isArray(arr) || arr.length === 0)
+        throw new Error("ไม่พบข้อมูลตลาด");
+
+      // ✅ ดึงราคาล่าสุดจาก visionary-core
+      const merged = await Promise.all(
+        arr.map(async (r) => {
+          const sym = r.symbol;
+          try {
+            const priceRes = await fetch(
+              `/api/visionary-core?type=daily&symbol=${sym}`
+            );
+            const p = await priceRes.json();
+            return {
+              ...r,
+              symbol: sym,
+              price: p.lastClose || r.lastClose || r.price || 0,
+              rsi: p.rsi || r.rsi || 0,
+              trend:
+                p.trend ||
+                r.trend ||
+                (p.rsi > 55 ? "Uptrend" : p.rsi < 45 ? "Downtrend" : "Sideway"),
+              signal:
+                r.signal ||
+                (r.trend === "Uptrend"
+                  ? "Buy"
+                  : r.trend === "Downtrend"
+                  ? "Sell"
+                  : "Hold"),
+            };
+          } catch (e) {
+            return r;
+          }
+        })
+      );
+
+      setList(merged);
+      console.log(`✅ Loaded ${merged.length} stocks from ${mode}`);
+    } catch (err) {
+      console.error(`⚠️ Load ${mode} failed:`, err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ โหลดตอนเปิดหน้า
+  useEffect(() => {
+    fetchMarketData();
+  }, [mode]);
+
+  // ✅ ปุ่มรีโหลด
+  const handleReload = async () => {
+    await fetchMarketData();
+  };
+
+  // ✅ โลโก้
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -41,74 +108,38 @@ export default function MarketLikeFavorites({ dataList = [], rows = [], mode = "
     LAC: "lithiumamericas.com",
   };
 
-  // ✅ ชื่อบริษัท
-  const companyMap = {
-    NVDA: "NVIDIA Corp",
-    AAPL: "Apple Inc.",
-    TSLA: "Tesla Inc.",
-    MSFT: "Microsoft Corp",
-    AMZN: "Amazon.com Inc.",
-    META: "Meta Platforms Inc.",
-    GOOG: "Alphabet Inc.",
-    AMD: "Advanced Micro Devices",
-    INTC: "Intel Corp",
-    PLTR: "Palantir Technologies",
-    IREN: "Iris Energy Ltd",
-    RXRX: "Recursion Pharmaceuticals",
-    RR: "Rolls-Royce Holdings",
-    AEHR: "Aehr Test Systems",
-    SLDP: "Solid Power Inc",
-    NRGV: "Energy Vault Holdings",
-    BBAI: "BigBear.ai Holdings",
-    NVO: "Novo Nordisk A/S",
-    GWH: "ESS Tech Inc",
-    COST: "Costco Wholesale Corp",
-    QUBT: "Quantum Computing Inc",
-    UNH: "UnitedHealth Group",
-    EZGO: "EZGO Technologies",
-    QMCO: "Quantum Corp",
-    LAC: "Lithium Americas",
-  };
-
-  const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
-  const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
+  // ✅ Touch event (ป้องกัน swipe)
+  const handleTouchStart = (e) =>
+    (touchStartX.current = e.targetTouches[0].clientX);
+  const handleTouchMove = (e) =>
+    (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = () => {
     touchStartX.current = null;
     touchEndX.current = null;
   };
 
-  // ✅ ฟังก์ชันรีโหลดข้อมูล
-  const handleReload = async () => {
-    if (!onReload) return;
-    setLoading(true);
-    try {
-      await onReload();
-    } catch (err) {
-      console.error("🔁 Reload failed:", err);
-    } finally {
-      setTimeout(() => setLoading(false), 400);
-    }
-  };
+  // ✅ แสดงชื่อโหมด
+  const title =
+    mode === "scanner"
+      ? "📡 สแกนหุ้นทั้งตลาด (AI Market Scanner)"
+      : "🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery)";
 
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          {mode === "scanner" ? "📡 Market Scanner" : "⚡ Market Overview"}
+          {title}
         </h2>
 
-        {/* ปุ่มรีโหลด */}
-        {onReload && (
-          <button
-            onClick={handleReload}
-            className={`text-[12px] px-2 py-[3px] rounded-md border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10 transition-all ${
-              loading ? "opacity-60 pointer-events-none" : ""
-            }`}
-          >
-            {loading ? "⏳ Loading..." : "🔄 Refresh"}
-          </button>
-        )}
+        <button
+          onClick={handleReload}
+          className={`text-[12px] px-2 py-[3px] rounded-md border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10 transition-all ${
+            loading ? "opacity-60 pointer-events-none" : ""
+          }`}
+        >
+          {loading ? "⏳ Loading..." : "🔄 Refresh"}
+        </button>
       </div>
 
       {/* ✅ แสดงจำนวนหุ้น */}
@@ -121,9 +152,13 @@ export default function MarketLikeFavorites({ dataList = [], rows = [], mode = "
         {list?.length ? (
           list.map((r, i) => {
             const sym = r.symbol || "-";
-            const domain = logoMap[sym] || `${sym?.toLowerCase?.()}.com`;
-            const companyName = r.companyName || companyMap[sym] || "Unknown Company";
-            const price = r.lastClose || r.price || 0;
+            const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
+            const companyName =
+              r.companyName ||
+              r.name ||
+              r.fullName ||
+              "Unknown Company";
+            const price = r.price || r.lastClose || 0;
             const rsi = r.rsi;
             const signal =
               r.signal ||
@@ -147,25 +182,14 @@ export default function MarketLikeFavorites({ dataList = [], rows = [], mode = "
                     <img
                       src={`https://logo.clearbit.com/${domain}`}
                       alt={sym}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `https://companieslogo.com/img/orig/${sym.toUpperCase()}_BIG.png`;
-                        setTimeout(() => {
-                          if (e.target.naturalWidth === 0 || e.target.naturalHeight === 0) {
-                            e.target.style.display = "none";
-                            const parent = e.target.parentNode;
-                            if (parent && !parent.querySelector(".fallback-logo")) {
-                              const span = document.createElement("span");
-                              span.className = "fallback-logo text-emerald-400 font-bold text-[13px]";
-                              span.textContent = sym[0];
-                              parent.appendChild(span);
-                            }
-                          }
-                        }, 800);
-                      }}
-                      className="w-9 h-9 object-contain transition-opacity duration-700 ease-in-out opacity-0"
-                      onLoad={(e) => (e.target.style.opacity = 1)}
+                      onError={(e) => (e.target.style.display = "none")}
+                      className="w-9 h-9 object-contain"
                     />
+                    {!logoMap[sym] && (
+                      <span className="text-emerald-400 font-bold text-[13px]">
+                        {sym[0]}
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -228,4 +252,4 @@ export default function MarketLikeFavorites({ dataList = [], rows = [], mode = "
       </div>
     </section>
   );
-                   }
+}
