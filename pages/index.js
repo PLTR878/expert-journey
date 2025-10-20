@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.23 (แยกระบบ AI Discovery ออกเป็นอิสระ)
+// ✅ Visionary Stock Screener — V∞.24 (AI Discovery + Scanner UI เปล่า)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -10,7 +10,6 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
-  const [scannerData, setScannerData] = useState([]);
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -56,7 +55,7 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (AI Discovery ใหม่)
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (AI Discovery)
   async function loadDiscovery() {
     try {
       addLog("🌋 AI กำลังค้นหาหุ้นต้นน้ำ...");
@@ -71,8 +70,8 @@ export default function Home() {
         lastClose: r.lastClose || 0,
         rsi: r.rsi || 0,
         trend: r.trend || (r.rsi > 55 ? "Uptrend" : "Sideway"),
-        reason: r.reason || "AI-detected potential growth",
-        sentiment: r.aiScore || r.sentiment || 0,
+        reason: r.reason || "AI-detected future growth potential",
+        sentiment: r.aiScore || 0,
       }));
 
       setFutureDiscovery(formatted);
@@ -83,61 +82,15 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูล Scanner ทั้งตลาด
-  async function loadScannerData() {
-    try {
-      addLog("📡 กำลังสแกนหุ้นทั้งตลาด...");
-      const res = await fetch(`/api/visionary-scanner?type=scanner`, {
-        cache: "no-store",
-      });
-      const j = await res.json();
-
-      const list = j.stocks || [];
-      if (!Array.isArray(list) || list.length === 0)
-        throw new Error("No scanner data");
-
-      const formatted = list.map((r) => ({
-        symbol: r.symbol,
-        lastClose: r.lastClose || r.price || 0,
-        rsi: r.rsi || 0,
-        trend: r.trend || (r.rsi > 55 ? "Uptrend" : "Sideway"),
-        reason: r.reason || "AI Market Signal",
-        signal:
-          r.signal ||
-          (r.trend === "Uptrend"
-            ? "Buy"
-            : r.trend === "Downtrend"
-            ? "Sell"
-            : "Hold"),
-      }));
-
-      setScannerData(formatted);
-      addLog(`✅ สแกนเจอหุ้นทั้งหมด ${formatted.length} ตัว`);
-    } catch (err) {
-      addLog(`⚠️ Scanner failed: ${err.message}`);
-    }
-  }
-
   // ✅ โหลดตอนเปิดหน้า
   useEffect(() => {
     loadDiscovery();
-    loadScannerData();
   }, []);
 
   // ✅ ดึงราคาหุ้นใน Favorites
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
-
-  // ✅ รีเฟรชทุก 2 นาที
-  useEffect(() => {
-    const interval = setInterval(() => {
-      addLog("🔁 Auto-refreshing AI discovery + scanner...");
-      loadDiscovery();
-      loadScannerData();
-    }, 120000);
-    return () => clearInterval(interval);
-  }, []);
 
   // ===== UI =====
   return (
@@ -154,6 +107,7 @@ export default function Home() {
             />
           </section>
         )}
+
         {active === "market" && (
           <MarketSection
             title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Future Discovery)"
@@ -175,20 +129,20 @@ export default function Home() {
             favoritePrices={favoritePrices}
           />
         )}
+
+        {/* ✅ Scanner UI ว่าง */}
         {active === "scan" && (
-          <MarketSection
-            title="📡 สแกนหุ้นทั้งตลาด (AI Market Scanner)"
-            rows={scannerData.map((r) => ({
-              symbol: r.symbol,
-              price: r.lastClose || 0,
-              rsi: r.rsi || 0,
-              reason: r.reason,
-              signal: r.signal,
-            }))}
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-            favoritePrices={favoritePrices}
-          />
+          <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 text-center mt-4">
+            <h2 className="text-lg font-semibold text-emerald-400 mb-2">
+              📡 AI Market Scanner (กำลังอยู่ในช่วงพัฒนา)
+            </h2>
+            <p className="text-sm text-gray-400">
+              หน้านี้จะใช้สำหรับระบบสแกนหุ้นทั่วตลาดในอนาคต
+            </p>
+            <div className="mt-4 text-gray-500 text-[13px] italic">
+              “Coming soon — ระบบ AI Scan หุ้นทั้งตลาดแบบเรียลไทม์”
+            </div>
+          </section>
         )}
 
         {/* 🧠 Logs */}
@@ -236,4 +190,4 @@ export default function Home() {
       </nav>
     </main>
   );
-        }
+          }
