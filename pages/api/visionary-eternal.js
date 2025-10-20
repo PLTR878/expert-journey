@@ -1,5 +1,4 @@
-// ✅ Visionary Eternal API — V∞.19 (Full: daily/history + discovery + batchscan + ai-news)
-
+// ✅ Visionary Eternal API — V∞.20 (Full: daily/history + discovery + batchscan + ai-news)
 export default async function handler(req, res) {
   const {
     type = "daily",
@@ -9,11 +8,10 @@ export default async function handler(req, res) {
     batch = "1",
   } = req.query;
 
-  // ---------- helpers ----------
   const BATCH_SIZE = 300;
-  const stockListPath =
-    "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv";
+  const stockListPath = "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv";
 
+  // ---------------- Helper functions ----------------
   const yfChart = async (sym, r = range, i = interval) => {
     const u = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${r}&interval=${i}`;
     const rj = await fetch(u);
@@ -73,25 +71,20 @@ export default async function handler(req, res) {
     }
   };
 
-  // ---------- endpoints ----------
+  // ---------------- API logic ----------------
   try {
-    // 1) OHLCV history
+    // 1️⃣ HISTORY
     if (type === "history") {
       const d = await yfChart(symbol, range, interval);
       const q = d?.indicators?.quote?.[0];
       if (!d || !q) throw new Error("No chart data");
       const rows = (d.timestamp || []).map((t, i) => ({
-        t: t * 1000,
-        o: q.open[i],
-        h: q.high[i],
-        l: q.low[i],
-        c: q.close[i],
-        v: q.volume[i],
+        t: t * 1000, o: q.open[i], h: q.high[i], l: q.low[i], c: q.close[i], v: q.volume[i],
       }));
       return res.status(200).json({ symbol: symbol.toUpperCase(), rows });
     }
 
-    // 2) Daily indicators + AI advice
+    // 2️⃣ DAILY
     if (type === "daily") {
       const d = await yfChart(symbol, "6mo", "1d");
       const q = d?.indicators?.quote?.[0];
@@ -128,7 +121,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 3) Short market groups
+    // 3️⃣ MARKET GROUPS
     if (type === "market") {
       return res.status(200).json({
         groups: {
@@ -141,13 +134,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // 4) AI discovery (<= $35 + early uptrend + positive news)
+    // 4️⃣ AI DISCOVERY
     if (type === "ai-discovery") {
       const universe = [
         "SOFI","ALLY","FUTU","PLTR","BBAI","OKLO","SLDP","NRGV","GWH","ENVX",
         "SES","IREN","BTDR","RIOT","MARA","LAES","INTC","AMD","NVDA","TSLA",
       ];
-
       const picks = [];
       for (const sym of universe) {
         try {
@@ -155,34 +147,22 @@ export default async function handler(req, res) {
           const q = d?.indicators?.quote?.[0];
           const closes = q?.close?.filter((x) => typeof x === "number");
           if (!closes?.length) continue;
-
           const ema20 = EMA(closes, 20);
           const ema50 = EMA(closes, 50);
           const last  = closes.at(-1);
           const rsi   = RSI(closes);
-
           const { score } = await newsSentiment(sym);
           const isPick = last <= 35 && rsi > 55 && ema20 > ema50 && score > 0;
           if (!isPick) continue;
-
           const rank = (rsi - 50) * 2 + score * 10;
-          picks.push({
-            symbol: sym,
-            lastClose: Number(last.toFixed(2)),
-            rsi: Math.round(rsi),
-            trend: "Uptrend",
-            reason: "AI-detected potential growth (price<=35, EMA20>EMA50, RSI>55, positive news)",
-            sentiment: score,
-            rank,
-          });
+          picks.push({ symbol: sym, lastClose: Number(last.toFixed(2)), rsi: Math.round(rsi), trend: "Uptrend", sentiment: score, rank });
         } catch {}
       }
-
       picks.sort((a, b) => b.rank - a.rank);
       return res.status(200).json({ discovered: picks, timestamp: new Date().toISOString() });
     }
 
-    // 5) Full market batch scan (≈7k) – 300 ต่อรอบ
+    // 5️⃣ BATCH SCAN (7k STOCKS)
     if (type === "ai-batchscan") {
       const raw = await fetch(stockListPath).then((r) => r.text());
       const allSymbols = raw
@@ -192,9 +172,9 @@ export default async function handler(req, res) {
         .slice(0, 7000);
 
       const totalBatches = Math.ceil(allSymbols.length / BATCH_SIZE);
-      const batchIndex   = Math.min(Number(batch), totalBatches);
-      const start        = (batchIndex - 1) * BATCH_SIZE;
-      const symbols      = allSymbols.slice(start, start + BATCH_SIZE);
+      const batchIndex = Math.min(Number(batch), totalBatches);
+      const start = (batchIndex - 1) * BATCH_SIZE;
+      const symbols = allSymbols.slice(start, start + BATCH_SIZE);
 
       const results = [];
       for (const sym of symbols) {
@@ -203,24 +183,15 @@ export default async function handler(req, res) {
           const q = d?.indicators?.quote?.[0];
           const closes = q?.close?.filter((x) => typeof x === "number");
           if (!closes?.length) continue;
-
           const ema20 = EMA(closes, 20);
           const ema50 = EMA(closes, 50);
           const last  = closes.at(-1);
           const rsi   = RSI(closes);
           if (last > 35 || rsi < 55 || ema20 <= ema50) continue;
-
           const { score } = await newsSentiment(sym);
           if (score <= 0) continue;
-
           const aiScore = (rsi - 50) * 2 + score * 10;
-          results.push({
-            symbol: sym,
-            price: Number(last.toFixed(2)),
-            rsi: Math.round(rsi),
-            sentiment: score,
-            aiScore,
-          });
+          results.push({ symbol: sym, price: Number(last.toFixed(2)), rsi: Math.round(rsi), sentiment: score, aiScore });
         } catch {}
       }
 
@@ -236,30 +207,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 6) Profile
-    if (type === "profile") {
-      const prof = await yfQuoteSummary(symbol);
-      return res.status(200).json({
-        symbol: symbol.toUpperCase(),
-        companyName: prof.longName || prof.shortName || symbol.toUpperCase(),
-        currency: prof.currency || "USD",
-      });
-    }
-
-    // 7) Logo list
-    if (type === "logo") {
-      const s = symbol.toUpperCase();
-      return res.status(200).json({
-        symbol: s,
-        logos: [
-          `https://companieslogo.com/img/orig/${s}_BIG.png`,
-          `https://logo.clearbit.com/${s.toLowerCase()}.com`,
-          `https://s3-symbol-logo.tradingview.com/${s.toLowerCase()}--big.svg`,
-        ],
-      });
-    }
-
-    // 8) AI Market News feed  ← ย้ายเข้ามาใน handler แล้ว
+    // 6️⃣ AI NEWS
     if (type === "ai-news") {
       try {
         const keyword = symbol?.toUpperCase() || "AAPL";
@@ -267,7 +215,6 @@ export default async function handler(req, res) {
         const resp = await fetch(url);
         const data = await resp.json();
         const items = (data.news || []).slice(0, 10);
-
         const parsed = items.map((n) => {
           const text = `${n.title || ""} ${(n.summary || "")}`.toLowerCase();
           let sentiment = 0;
@@ -282,7 +229,6 @@ export default async function handler(req, res) {
             time: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toISOString() : "",
           };
         });
-
         return res.status(200).json({
           symbol: keyword,
           total: parsed.length,
@@ -294,9 +240,32 @@ export default async function handler(req, res) {
       }
     }
 
-    // Unknown
+    // 7️⃣ PROFILE + LOGO
+    if (type === "profile") {
+      const prof = await yfQuoteSummary(symbol);
+      return res.status(200).json({
+        symbol: symbol.toUpperCase(),
+        companyName: prof.longName || prof.shortName || symbol.toUpperCase(),
+        currency: prof.currency || "USD",
+      });
+    }
+
+    if (type === "logo") {
+      const s = symbol.toUpperCase();
+      return res.status(200).json({
+        symbol: s,
+        logos: [
+          `https://companieslogo.com/img/orig/${s}_BIG.png`,
+          `https://logo.clearbit.com/${s.toLowerCase()}.com`,
+          `https://s3-symbol-logo.tradingview.com/${s.toLowerCase()}--big.svg`,
+        ],
+      });
+    }
+
+    // ❌ Default
     return res.status(400).json({ error: "Unknown type" });
+
   } catch (err) {
     return res.status(500).json({ error: err.message || String(err) });
   }
-  }
+            }
