@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.14 (AI Discovery + Full Market Scanner Fixed)
+// ✅ Visionary Stock Screener — V∞.22 (ใช้ API ใหม่: visionary-core + visionary-scanner)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -10,7 +10,7 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
-  const [scannerData, setScannerData] = useState([]); // ✅ ข้อมูลจากสแกนหุ้นทั้งตลาด
+  const [scannerData, setScannerData] = useState([]);
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -20,7 +20,6 @@ export default function Home() {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
-
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -33,10 +32,10 @@ export default function Home() {
     await fetchPrice(sym);
   };
 
-  // ✅ ดึงราคาหุ้นรายตัว
+  // ✅ ดึงราคาหุ้นรายตัวจาก visionary-core
   async function fetchPrice(sym) {
     try {
-      const res = await fetch(`/api/visionary-eternal?type=daily&symbol=${sym}`);
+      const res = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
       const j = await res.json();
       setFavoritePrices((prev) => ({
         ...prev,
@@ -57,18 +56,17 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูล "หุ้นต้นน้ำ อนาคตไกล"
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (AI Discovery)
   async function loadDiscovery() {
     try {
       addLog("🌋 AI กำลังค้นหาหุ้นต้นน้ำ...");
-      const res = await fetch(`/api/visionary-eternal?type=ai-discovery`, {
+      const res = await fetch(`/api/visionary-scanner?type=ai-discovery`, {
         cache: "no-store",
       });
       const j = await res.json();
 
-      const list = j.discovered || j.aiPicks || j.results || j.data || [];
-      if (!Array.isArray(list) || list.length === 0)
-        throw new Error("No discovery data");
+      const list = j.discovered || [];
+      if (!list.length) throw new Error("No discovery data");
 
       const formatted = list.map((r) => ({
         symbol: r.symbol,
@@ -87,43 +85,25 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูลหุ้นทั้งตลาด (AI Market Scanner)
+  // ✅ โหลดข้อมูล Scanner ทั้งตลาด
   async function loadScannerData() {
     try {
       addLog("📡 กำลังสแกนหุ้นทั้งตลาด...");
-      const res = await fetch(`/api/visionary-eternal?type=scanner`, { cache: "no-store" });
+      const res = await fetch(`/api/visionary-scanner?type=scanner`, {
+        cache: "no-store",
+      });
       const j = await res.json();
 
-      // ✅ รองรับทุกโครงสร้าง API ที่อาจเจอ
-      const list =
-        j.stocks ||
-        j.results ||
-        j.data ||
-        j.scanner ||
-        j.list ||
-        j.all ||
-        j.market ||
-        j.aiScanner ||
-        (Array.isArray(j) ? j : []);
-
-      // ✅ ตรวจว่าคือ array จริงไหม
-      const realList = Array.isArray(list)
-        ? list
-        : Array.isArray(j)
-        ? j
-        : Array.isArray(j?.stocks)
-        ? j.stocks
-        : [];
-
-      if (!Array.isArray(realList) || realList.length === 0)
+      const list = j.stocks || [];
+      if (!Array.isArray(list) || list.length === 0)
         throw new Error("No scanner data");
 
-      const formatted = realList.map((r) => ({
+      const formatted = list.map((r) => ({
         symbol: r.symbol,
         lastClose: r.lastClose || r.price || 0,
         rsi: r.rsi || 0,
         trend: r.trend || (r.rsi > 55 ? "Uptrend" : "Sideway"),
-        reason: r.reason || "AI-scan detected potential move",
+        reason: r.reason || "AI Market Signal",
         signal:
           r.signal ||
           (r.trend === "Uptrend"
@@ -135,17 +115,15 @@ export default function Home() {
 
       setScannerData(formatted);
       addLog(`✅ สแกนเจอหุ้นทั้งหมด ${formatted.length} ตัว`);
-      console.log("✅ Scanner raw:", j);
     } catch (err) {
       addLog(`⚠️ Scanner failed: ${err.message}`);
-      console.error("⚠️ Scanner error:", err);
     }
   }
 
   // ✅ โหลดตอนเปิดหน้า
   useEffect(() => {
     loadDiscovery();
-    loadScannerData(); // ✅ โหลด Scanner ด้วย
+    loadScannerData();
   }, []);
 
   // ✅ ดึงราคาหุ้นใน Favorites
@@ -167,9 +145,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <header className="px-3 py-1 h-[4px] bg-[#0b1220]" />
-
       <div className="max-w-6xl mx-auto px-3 pt-2">
-        {/* FAVORITES */}
         {active === "favorites" && (
           <section className="mt-2">
             <Favorites
@@ -180,8 +156,6 @@ export default function Home() {
             />
           </section>
         )}
-
-        {/* 🌋 หุ้นต้นน้ำ อนาคตไกล */}
         {active === "market" && (
           <MarketSection
             title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Future Discovery)"
@@ -203,8 +177,6 @@ export default function Home() {
             favoritePrices={favoritePrices}
           />
         )}
-
-        {/* 📡 สแกนหุ้นทั้งตลาด */}
         {active === "scan" && (
           <MarketSection
             title="📡 สแกนหุ้นทั้งตลาด (AI Market Scanner)"
@@ -230,7 +202,6 @@ export default function Home() {
             <span className="text-[12px]">🧠</span>
             <span>{showLogs ? "Hide Logs" : "Show Logs"}</span>
           </button>
-
           {showLogs && (
             <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto shadow-inner">
               <ul className="space-y-0.5">
@@ -267,4 +238,4 @@ export default function Home() {
       </nav>
     </main>
   );
-          }
+              }
