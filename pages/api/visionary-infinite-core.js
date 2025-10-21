@@ -1,22 +1,25 @@
-// ⚡️ Visionary Infinite Core V∞ — The Eternal AI Engine
+// ✅ /pages/api/visionary-infinite-core.js
 export default async function handler(req, res) {
   try {
     const { symbol = "NVDA" } = req.query;
     const s = symbol.toUpperCase();
 
-    // ===== Step 1: ดึงข้อมูลจาก Yahoo Finance (fallback อัตโนมัติ)
+    // === ดึงข้อมูลจาก Yahoo ===
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=6mo&interval=1d`;
     const data = await fetch(url).then(r => r.json());
     const chart = data.chart?.result?.[0];
     if (!chart) throw new Error("Symbol not found");
 
     const meta = chart.meta;
-    const prices = chart.indicators.quote[0];
-    const close = prices.close.filter(Boolean);
-    const lastClose = close.at(-1);
-    const avg = close.slice(-14).reduce((a,b)=>a+b,0)/14;
+    const quote = chart.indicators?.quote?.[0];
+    const timestamps = chart.timestamp.map(t => t * 1000);
+    const prices = quote.close;
+    const open = quote.open;
+    const high = quote.high;
+    const low = quote.low;
+    const volume = quote.volume;
 
-    // ===== Step 2: คำนวณอินดิเคเตอร์หลัก
+    // === คำนวณ EMA ===
     const ema = (arr, p) => {
       const k = 2 / (p + 1);
       return arr.reduce((acc, val, i) => {
@@ -24,62 +27,69 @@ export default async function handler(req, res) {
         return acc;
       }, []);
     };
-    const ema20 = ema(close, 20).at(-1);
-    const ema50 = ema(close, 50).at(-1);
-    const ema200 = ema(close, 200).at(-1);
+    const ema20 = ema(prices, 20).at(-1);
+    const ema50 = ema(prices, 50).at(-1);
+    const ema200 = ema(prices, 200).at(-1);
 
-    const gain = close.slice(-14).map((v, i, a) => i === 0 ? 0 : Math.max(v - a[i - 1], 0));
-    const loss = close.slice(-14).map((v, i, a) => i === 0 ? 0 : Math.max(a[i - 1] - v, 0));
-    const avgGain = gain.reduce((a, b) => a + b) / 14;
-    const avgLoss = loss.reduce((a, b) => a + b) / 14;
+    // === RSI ===
+    const gains = [], losses = [];
+    for (let i = 1; i < prices.length; i++) {
+      const diff = prices[i] - prices[i - 1];
+      gains.push(diff > 0 ? diff : 0);
+      losses.push(diff < 0 ? -diff : 0);
+    }
+    const avgGain = gains.slice(-14).reduce((a, b) => a + b, 0) / 14;
+    const avgLoss = losses.slice(-14).reduce((a, b) => a + b, 0) / 14;
     const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
     const rsi = 100 - 100 / (1 + rs);
 
-    // ===== Step 3: วิเคราะห์แนวโน้มด้วย AI
+    const lastClose = prices.at(-1);
     const trend =
       lastClose > ema20 && ema20 > ema50 ? "Uptrend" :
       lastClose < ema50 && ema50 < ema200 ? "Downtrend" : "Sideway";
 
-    const score = Math.min(100, Math.max(0, Math.round(
-      (rsi / 100) * 40 +
-      (trend === "Uptrend" ? 40 : trend === "Sideway" ? 25 : 10) +
-      (Math.random() * 10)
-    )));
+    const score = Math.round((rsi / 100) * 40 + (trend === "Uptrend" ? 30 : trend === "Sideway" ? 20 : 10));
+    const signal = score > 60 ? "Buy" : score < 40 ? "Sell" : "Hold";
 
-    const action = score > 65 ? "Buy" : score < 40 ? "Sell" : "Hold";
-    const confidence = Math.round(Math.abs(score - 50) / 50 * 100);
+    // === ข่าวล่าสุด ===
+    const newsRes = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${s}`);
+    const newsData = await newsRes.json();
+    const news = newsData.news?.slice(0, 5)?.map(n => ({
+      title: n.title,
+      link: n.link,
+      publisher: n.publisher,
+    })) || [];
 
-    // ===== Step 4: สร้างข่าวอัจฉริยะ / Sentiment อัตโนมัติ
-    const newsUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${s}`;
-    const newsRes = await fetch(newsUrl).then(r => r.json());
-    const headlines = newsRes.news?.slice(0, 5) || [];
-
-    // ===== Step 5: รวมผลลัพธ์ทั้งหมด
+    // === ส่งข้อมูลทั้งหมดกลับไป ===
     res.status(200).json({
       symbol: s,
       lastClose,
-      ema20, ema50, ema200,
+      ema20,
+      ema50,
+      ema200,
       rsi: Number(rsi.toFixed(2)),
       trend,
       aiScore: score,
-      signal: action,
-      confidence,
+      signal,
+      confidence: Math.min(100, Math.abs(score - 50) * 2),
       reason:
-        trend === "Uptrend" ? "แนวโน้มขาขึ้นอย่างแข็งแรง" :
-        trend === "Downtrend" ? "แรงขายครอบงำตลาด" : "ตลาดทรงตัวในกรอบ",
-      news: headlines.map(n => ({
-        title: n.title,
-        link: n.link,
-        publisher: n.publisher
-      })),
+        trend === "Uptrend"
+          ? "แนวโน้มขาขึ้นแข็งแรง"
+          : trend === "Downtrend"
+          ? "แรงขายกดดันตลาด"
+          : "ตลาดทรงตัวในกรอบ",
+      chart: {
+        timestamps,
+        prices,
+        open,
+        high,
+        low,
+        volume,
+      },
+      news,
       timestamp: new Date().toISOString(),
-      engine: "Visionary Infinite Core V∞",
     });
-
   } catch (e) {
-    res.status(500).json({
-      error: e.message,
-      engine: "Visionary Infinite Core V∞"
-    });
+    res.status(500).json({ error: e.message });
   }
-}
+                                             }
