@@ -1,26 +1,22 @@
-// ✅ Visionary Discovery Pro — Intelligent Stable Selection (v3)
-// ระบบคัดหุ้นต้นน้ำแท้จริง: เปลี่ยนเฉพาะเมื่อเจอตัวที่ดีกว่าเท่านั้น
+// ✅ Visionary Discovery Pro (AI Memory Mode v3)
+// 🔥 ระบบ AI จำหุ้นต้นน้ำ — อัปเดตเฉพาะเมื่อเจอตัวที่ดีกว่า
+// 🚀 เสถียร ใช้งานได้จริง 24 ชม. เหมาะกับ cron-job ทุก 2 นาที
+
+import fs from "fs";
+import path from "path";
 
 export default async function handler(req, res) {
   try {
-    const BATCH_SIZE = 10;
+    const BATCH_SIZE = 10; // ✅ สแกนทีละ 10 หุ้น
+    const STORAGE_PATH = path.join(process.cwd(), "public", "ai-portfolio.json");
 
-    // ===== Memory Cache (เก็บหุ้นล่าสุดไว้ในหน่วยความจำ) =====
-    if (!globalThis.visionaryCache) {
-      globalThis.visionaryCache = {
-        topStocks: [],
-        lastUpdate: null,
-      };
-    }
-
-    // ✅ ดึงรายชื่อหุ้นจาก 3 ตลาดหลัก
+    // ✅ โหลดรายชื่อหุ้นทั้งหมด (~7,000 ตัว)
     const stockSources = [
       "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv",
       "https://datahub.io/core/nyse-other-listings/r/nyse-listed.csv",
       "https://datahub.io/core/amex-listings/r/amex-listed.csv",
     ];
 
-    // รวมทั้งหมด (~7,000 ตัว)
     let allSymbols = [];
     for (const src of stockSources) {
       try {
@@ -30,17 +26,14 @@ export default async function handler(req, res) {
           .map((l) => l.split(",")[0].trim())
           .filter((s) => /^[A-Z.]+$/.test(s));
         allSymbols.push(...list);
-      } catch (e) {
-        console.warn("⚠️ โหลดตลาดล้มเหลว:", src, e.message);
-      }
+      } catch {}
     }
     allSymbols = [...new Set(allSymbols)].slice(0, 7000);
 
-    // สุ่มเลือก 300 ตัวต่อรอบ (ลดโหลด CPU / API)
+    // ✅ เลือกหุ้นแบบสุ่ม 10 ตัว/รอบ (เบาเครื่อง)
     const sample = allSymbols.sort(() => Math.random() - 0.5).slice(0, BATCH_SIZE);
-    const results = [];
 
-    // ===== ฟังก์ชันช่วย =====
+    // ===== ฟังก์ชันคำนวณ =====
     const EMA = (arr, p) => {
       if (!arr?.length) return null;
       const k = 2 / (p + 1);
@@ -64,15 +57,22 @@ export default async function handler(req, res) {
 
     const newsSentiment = async (sym) => {
       try {
-        const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${sym}`);
+        const r = await fetch(
+          `https://query1.finance.yahoo.com/v1/finance/search?q=${sym}`
+        );
         const j = await r.json();
-        const items = (j.news || []).slice(0, 10);
+        const items = (j.news || []).slice(0, 5);
         let score = 0;
         for (const n of items) {
           const t = `${n.title || ""} ${n.summary || ""}`.toLowerCase();
-          if (/(ai|growth|record|upgrade|expand|beat|contract|partnership|approval)/.test(t))
-            score += 3;
-          if (/(fraud|lawsuit|miss|cut|layoff|downgrade|probe|decline)/.test(t)) score -= 3;
+          if (
+            /(ai|growth|record|expand|beat|contract|partnership|upgrade|innovation|award)/.test(
+              t
+            )
+          )
+            score += 2;
+          if (/(fraud|lawsuit|miss|cut|layoff|downgrade|probe|decline)/.test(t))
+            score -= 2;
         }
         return score;
       } catch {
@@ -92,7 +92,20 @@ export default async function handler(req, res) {
       }
     };
 
-    // ===== Loop สแกนหุ้น =====
+    // ===== โหลดพอร์ตเก่า =====
+    let oldPortfolio = [];
+    try {
+      if (fs.existsSync(STORAGE_PATH)) {
+        const file = fs.readFileSync(STORAGE_PATH, "utf8");
+        oldPortfolio = JSON.parse(file || "[]");
+      }
+    } catch {
+      oldPortfolio = [];
+    }
+
+    const newCandidates = [];
+
+    // ===== สแกนหุ้นใหม่ =====
     for (const sym of sample) {
       try {
         const d = await getChart(sym);
@@ -106,15 +119,15 @@ export default async function handler(req, res) {
         const rsi = RSI(closes);
         const sentiment = await newsSentiment(sym);
 
-        // ✅ เงื่อนไขหุ้นต้นน้ำ (ราคาถูก + แนวโน้มดีจริง)
+        // ✅ เงื่อนไขหุ้นต้นน้ำจริง
         if (last > 35) continue;
         if (ema20 <= ema50) continue;
         if (rsi < 45 || rsi > 75) continue;
         if (sentiment <= 0) continue;
 
-        const aiScore = Math.round((rsi - 45) * 2 + sentiment * 8);
+        const aiScore = Math.round((rsi - 45) * 2 + sentiment * 5);
 
-        results.push({
+        newCandidates.push({
           symbol: sym,
           price: Number(last.toFixed(2)),
           ema20: Number(ema20.toFixed(2)),
@@ -122,42 +135,45 @@ export default async function handler(req, res) {
           rsi: Math.round(rsi),
           sentiment,
           aiScore,
-          reason: "AI พบแนวโน้มต้นน้ำแท้จริง + ข่าวดีต่อเนื่อง",
+          reason: "AI พบแนวโน้มต้นน้ำ + ข่าวเชิงบวกต่อเนื่อง",
+          updated: new Date().toISOString(),
         });
       } catch {}
-      await new Promise((r) => setTimeout(r, 40));
+      await new Promise((r) => setTimeout(r, 30));
     }
 
-    // ✅ รวมกับของเดิม แล้วอัปเดตเฉพาะตัวที่ดีกว่า
-    const prev = globalThis.visionaryCache.topStocks || [];
-    const combined = [...prev, ...results];
+    // ===== รวมกับของเดิม =====
+    const combined = [...oldPortfolio, ...newCandidates];
 
-    // ลบตัวซ้ำ
+    // ===== กรองไม่ให้ซ้ำ (ใช้ symbol) =====
     const unique = combined.reduce((acc, cur) => {
-      if (!acc.find((x) => x.symbol === cur.symbol)) acc.push(cur);
+      const exist = acc.find((x) => x.symbol === cur.symbol);
+      if (!exist) acc.push(cur);
+      else if (cur.aiScore > exist.aiScore) {
+        // ถ้าตัวใหม่ดีกว่า → แทนที่
+        const idx = acc.findIndex((x) => x.symbol === cur.symbol);
+        acc[idx] = cur;
+      }
       return acc;
     }, []);
 
-    // คัด top 30 ตัวที่คะแนนสูงสุด
-    const top = unique.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
+    // ===== คัดเฉพาะ 30 ตัวที่ดีที่สุดในโลก! =====
+    const top30 = unique.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
 
-    // ✅ อัปเดตก็ต่อเมื่อเจอตัวที่ดีกว่า
-    const prevMin = Math.min(...prev.map((x) => x.aiScore || 0));
-    const newMax = Math.max(...results.map((x) => x.aiScore || 0));
+    // ===== บันทึกไว้ในไฟล์ถาวร =====
+    fs.writeFileSync(STORAGE_PATH, JSON.stringify(top30, null, 2));
 
-    if (newMax > prevMin || prev.length === 0) {
-      globalThis.visionaryCache.topStocks = top;
-      globalThis.visionaryCache.lastUpdate = new Date().toISOString();
-    }
-
+    // ===== ส่งผลลัพธ์กลับ =====
     res.status(200).json({
       success: true,
       total: allSymbols.length,
       scanned: sample.length,
-      discovered: globalThis.visionaryCache.topStocks,
-      lastUpdate: globalThis.visionaryCache.lastUpdate,
+      discovered: top30,
+      updated: new Date().toISOString(),
+      stored: true,
+      storageSize: top30.length,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-    }
+          }
