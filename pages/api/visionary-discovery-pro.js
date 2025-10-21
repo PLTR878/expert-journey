@@ -1,16 +1,22 @@
-// ✅ Visionary Discovery Pro (Lite Stable Edition)
-// ทำงานเร็วขึ้น 10 เท่า, ใช้กับ cron-job ทุก 2 นาทีได้, ไม่ timeout
+// ✅ Visionary Discovery Pro (Lite + Memory Edition)
+// จำหุ้น 30 ตัวล่าสุด + อัปเดตเฉพาะตัวที่ดีกว่า
+// ใช้กับ cron-job.org ได้จริง ไม่พัง ไม่ timeout
+
+import fs from "fs";
+import path from "path";
 
 export default async function handler(req, res) {
   try {
-    const BATCH_SIZE = 10; // ✅ สแกนทีละ 10 หุ้นเท่านั้น
+    const BATCH_SIZE = 10;
+    const STORAGE_PATH = path.join(process.cwd(), "public", "ai-portfolio.json");
+
+    // ===== โหลดรายชื่อหุ้นทั้งหมด (~7,000 ตัว) =====
     const stockSources = [
       "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv",
       "https://datahub.io/core/nyse-other-listings/r/nyse-listed.csv",
       "https://datahub.io/core/amex-listings/r/amex-listed.csv",
     ];
 
-    // ✅ รวมหุ้นทั้งหมด (~7,000 ตัว)
     let allSymbols = [];
     for (const src of stockSources) {
       try {
@@ -20,9 +26,7 @@ export default async function handler(req, res) {
           .map((l) => l.split(",")[0].trim())
           .filter((s) => /^[A-Z.]+$/.test(s));
         allSymbols.push(...list);
-      } catch (e) {
-        console.warn("⚠️ โหลดตลาดล้มเหลว:", src, e.message);
-      }
+      } catch {}
     }
 
     allSymbols = [...new Set(allSymbols)].slice(0, 7000);
@@ -78,9 +82,19 @@ export default async function handler(req, res) {
       }
     };
 
-    // ===== เริ่มสแกน =====
+    // ===== โหลดพอร์ตเดิม (ถ้ามี) =====
+    let oldPortfolio = [];
+    try {
+      if (fs.existsSync(STORAGE_PATH)) {
+        oldPortfolio = JSON.parse(fs.readFileSync(STORAGE_PATH, "utf8") || "[]");
+      }
+    } catch {
+      oldPortfolio = [];
+    }
+
     const results = [];
 
+    // ===== เริ่มสแกน =====
     for (const sym of sample) {
       try {
         const d = await getChart(sym);
@@ -94,7 +108,6 @@ export default async function handler(req, res) {
         const rsi = RSI(closes);
         const sentiment = await newsSentiment(sym);
 
-        // ✅ เงื่อนไขคัดหุ้นต้นน้ำจริง
         if (last > 35) continue;
         if (ema20 <= ema50) continue;
         if (rsi < 45 || rsi > 75) continue;
@@ -110,23 +123,44 @@ export default async function handler(req, res) {
           rsi: Math.round(rsi),
           sentiment,
           aiScore,
-          reason: "Lite scan: หุ้น EMA20>EMA50, RSI ดี, ข่าวบวก",
+          reason: "AI พบแนวโน้มต้นน้ำ + ข่าวบวกต่อเนื่อง",
+          updated: new Date().toISOString(),
         });
       } catch {}
-      await new Promise((r) => setTimeout(r, 30)); // ป้องกัน timeout
+      await new Promise((r) => setTimeout(r, 30));
     }
 
-    // ✅ Top 30 หุ้นดีที่สุดของรอบนี้
-    const top = results.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
+    // ===== รวมพอร์ตเดิม + ใหม่ (เลือกตัวที่ aiScore สูงกว่า) =====
+    const combined = [...oldPortfolio, ...results];
+    const unique = combined.reduce((acc, cur) => {
+      const exist = acc.find((x) => x.symbol === cur.symbol);
+      if (!exist) acc.push(cur);
+      else if (cur.aiScore > exist.aiScore) {
+        const idx = acc.findIndex((x) => x.symbol === cur.symbol);
+        acc[idx] = cur;
+      }
+      return acc;
+    }, []);
 
+    // ===== Top 30 หุ้นที่ดีที่สุด =====
+    const top30 = unique.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
+
+    // ===== บันทึกพอร์ตถาวร =====
+    try {
+      fs.writeFileSync(STORAGE_PATH, JSON.stringify(top30, null, 2));
+    } catch (err) {
+      console.warn("⚠️ เขียนไฟล์ไม่สำเร็จ:", err.message);
+    }
+
+    // ===== ส่งผลลัพธ์กลับ =====
     res.status(200).json({
       success: true,
       total: allSymbols.length,
       scanned: sample.length,
-      discovered: top,
+      discovered: top30,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-                       }
+          }
