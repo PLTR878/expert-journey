@@ -1,4 +1,3 @@
-// ✅ /pages/api/visionary-discovery-pro.js
 export default async function handler(req, res) {
   try {
     const total = 7200;
@@ -16,7 +15,7 @@ export default async function handler(req, res) {
         reason: "AI ตรวจพบแนวโน้มต้นน้ำ",
       }));
       discovered.push(...part);
-      await new Promise((r) => setTimeout(r, 100)); // พักนิดป้องกัน timeout
+      await new Promise((r) => setTimeout(r, 50));
     }
 
     const top50 = discovered.sort((a, b) => b.aiScore - a.aiScore).slice(0, 50);
