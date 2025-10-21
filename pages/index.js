@@ -1,10 +1,13 @@
-// ✅ Visionary Stock Screener — V∞.28 (Stable + AI Discovery Pro v2)
+// ✅ Visionary Stock Screener — V∞.28 (Stable Fixed Build + API Linked)
+// 🔧 แก้เฉพาะ logic ให้ทำงานจริง + กัน error ตอน prerender บน Vercel
 import { useEffect, useState } from "react";
-import MarketSection from "../components/MarketSection";
-import Favorites from "../components/Favorites";
+import dynamic from "next/dynamic";
+
+const MarketSection = dynamic(() => import("../components/MarketSection"), { ssr: false });
+const Favorites = dynamic(() => import("../components/Favorites"), { ssr: false });
 
 export default function Home() {
-  const [active, setActive] = useState("market");
+  const [active, setActive] = useState("favorites");
   const [favorites, setFavorites] = useState([]);
   const [favoritePrices, setFavoritePrices] = useState({});
   const [logs, setLogs] = useState([]);
@@ -12,11 +15,11 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loadingDiscovery, setLoadingDiscovery] = useState(false);
 
-  // ===== Log System =====
+  // ===== ฟังก์ชัน Log =====
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // ===== Load Favorites =====
+  // ===== โหลด Favorites =====
   useEffect(() => {
     try {
       const saved = localStorage.getItem("favorites");
@@ -34,7 +37,7 @@ export default function Home() {
     }
   }, [favorites]);
 
-  // ===== Fetch Stock Price =====
+  // ===== ดึงราคาหุ้นรายตัว =====
   async function fetchPrice(sym) {
     if (!sym) return;
     try {
@@ -44,8 +47,8 @@ export default function Home() {
         ...prev,
         [sym]: {
           symbol: sym,
-          price: j.lastClose || 0,
-          rsi: j.rsi || 0,
+          price: Number(j.lastClose ?? 0),
+          rsi: Number(j.rsi ?? 0),
           signal:
             j.trend === "Uptrend"
               ? "Buy"
@@ -68,16 +71,15 @@ export default function Home() {
     await fetchPrice(sym);
   };
 
-  // ===== Load AI Discovery Pro v2 =====
+  // ===== โหลดข้อมูลหุ้นต้นน้ำ =====
   async function loadDiscovery(retry = 0) {
     try {
       setLoadingDiscovery(true);
-      addLog("🌋 AI Discovery Pro (v2) กำลังค้นหาหุ้นต้นน้ำ...");
-      
-      // ✅ เชื่อม API ตัวใหม่
+      addLog("🌋 AI Discovery Pro v2 กำลังค้นหาหุ้นต้นน้ำ...");
+
+      // ✅ ใช้ API ตัวใหม่ (v2)
       const res = await fetch("/api/visionary-discovery-pro-v2", { cache: "no-store" });
       if (!res.ok) throw new Error(`API ${res.status}`);
-
       const j = await res.json();
       const list = j.top || j.discovered || [];
 
@@ -87,15 +89,15 @@ export default function Home() {
         symbol: r.symbol,
         lastClose: parseFloat(r.price) || 0,
         rsi: r.rsi || 0,
-        reason: r.reason || "AI พบแนวโน้มต้นน้ำชัดเจน + ข่าวเชิงบวก",
+        reason: r.reason || "AI พบแนวโน้มต้นน้ำ + ข่าวเชิงบวก",
         aiScore: r.aiScore || 0,
+        trend: r.trend || "Sideway",
         signal: r.signal || "Hold",
       }));
 
       setFutureDiscovery(formatted);
-      addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery Pro v2`);
+      addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery Pro`);
 
-      // ดึงราคาจริงเฉพาะ 30 ตัวแรก
       for (const s of formatted.slice(0, 30)) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
@@ -105,17 +107,39 @@ export default function Home() {
     }
   }
 
-  // ===== Load Data on Mount =====
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ===== Load Prices for Favorites =====
+  // ===== ดึงราคาของ Favorites =====
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ===== Render Page =====
+  // ===== ระบบสแกนหุ้น =====
+  const [scannerLoading, setScannerLoading] = useState(false);
+  const [scannerResults, setScannerResults] = useState([]);
+
+  async function runMarketScan() {
+    try {
+      setScannerLoading(true);
+      addLog("📡 เริ่มสแกนหุ้นตลาดอเมริกาทั้งหมด...");
+      const res = await fetch("/api/visionary-auto-batch", { cache: "no-store" });
+      const j = await res.json();
+      if (Array.isArray(j?.results) && j.results.length > 0) {
+        setScannerResults(j.results);
+        addLog(`✅ พบหุ้นทั้งหมด ${j.results.length} ตัวจาก AutoBatch`);
+      } else {
+        addLog("⚠️ ไม่พบผลลัพธ์จาก AutoBatch");
+      }
+    } catch (err) {
+      addLog(`❌ Scanner error: ${err.message}`);
+    } finally {
+      setScannerLoading(false);
+    }
+  }
+
+  // ===== แสดงหน้า =====
   const renderPage = () => {
     if (active === "favorites")
       return (
@@ -134,11 +158,11 @@ export default function Home() {
           loading={loadingDiscovery}
           rows={futureDiscovery.map((r) => ({
             symbol: r.symbol,
-            price: favoritePrices[r.symbol]?.price || r.lastClose || 0,
-            rsi: favoritePrices[r.symbol]?.rsi || r.rsi || 0,
+            price: Number(favoritePrices?.[r.symbol]?.price ?? r.lastClose ?? 0),
+            rsi: Number(favoritePrices?.[r.symbol]?.rsi ?? r.rsi ?? 0),
             reason: r.reason,
             signal:
-              favoritePrices[r.symbol]?.signal ||
+              favoritePrices?.[r.symbol]?.signal ??
               (r.signal || "Hold"),
           }))}
           favorites={favorites}
@@ -151,20 +175,76 @@ export default function Home() {
       return (
         <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 text-center mt-4">
           <h2 className="text-lg font-semibold text-emerald-400 mb-2">
-            📡 AI Market Scanner (กำลังอยู่ในช่วงพัฒนา)
+            📡 AI Market Scanner
           </h2>
-          <p className="text-sm text-gray-400">
-            หน้านี้จะใช้สำหรับระบบสแกนหุ้นทั่วตลาดในอนาคต
-          </p>
-          <div className="mt-4 text-gray-500 text-[13px] italic">
-            “Coming soon — ระบบ AI Scan หุ้นทั้งตลาดแบบเรียลไทม์”
-          </div>
+
+          <button
+            onClick={runMarketScan}
+            disabled={scannerLoading}
+            className={`px-6 py-2 rounded-md text-white font-semibold mt-2 ${
+              scannerLoading
+                ? "bg-gray-600 cursor-wait"
+                : "bg-emerald-600 hover:bg-emerald-700"
+            }`}
+          >
+            {scannerLoading ? "⏳ กำลังสแกน..." : "🔍 เริ่มสแกนหุ้นทั้งตลาด"}
+          </button>
+
+          {scannerLoading && (
+            <div className="text-gray-400 text-sm mt-3">
+              ระบบกำลังประมวลผล... โปรดรอ 1–2 นาที
+            </div>
+          )}
+
+          {!scannerLoading && scannerResults.length > 0 && (
+            <div className="mt-5 text-left overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#1f2937] text-gray-300">
+                    <th className="p-2 text-left">Symbol</th>
+                    <th className="p-2 text-right">Price</th>
+                    <th className="p-2 text-right">RSI</th>
+                    <th className="p-2 text-right">EMA20</th>
+                    <th className="p-2 text-right">EMA50</th>
+                    <th className="p-2 text-right">Trend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scannerResults.slice(0, 50).map((r, i) => (
+                    <tr key={i} className="border-b border-gray-700 hover:bg-[#0f172a]">
+                      <td className="p-2 text-emerald-400 font-bold text-left">
+                        <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                      </td>
+                      <td className="p-2 text-right">
+                        ${Number(r.last ?? 0).toFixed(2)}
+                      </td>
+                      <td className="p-2 text-right text-emerald-400">{r.rsi}</td>
+                      <td className="p-2 text-right text-gray-300">{r.ema20}</td>
+                      <td className="p-2 text-right text-gray-300">{r.ema50}</td>
+                      <td
+                        className={`p-2 text-right ${
+                          r.trend === "Up"
+                            ? "text-green-400"
+                            : r.trend === "Down"
+                            ? "text-red-400"
+                            : "text-yellow-300"
+                        }`}
+                      >
+                        {r.trend}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       );
 
     return null;
   };
 
+  // ===== UI หลัก =====
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <header className="px-3 py-1 h-[4px] bg-[#0b1220]" />
@@ -183,9 +263,7 @@ export default function Home() {
         {showLogs && (
           <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto shadow-inner">
             <ul className="space-y-0.5">
-              {logs.length ? (
-                logs.map((l, i) => <li key={i}>{l}</li>)
-              ) : (
+              {logs.length ? logs.map((l, i) => <li key={i}>{l}</li>) : (
                 <li className="text-gray-500">No logs yet.</li>
               )}
             </ul>
@@ -215,4 +293,4 @@ export default function Home() {
       </nav>
     </main>
   );
-                                                           }
+}
