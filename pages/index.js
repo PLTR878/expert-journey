@@ -19,14 +19,18 @@ export default function Home() {
       `${new Date().toLocaleTimeString()} ${msg}`,
     ]);
 
-  // ✅ โหลด Favorites จาก LocalStorage
+  // ✅ โหลด Favorites จาก LocalStorage (เฉพาะฝั่ง client)
   useEffect(() => {
-    const saved = localStorage.getItem("favorites");
-    if (saved) setFavorites(JSON.parse(saved));
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("favorites");
+      if (saved) setFavorites(JSON.parse(saved));
+    }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+    }
   }, [favorites]);
 
   // ✅ ดึงราคาหุ้นรายตัวจาก visionary-core
@@ -92,7 +96,6 @@ export default function Home() {
       for (const s of formatted.slice(0, 30)) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
-      // ✅ ลองใหม่อัตโนมัติ 1 ครั้งถ้า error
       if (retry < 1) {
         setTimeout(() => loadDiscovery(retry + 1), 3000);
       }
@@ -101,17 +104,14 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดตอนเปิดหน้า
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ ดึงราคาหุ้นใน Favorites
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ✅ ฟังก์ชันแสดงหน้า
   const renderPage = () => {
     if (active === "favorites") {
       return (
@@ -221,4 +221,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+                     }
