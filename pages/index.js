@@ -1,5 +1,5 @@
 // ✅ Visionary Stock Screener — V∞.27 (Stable Original UI)
-// ทุกอย่างเหมือนเดิม 100% แก้เฉพาะ logic ที่จำเป็นให้ทำงานจริง + build ผ่าน
+// ปรับเฉพาะ logic การเชื่อม API ให้ทำงานจริง — UI เดิม 100%
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -76,7 +76,6 @@ export default function Home() {
       addLog("🌋 AI Discovery Pro กำลังค้นหาหุ้นต้นน้ำ...");
       const res = await fetch("/api/visionary-discovery-pro", { cache: "no-store" });
       if (!res.ok) throw new Error(`API ${res.status}`);
-
       const j = await res.json();
       const list = j.discovered || [];
 
@@ -94,7 +93,6 @@ export default function Home() {
       setFutureDiscovery(formatted);
       addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery Pro`);
 
-      // ดึงราคาจริงเฉพาะ 30 ตัวแรก
       for (const s of formatted.slice(0, 30)) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
@@ -113,6 +111,29 @@ export default function Home() {
   useEffect(() => {
     favorites.forEach(fetchPrice);
   }, [favorites]);
+
+  // ===== สแกนหุ้นตลาดทั้งหมด =====
+  const [scannerLoading, setScannerLoading] = useState(false);
+  const [scannerResults, setScannerResults] = useState([]);
+
+  async function runMarketScan() {
+    try {
+      setScannerLoading(true);
+      addLog("📡 เริ่มสแกนหุ้นตลาดอเมริกาทั้งหมด...");
+      const res = await fetch("/api/visionary-auto-batch", { cache: "no-store" });
+      const j = await res.json();
+      if (j?.results?.length) {
+        setScannerResults(j.results);
+        addLog(`✅ พบหุ้นทั้งหมด ${j.results.length} ตัวจาก AutoBatch`);
+      } else {
+        addLog("⚠️ ไม่พบผลลัพธ์จาก AutoBatch");
+      }
+    } catch (err) {
+      addLog(`❌ Scanner error: ${err.message}`);
+    } finally {
+      setScannerLoading(false);
+    }
+  }
 
   // ===== แสดงหน้า =====
   const renderPage = () => {
@@ -154,14 +175,67 @@ export default function Home() {
       return (
         <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 text-center mt-4">
           <h2 className="text-lg font-semibold text-emerald-400 mb-2">
-            📡 AI Market Scanner (กำลังอยู่ในช่วงพัฒนา)
+            📡 AI Market Scanner
           </h2>
-          <p className="text-sm text-gray-400">
-            หน้านี้จะใช้สำหรับระบบสแกนหุ้นทั่วตลาดในอนาคต
-          </p>
-          <div className="mt-4 text-gray-500 text-[13px] italic">
-            “Coming soon — ระบบ AI Scan หุ้นทั้งตลาดแบบเรียลไทม์”
-          </div>
+
+          <button
+            onClick={runMarketScan}
+            disabled={scannerLoading}
+            className={`px-6 py-2 rounded-md text-white font-semibold mt-2 ${
+              scannerLoading
+                ? "bg-gray-600 cursor-wait"
+                : "bg-emerald-600 hover:bg-emerald-700"
+            }`}
+          >
+            {scannerLoading ? "⏳ กำลังสแกน..." : "🔍 เริ่มสแกนหุ้นทั้งตลาด"}
+          </button>
+
+          {scannerLoading && (
+            <div className="text-gray-400 text-sm mt-3">
+              ระบบกำลังประมวลผล... โปรดรอ 1–2 นาที
+            </div>
+          )}
+
+          {!scannerLoading && scannerResults.length > 0 && (
+            <div className="mt-5 text-left overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#1f2937] text-gray-300">
+                    <th className="p-2 text-left">Symbol</th>
+                    <th className="p-2 text-right">Price</th>
+                    <th className="p-2 text-right">RSI</th>
+                    <th className="p-2 text-right">EMA20</th>
+                    <th className="p-2 text-right">EMA50</th>
+                    <th className="p-2 text-right">Trend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scannerResults.slice(0, 50).map((r, i) => (
+                    <tr key={i} className="border-b border-gray-700 hover:bg-[#0f172a]">
+                      <td className="p-2 text-emerald-400 font-bold text-left">
+                        <a href={`/analyze/${r.symbol}`}>{r.symbol}</a>
+                      </td>
+                      <td className="p-2 text-right">${r.last}</td>
+                      <td className="p-2 text-right text-emerald-400">{r.rsi}</td>
+                      <td className="p-2 text-right text-gray-300">{r.ema20}</td>
+                      <td className="p-2 text-right text-gray-300">{r.ema50}</td>
+                      <td
+                        className={`p-2 text-right ${
+                          r.trend === "Up"
+                            ? "text-green-400"
+                            : r.trend === "Down"
+                            ? "text-red-400"
+                            : "text-yellow-300"
+                        }`}
+                      >
+                        {r.trend}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       );
 
@@ -218,4 +292,4 @@ export default function Home() {
       </nav>
     </main>
   );
-        }
+  }
