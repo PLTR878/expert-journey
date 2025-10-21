@@ -3,7 +3,7 @@
 
 export default async function handler(req, res) {
   try {
-    const BATCH_SIZE = 300;
+    const BATCH_SIZE = 10;
 
     // ===== Memory Cache (เก็บหุ้นล่าสุดไว้ในหน่วยความจำ) =====
     if (!globalThis.visionaryCache) {
