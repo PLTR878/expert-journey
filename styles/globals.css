@@ -2,64 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light dark;
-}
-
-/* ✅ ปรับพื้นหลังหลักให้เข้มและไม่เหลือขอบขาว */
-html, body, #__next {
-  height: 100%;
-  background-color: #0b1220 !important;
-  overscroll-behavior: none;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
-  color-scheme: dark;
-}
-
-html {
-  --bg: #0b1220;
-  --fg: #e5e7eb;
-}
-
-/* ✅ ใช้ dark theme เต็มระบบ */
 body {
-  @apply text-gray-900 dark:text-gray-100;
-  background-color: #0b1220 !important;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  color: #e5e7eb;
-}
-
-/* ✅ โครงสร้างหลักของ UI */
-.container { 
-  @apply max-w-7xl mx-auto px-3 sm:px-6; 
-}
-.card { 
-  @apply bg-white dark:bg-[#0e1627] rounded-2xl border border-gray-200 dark:border-[#1d2a44] shadow-soft; 
-}
-.btn { 
-  @apply px-3 py-2 rounded-lg border border-gray-300 dark:border-[#223355] bg-white dark:bg-[#0e1627] hover:bg-gray-50 dark:hover:bg-[#112040]; 
-}
-.badge { 
-  @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium; 
-}
-.link { 
-  @apply text-brand hover:underline; 
-}
-table { 
-  @apply w-full border-collapse; 
-}
-thead th { 
-  @apply text-left border-b border-gray-200 dark:border-[#223355]; 
-}
-tbody td { 
-  @apply border-b border-gray-100 dark:border-[#15213a]; 
-}
-
-/* ✅ Responsive tweaks */
-@media (max-width: 980px) {
-  table { font-size: 14px; }
-  th, td { padding: 6px; }
+  @apply bg-[#0b1220] text-white;
 }
