@@ -1,9 +1,17 @@
-// ✅ Visionary Discovery Pro — Full U.S. Market (7,000 Stocks)
-// เสถียรที่สุด: ใช้งานจริงได้, ไม่พัง, ต่อระบบ AI ได้ทันที
+// ✅ Visionary Discovery Pro — Intelligent Stable Selection (v3)
+// ระบบคัดหุ้นต้นน้ำแท้จริง: เปลี่ยนเฉพาะเมื่อเจอตัวที่ดีกว่าเท่านั้น
 
 export default async function handler(req, res) {
   try {
     const BATCH_SIZE = 300;
+
+    // ===== Memory Cache (เก็บหุ้นล่าสุดไว้ในหน่วยความจำ) =====
+    if (!globalThis.visionaryCache) {
+      globalThis.visionaryCache = {
+        topStocks: [],
+        lastUpdate: null,
+      };
+    }
 
     // ✅ ดึงรายชื่อหุ้นจาก 3 ตลาดหลัก
     const stockSources = [
@@ -29,10 +37,7 @@ export default async function handler(req, res) {
     allSymbols = [...new Set(allSymbols)].slice(0, 7000);
 
     // สุ่มเลือก 300 ตัวต่อรอบ (ลดโหลด CPU / API)
-    const sample = allSymbols
-      .sort(() => Math.random() - 0.5)
-      .slice(0, BATCH_SIZE);
-
+    const sample = allSymbols.sort(() => Math.random() - 0.5).slice(0, BATCH_SIZE);
     const results = [];
 
     // ===== ฟังก์ชันช่วย =====
@@ -46,7 +51,8 @@ export default async function handler(req, res) {
 
     const RSI = (arr, n = 14) => {
       if (!arr || arr.length < n + 1) return 50;
-      let g = 0, l = 0;
+      let g = 0,
+        l = 0;
       for (let i = 1; i <= n; i++) {
         const d = arr[i] - arr[i - 1];
         if (d >= 0) g += d;
@@ -58,18 +64,15 @@ export default async function handler(req, res) {
 
     const newsSentiment = async (sym) => {
       try {
-        const r = await fetch(
-          `https://query1.finance.yahoo.com/v1/finance/search?q=${sym}`
-        );
+        const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${sym}`);
         const j = await r.json();
         const items = (j.news || []).slice(0, 10);
         let score = 0;
         for (const n of items) {
           const t = `${n.title || ""} ${n.summary || ""}`.toLowerCase();
-          if (/(ai|growth|record|upgrade|expand|beat|contract|partnership)/.test(t))
-            score += 2;
-          if (/(fraud|lawsuit|miss|cut|layoff|downgrade|probe|decline)/.test(t))
-            score -= 2;
+          if (/(ai|growth|record|upgrade|expand|beat|contract|partnership|approval)/.test(t))
+            score += 3;
+          if (/(fraud|lawsuit|miss|cut|layoff|downgrade|probe|decline)/.test(t)) score -= 3;
         }
         return score;
       } catch {
@@ -103,13 +106,13 @@ export default async function handler(req, res) {
         const rsi = RSI(closes);
         const sentiment = await newsSentiment(sym);
 
-        // ✅ เงื่อนไขหุ้นต้นน้ำ (ราคาถูก + แนวโน้มดี)
-        if (last > 35) continue; // เกิน $35 ไม่เอา
+        // ✅ เงื่อนไขหุ้นต้นน้ำ (ราคาถูก + แนวโน้มดีจริง)
+        if (last > 35) continue;
         if (ema20 <= ema50) continue;
         if (rsi < 45 || rsi > 75) continue;
         if (sentiment <= 0) continue;
 
-        const aiScore = Math.round((rsi - 45) * 2 + sentiment * 5);
+        const aiScore = Math.round((rsi - 45) * 2 + sentiment * 8);
 
         results.push({
           symbol: sym,
@@ -119,21 +122,40 @@ export default async function handler(req, res) {
           rsi: Math.round(rsi),
           sentiment,
           aiScore,
-          reason: "AI พบแนวโน้มต้นน้ำชัดเจน + ข่าวเชิงบวกต่อเนื่อง",
+          reason: "AI พบแนวโน้มต้นน้ำแท้จริง + ข่าวดีต่อเนื่อง",
         });
       } catch {}
-      await new Promise((r) => setTimeout(r, 50)); // ป้องกัน timeout
+      await new Promise((r) => setTimeout(r, 40));
     }
 
-    // ✅ คัด Top 30
-    const top = results.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
+    // ✅ รวมกับของเดิม แล้วอัปเดตเฉพาะตัวที่ดีกว่า
+    const prev = globalThis.visionaryCache.topStocks || [];
+    const combined = [...prev, ...results];
+
+    // ลบตัวซ้ำ
+    const unique = combined.reduce((acc, cur) => {
+      if (!acc.find((x) => x.symbol === cur.symbol)) acc.push(cur);
+      return acc;
+    }, []);
+
+    // คัด top 30 ตัวที่คะแนนสูงสุด
+    const top = unique.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
+
+    // ✅ อัปเดตก็ต่อเมื่อเจอตัวที่ดีกว่า
+    const prevMin = Math.min(...prev.map((x) => x.aiScore || 0));
+    const newMax = Math.max(...results.map((x) => x.aiScore || 0));
+
+    if (newMax > prevMin || prev.length === 0) {
+      globalThis.visionaryCache.topStocks = top;
+      globalThis.visionaryCache.lastUpdate = new Date().toISOString();
+    }
 
     res.status(200).json({
       success: true,
       total: allSymbols.length,
       scanned: sample.length,
-      discovered: top,
-      timestamp: new Date().toISOString(),
+      discovered: globalThis.visionaryCache.topStocks,
+      lastUpdate: globalThis.visionaryCache.lastUpdate,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
