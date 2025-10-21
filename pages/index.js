@@ -1,5 +1,5 @@
-// ✅ Visionary Stock Screener — V∞.28 (Stable Fixed Build + API Linked)
-// 🔧 แก้เฉพาะ logic ให้ทำงานจริง + กัน error ตอน prerender บน Vercel
+// ✅ Visionary Stock Screener — V∞.29 (Stable + Safe for Vercel)
+// 💪 ป้องกัน error ทุกจุด + render ได้แน่นอนแม้ข้อมูล API ว่าง
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -14,8 +14,10 @@ export default function Home() {
   const [showLogs, setShowLogs] = useState(false);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loadingDiscovery, setLoadingDiscovery] = useState(false);
+  const [scannerLoading, setScannerLoading] = useState(false);
+  const [scannerResults, setScannerResults] = useState([]);
 
-  // ===== ฟังก์ชัน Log =====
+  // ===== Log Helper =====
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
 
@@ -25,7 +27,7 @@ export default function Home() {
       const saved = localStorage.getItem("favorites");
       if (saved) setFavorites(JSON.parse(saved));
     } catch (e) {
-      console.error("⚠️ Favorite load error:", e);
+      console.warn("⚠️ Favorite load error:", e.message);
     }
   }, []);
 
@@ -33,7 +35,7 @@ export default function Home() {
     try {
       localStorage.setItem("favorites", JSON.stringify(favorites));
     } catch (e) {
-      console.error("⚠️ Favorite save error:", e);
+      console.warn("⚠️ Favorite save error:", e.message);
     }
   }, [favorites]);
 
@@ -42,6 +44,7 @@ export default function Home() {
     if (!sym) return;
     try {
       const res = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
+      if (!res.ok) return;
       const j = await res.json();
       setFavoritePrices((prev) => ({
         ...prev,
@@ -77,54 +80,55 @@ export default function Home() {
       setLoadingDiscovery(true);
       addLog("🌋 AI Discovery Pro v2 กำลังค้นหาหุ้นต้นน้ำ...");
 
-      // ✅ ใช้ API ตัวใหม่ (v2)
       const res = await fetch("/api/visionary-discovery-pro-v2", { cache: "no-store" });
       if (!res.ok) throw new Error(`API ${res.status}`);
+
       const j = await res.json();
-      const list = j.top || j.discovered || [];
+      const list = Array.isArray(j.discovered) ? j.discovered : [];
 
       if (!list.length) throw new Error("ไม่พบข้อมูลหุ้นจาก AI Discovery");
 
-      const formatted = list.map((r) => ({
-        symbol: r.symbol,
-        lastClose: parseFloat(r.price) || 0,
-        rsi: r.rsi || 0,
-        reason: r.reason || "AI พบแนวโน้มต้นน้ำ + ข่าวเชิงบวก",
-        aiScore: r.aiScore || 0,
-        trend: r.trend || "Sideway",
-        signal: r.signal || "Hold",
-      }));
+      const formatted = list
+        .filter((r) => r && r.symbol)
+        .map((r) => ({
+          symbol: String(r.symbol).toUpperCase(),
+          lastClose: Number(r.price ?? 0),
+          rsi: Number(r.rsi ?? 0),
+          reason: r.reason || "AI พบแนวโน้มต้นน้ำ + ข่าวเชิงบวก",
+          aiScore: Number(r.aiScore ?? 0),
+          signal: r.signal || "Hold",
+        }));
 
       setFutureDiscovery(formatted);
       addLog(`✅ พบหุ้นต้นน้ำ ${formatted.length} ตัวจาก AI Discovery Pro`);
 
+      // ดึงราคาจริงเฉพาะ 30 ตัวแรก
       for (const s of formatted.slice(0, 30)) await fetchPrice(s.symbol);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
-      if (retry < 1) setTimeout(() => loadDiscovery(retry + 1), 3000);
+      if (retry < 1) setTimeout(() => loadDiscovery(retry + 1), 4000);
     } finally {
       setLoadingDiscovery(false);
     }
   }
 
   useEffect(() => {
-    loadDiscovery();
+    if (typeof window !== "undefined") loadDiscovery();
   }, []);
 
   // ===== ดึงราคาของ Favorites =====
   useEffect(() => {
+    if (typeof window === "undefined") return;
     favorites.forEach(fetchPrice);
   }, [favorites]);
 
-  // ===== ระบบสแกนหุ้น =====
-  const [scannerLoading, setScannerLoading] = useState(false);
-  const [scannerResults, setScannerResults] = useState([]);
-
+  // ===== สแกนหุ้น =====
   async function runMarketScan() {
     try {
       setScannerLoading(true);
       addLog("📡 เริ่มสแกนหุ้นตลาดอเมริกาทั้งหมด...");
       const res = await fetch("/api/visionary-auto-batch", { cache: "no-store" });
+      if (!res.ok) throw new Error(`API ${res.status}`);
       const j = await res.json();
       if (Array.isArray(j?.results) && j.results.length > 0) {
         setScannerResults(j.results);
@@ -156,15 +160,17 @@ export default function Home() {
         <MarketSection
           title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)"
           loading={loadingDiscovery}
-          rows={futureDiscovery.map((r) => ({
-            symbol: r.symbol,
-            price: Number(favoritePrices?.[r.symbol]?.price ?? r.lastClose ?? 0),
-            rsi: Number(favoritePrices?.[r.symbol]?.rsi ?? r.rsi ?? 0),
-            reason: r.reason,
-            signal:
-              favoritePrices?.[r.symbol]?.signal ??
-              (r.signal || "Hold"),
-          }))}
+          rows={(futureDiscovery || [])
+            .filter((r) => r && r.symbol)
+            .map((r) => ({
+              symbol: r.symbol,
+              price: Number(favoritePrices?.[r.symbol]?.price ?? r.lastClose ?? 0),
+              rsi: Number(favoritePrices?.[r.symbol]?.rsi ?? r.rsi ?? 0),
+              reason: r.reason,
+              signal:
+                favoritePrices?.[r.symbol]?.signal ??
+                (r.signal || "Hold"),
+            }))}
           favorites={favorites}
           toggleFavorite={toggleFavorite}
           favoritePrices={favoritePrices}
@@ -218,9 +224,15 @@ export default function Home() {
                       <td className="p-2 text-right">
                         ${Number(r.last ?? 0).toFixed(2)}
                       </td>
-                      <td className="p-2 text-right text-emerald-400">{r.rsi}</td>
-                      <td className="p-2 text-right text-gray-300">{r.ema20}</td>
-                      <td className="p-2 text-right text-gray-300">{r.ema50}</td>
+                      <td className="p-2 text-right text-emerald-400">
+                        {r.rsi ?? "-"}
+                      </td>
+                      <td className="p-2 text-right text-gray-300">
+                        {r.ema20 ?? "-"}
+                      </td>
+                      <td className="p-2 text-right text-gray-300">
+                        {r.ema50 ?? "-"}
+                      </td>
                       <td
                         className={`p-2 text-right ${
                           r.trend === "Up"
@@ -230,7 +242,7 @@ export default function Home() {
                             : "text-yellow-300"
                         }`}
                       >
-                        {r.trend}
+                        {r.trend ?? "-"}
                       </td>
                     </tr>
                   ))}
@@ -263,7 +275,9 @@ export default function Home() {
         {showLogs && (
           <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto shadow-inner">
             <ul className="space-y-0.5">
-              {logs.length ? logs.map((l, i) => <li key={i}>{l}</li>) : (
+              {logs.length ? (
+                logs.map((l, i) => <li key={i}>{l}</li>)
+              ) : (
                 <li className="text-gray-500">No logs yet.</li>
               )}
             </ul>
@@ -293,4 +307,4 @@ export default function Home() {
       </nav>
     </main>
   );
-}
+        }
