@@ -1,4 +1,7 @@
-// ✅ /pages/api/visionary-core.js — Stable Core API (คู่กับ visionary-scanner)
+// ✅ /pages/api/visionary-core.js — Visionary Core API (Stable V∞.Final)
+// ดึงราคาจริงจาก Yahoo Finance + คำนวณ RSI + EMA + Trend แบบแม่นยำ
+// ใช้งานร่วมกับ visionary-scanner.js ได้ทันที
+
 export default async function handler(req, res) {
   const { symbol, type = "daily" } = req.query;
 
@@ -7,12 +10,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
+    // ✅ ดึงข้อมูลราคาจาก Yahoo Finance
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
     const response = await fetch(url);
     const data = await response.json();
 
     const result = data?.chart?.result?.[0];
     if (!result) {
+      // 🧩 fallback: ถ้าไม่มีข้อมูลจริง
       return res.status(200).json({
         symbol,
         lastClose: 0,
@@ -21,34 +26,73 @@ export default async function handler(req, res) {
         ema20: 0,
         ema50: 0,
         ema200: 0,
+        source: "fallback",
       });
     }
 
-    const meta = result.meta;
-    const prices = result.indicators?.quote?.[0]?.close || [];
-    const lastClose = meta?.regularMarketPrice || prices.at(-1) || 0;
+    const prices = result.indicators?.quote?.[0]?.close?.filter(Boolean) || [];
+    const lastClose = prices.at(-1) || 0;
 
-    // ✅ RSI จำลอง (mock ถ้าไม่มี indicator)
-    const rsi = Math.floor(Math.random() * 50) + 25;
-    const trend = rsi > 60 ? "Uptrend" : rsi < 40 ? "Downtrend" : "Sideway";
+    // ✅ คำนวณ RSI (14 period)
+    const calcRSI = (arr, period = 14) => {
+      if (arr.length < period + 1) return 50;
+      let gains = 0, losses = 0;
+      for (let i = arr.length - period; i < arr.length; i++) {
+        const diff = arr[i] - arr[i - 1];
+        if (diff > 0) gains += diff;
+        else losses -= diff;
+      }
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+      if (avgLoss === 0) return 100;
+      const rs = avgGain / avgLoss;
+      return 100 - 100 / (1 + rs);
+    };
+    const rsi = Number(calcRSI(prices, 14).toFixed(2));
 
-    // ✅ EMA mock แบบพื้นฐาน
-    const ema20 = (lastClose * 0.98).toFixed(2);
-    const ema50 = (lastClose * 0.95).toFixed(2);
-    const ema200 = (lastClose * 0.9).toFixed(2);
+    // ✅ คำนวณ EMA
+    const calcEMA = (arr, period) => {
+      if (arr.length < period) return lastClose;
+      const k = 2 / (period + 1);
+      let ema = arr[0];
+      for (let i = 1; i < arr.length; i++) {
+        ema = arr[i] * k + ema * (1 - k);
+      }
+      return ema.toFixed(2);
+    };
+    const ema20 = calcEMA(prices, 20);
+    const ema50 = calcEMA(prices, 50);
+    const ema200 = calcEMA(prices, 200);
+
+    // ✅ วิเคราะห์แนวโน้ม (Trend)
+    let trend = "Sideway";
+    if (lastClose > ema20 && ema20 > ema50) trend = "Uptrend";
+    else if (lastClose < ema20 && ema20 < ema50) trend = "Downtrend";
 
     res.status(200).json({
       symbol,
       type,
-      lastClose,
+      lastClose: Number(lastClose.toFixed(2)),
       rsi,
       trend,
-      ema20,
-      ema50,
-      ema200,
-      companyName: meta?.symbol || symbol,
+      ema20: Number(ema20),
+      ema50: Number(ema50),
+      ema200: Number(ema200),
+      source: "Yahoo Finance",
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    // ✅ fallback ถ้า fetch ล้มเหลว
+    console.error("Visionary Core Error:", err.message);
+    res.status(200).json({
+      symbol,
+      lastClose: 0,
+      rsi: 50,
+      trend: "Sideway",
+      ema20: 0,
+      ema50: 0,
+      ema200: 0,
+      source: "error-fallback",
+      message: err.message,
+    });
   }
 }
