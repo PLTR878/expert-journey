@@ -1,10 +1,9 @@
-// ✅ /components/MarketSection.js — Stable Original UI (V∞.27)
+// ✅ /components/MarketSection.js — Stable Portfolio UI (V∞.30)
 export default function MarketSection({
   title = "🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)",
   rows = [],
   favorites = [],
   toggleFavorite = () => {},
-  loading = false,
 }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4 shadow-xl mt-4">
@@ -15,13 +14,9 @@ export default function MarketSection({
         </span>
       </div>
 
-      {loading ? (
-        <div className="py-8 text-center text-gray-500 animate-pulse">
-          ⏳ กำลังโหลดข้อมูลจาก AI ...
-        </div>
-      ) : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="py-8 text-center text-gray-500 italic">
-          ไม่มีข้อมูลตลาด
+          ไม่มีข้อมูลในพอร์ต AI
         </div>
       ) : (
         <div className="flex flex-col divide-y divide-gray-800/50">
@@ -55,7 +50,7 @@ export default function MarketSection({
                       : "text-yellow-400"
                   }`}
                 >
-                  {r.signal}
+                  {r.signal || "Hold"}
                 </div>
                 <div className="text-[10px] text-gray-500">
                   RSI {Math.round(r.rsi || 0)}
@@ -79,4 +74,4 @@ export default function MarketSection({
       )}
     </section>
   );
-                    }
+}
