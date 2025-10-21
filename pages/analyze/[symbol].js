@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
-const Chart = dynamic(() => import("../../components/Chart"), { ssr: false });
+const Chart = dynamic(() => import("../../components/Chart.js"), { ssr: false }); // ✅ เพิ่ม .js ให้ตรงกับไฟล์จริง
+
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : "-");
 
 export default function Analyze() {
@@ -14,7 +15,7 @@ export default function Analyze() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ===== ดึงข้อมูลหลักจาก API ใหม่ =====
+  // ===== ดึงข้อมูลหลักจาก API =====
   useEffect(() => {
     if (!symbol) return;
     (async () => {
@@ -25,7 +26,6 @@ export default function Analyze() {
           fetch(`/api/visionary-scanner?type=ai-news&symbol=${symbol}`).then((r) => r.json()),
           fetch(`/api/visionary-core?type=history&symbol=${symbol}&range=6mo`).then((r) => r.json()),
         ]);
-
         setInd(core || {});
         setNews(n.news || n.data || []);
         setHist(h.rows || h.data || []);
@@ -239,4 +239,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-          }
+              }
