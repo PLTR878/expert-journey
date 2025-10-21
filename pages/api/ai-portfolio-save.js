@@ -4,7 +4,7 @@ import path from "path";
 
 export default async function handler(req, res) {
   try {
-    // รับข้อมูลจาก body (ส่งมาจากระบบสแกน)
+    // รับข้อมูลจาก body (ส่งมาจากระบบสแกนหรือทดสอบ)
     const { top30 } = req.body || {};
     if (!Array.isArray(top30) || !top30.length)
       return res.status(400).json({ error: "missing top30 data" });
