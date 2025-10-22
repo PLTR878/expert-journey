@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 
     allSymbols = [...new Set(allSymbols)].slice(0, 7000);
 
-    // อ่าน index ล่าสุด (ถ้ามี)
+    // อ่าน index ล่าสุด
     const indexFile = path.join(process.cwd(), "public", "ai-scan-index.json");
     let lastIndex = 0;
     try {
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     // ดึงชุดต่อไป
     const nextBatch = allSymbols.slice(lastIndex, lastIndex + BATCH_SIZE);
 
-    // ฟังก์ชันช่วยคำนวณ
+    // เครื่องมือคำนวณ
     const EMA = (arr, p) => {
       if (!arr?.length) return null;
       const k = 2 / (p + 1);
@@ -63,12 +63,10 @@ export default async function handler(req, res) {
 
     const RSI = (arr, n = 14) => {
       if (!arr || arr.length < n + 1) return 50;
-      let g = 0,
-        l = 0;
+      let g = 0, l = 0;
       for (let i = 1; i <= n; i++) {
         const d = arr[i] - arr[i - 1];
-        if (d >= 0) g += d;
-        else l -= d;
+        if (d >= 0) g += d; else l -= d;
       }
       const rs = g / (l || 1);
       return 100 - 100 / (1 + rs);
@@ -164,4 +162,4 @@ export default async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-    }
+                               }
