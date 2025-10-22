@@ -1,8 +1,9 @@
-// ✅ Visionary Discovery Pro (Full Scan Edition)
-// สแกนทั้งตลาด 7,000 ตัวทีละ 10 ตัว + จำหุ้นถาวร 30 ตัวที่ดีที่สุด
+// ✅ Visionary Discovery Pro (Full Scan + Save to Supabase)
+// สแกนทั้งตลาด 7,000 ตัวทีละ 10 ตัว + จำหุ้นถาวร 30 ตัวที่ดีที่สุด + บันทึกลง Supabase
 
 import fs from "fs";
 import path from "path";
+import { supabase } from "../../lib/supabaseClient";
 
 export default async function handler(req, res) {
   try {
@@ -19,7 +20,7 @@ export default async function handler(req, res) {
       oldPortfolio = [];
     }
 
-    // โหลดรายชื่อหุ้น
+    // โหลดรายชื่อหุ้นจากตลาดหลัก
     const stockSources = [
       "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv",
       "https://datahub.io/core/nyse-other-listings/r/nyse-listed.csv",
@@ -49,10 +50,10 @@ export default async function handler(req, res) {
       }
     } catch {}
 
-    // ดึงชุดต่อไป
+    // ดึงชุดถัดไป
     const nextBatch = allSymbols.slice(lastIndex, lastIndex + BATCH_SIZE);
 
-    // เครื่องมือคำนวณ
+    // ฟังก์ชันคำนวณ
     const EMA = (arr, p) => {
       if (!arr?.length) return null;
       const k = 2 / (p + 1);
@@ -66,7 +67,8 @@ export default async function handler(req, res) {
       let g = 0, l = 0;
       for (let i = 1; i <= n; i++) {
         const d = arr[i] - arr[i - 1];
-        if (d >= 0) g += d; else l -= d;
+        if (d >= 0) g += d;
+        else l -= d;
       }
       const rs = g / (l || 1);
       return 100 - 100 / (1 + rs);
@@ -149,17 +151,33 @@ export default async function handler(req, res) {
 
     const top30 = unique.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
 
-    // บันทึกผล
+    // ✅ บันทึกลงไฟล์ (local)
     fs.writeFileSync(STORAGE_PATH, JSON.stringify(top30, null, 2), "utf8");
     fs.writeFileSync(indexFile, JSON.stringify({ index: lastIndex + BATCH_SIZE }), "utf8");
+
+    // ✅ บันทึกลง Supabase (ถาวร)
+    await supabase.from("ai_portfolio").delete().neq("id", 0);
+    for (const s of top30) {
+      await supabase.from("ai_portfolio").insert([
+        {
+          symbol: s.symbol,
+          price: s.price,
+          rsi: s.rsi,
+          aiScore: s.aiScore,
+          reason: s.reason,
+          updated: new Date(),
+        },
+      ]);
+    }
 
     res.status(200).json({
       success: true,
       scanned: nextBatch.length,
       progress: `${lastIndex + BATCH_SIZE}/${allSymbols.length}`,
       discovered: top30,
+      message: "✅ สแกนสำเร็จและบันทึกลง Supabase เรียบร้อยแล้ว!",
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-                               }
+          }
