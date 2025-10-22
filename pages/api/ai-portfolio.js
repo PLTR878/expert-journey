@@ -1,4 +1,4 @@
-// ✅ /pages/api/ai-portfolio.js
+// ✅ /pages/api/ai-portfolio.js — อ่านไฟล์พอร์ตหุ้น AI
 import fs from "fs";
 import path from "path";
 
@@ -6,7 +6,6 @@ export default async function handler(req, res) {
   try {
     const filePath = path.join("/tmp", "ai-portfolio.json");
 
-    // ถ้ายังไม่มีไฟล์ ให้ส่งค่าเริ่มต้นกลับ
     if (!fs.existsSync(filePath)) {
       return res.status(200).json({
         updated: null,
