@@ -43,7 +43,8 @@ export default async function handler(req, res) {
 
     const RSI = (arr, n = 14) => {
       if (!arr || arr.length < n + 1) return 50;
-      let g = 0, l = 0;
+      let g = 0,
+        l = 0;
       for (let i = 1; i <= n; i++) {
         const d = arr[i] - arr[i - 1];
         if (d >= 0) g += d;
@@ -108,10 +109,8 @@ export default async function handler(req, res) {
         const rsi = RSI(closes);
         const sentiment = await newsSentiment(sym);
 
-        if (last > 35) continue;
-        if (ema20 <= ema50) continue;
-        if (rsi < 45 || rsi > 75) continue;
-        if (sentiment <= 0) continue;
+        // ✅ จุดที่ 1: ลดโอกาสค้าง / ฟิลเตอร์ให้เบาขึ้น
+        if (last > 35 || ema20 <= ema50 || rsi < 45 || rsi > 80 || sentiment <= 0) continue;
 
         const aiScore = Math.round((rsi - 45) * 2 + sentiment * 5);
 
@@ -127,7 +126,8 @@ export default async function handler(req, res) {
           updated: new Date().toISOString(),
         });
       } catch {}
-      await new Promise((r) => setTimeout(r, 30));
+      // ✅ จุดที่ 2: ปรับ delay จาก 30 → 20 ms ให้เร็วขึ้นแต่ไม่ timeout
+      await new Promise((r) => setTimeout(r, 20));
     }
 
     // ===== รวมพอร์ตเดิม + ใหม่ (เลือกตัวที่ aiScore สูงกว่า) =====
@@ -147,7 +147,8 @@ export default async function handler(req, res) {
 
     // ===== บันทึกพอร์ตถาวร =====
     try {
-      fs.writeFileSync(STORAGE_PATH, JSON.stringify(top30, null, 2));
+      // ✅ จุดที่ 3: ป้องกัน error write บาง server
+      fs.writeFileSync(STORAGE_PATH, JSON.stringify(top30, null, 2), "utf8");
     } catch (err) {
       console.warn("⚠️ เขียนไฟล์ไม่สำเร็จ:", err.message);
     }
@@ -163,4 +164,4 @@ export default async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-          }
+           }
