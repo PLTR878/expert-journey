@@ -1,8 +1,0 @@
-{
-  "updated": "2025-10-21T17:45:00Z",
-  "top30": [
-    { "symbol": "PLTR", "price": 41.2, "rsi": 68, "signal": "Buy", "reason": "AI momentum" },
-    { "symbol": "GWH", "price": 1.58, "rsi": 59, "signal": "Buy", "reason": "Energy storage growth" },
-    { "symbol": "LWLG", "price": 7.45, "rsi": 47, "signal": "Hold", "reason": "Photonics innovation" }
-  ]
-}
