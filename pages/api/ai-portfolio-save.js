@@ -1,26 +1,23 @@
-// ✅ /api/ai-portfolio-save.js — Create AI Portfolio JSON in /tmp
+// ✅ /pages/api/ai-portfolio-save.js — สร้างไฟล์พอร์ตหุ้นต้นน้ำ
 import fs from "fs";
 import path from "path";
 
 export default async function handler(req, res) {
   try {
-    // รับข้อมูลจาก body (ส่งมาจากระบบสแกนหรือทดสอบ)
-    const { top30 } = req.body || {};
-    if (!Array.isArray(top30) || !top30.length)
-      return res.status(400).json({ error: "missing top30 data" });
-
     const filePath = path.join("/tmp", "ai-portfolio.json");
 
-    const data = {
+    const portfolio = {
       updated: new Date().toISOString(),
-      top30,
+      top30: [
+        { symbol: "PLTR", price: 41.2, rsi: 68, signal: "Buy", reason: "AI momentum" },
+        { symbol: "GWH", price: 1.58, rsi: 59, signal: "Buy", reason: "Energy storage growth" },
+        { symbol: "LWLG", price: 7.45, rsi: 47, signal: "Hold", reason: "Photonics innovation" }
+      ],
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
-
-    return res.status(200).json({ success: true, filePath, count: top30.length });
+    fs.writeFileSync(filePath, JSON.stringify(portfolio, null, 2), "utf8");
+    res.status(200).json({ ok: true, message: "Portfolio saved", portfolio });
   } catch (err) {
-    console.error("❌ Save error:", err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 }
