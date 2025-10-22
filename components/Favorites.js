@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — เชื่อม visionary-core + visionary-scanner (V∞.30 Stable)
+// ✅ /components/Favorites.js — Visionary Favorites (Fixed Full Logo + Stable Syntax)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -8,7 +8,7 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หลัก (ไว้เหมือนเดิม)
+  // ✅ โลโก้หลัก
   const logoMap = {
     NVDA: "nvidia.com",
     AAPL: "apple.com",
@@ -37,7 +37,7 @@ export default function Favorites({ favorites, setFavorites }) {
     LAC: "lithiumamericas.com",
   };
 
-  // ✅ ชื่อบริษัท (ไว้เหมือนเดิม)
+  // ✅ ชื่อบริษัท
   const companyMap = {
     NVDA: "NVIDIA Corp",
     AAPL: "Apple Inc.",
@@ -66,31 +66,25 @@ export default function Favorites({ favorites, setFavorites }) {
     LAC: "Lithium Americas",
   };
 
-  // ✅ ดึงข้อมูลจาก API 2 ตัว (visionary-core + visionary-scanner)
+  // ✅ ดึงข้อมูลจาก API 2 ตัว
   const fetchStockData = async (sym) => {
     try {
-      // 1️⃣ visionary-core
       const coreRes = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
       const core = await coreRes.json();
 
-      // 2️⃣ visionary-scanner
       const scanRes = await fetch(`/api/visionary-scanner?type=single&symbol=${sym}`);
       const scan = await scanRes.json();
 
-      // ✅ รวมข้อมูลทั้งหมด
-      const price =
-        core?.lastClose ?? scan?.price ?? 0;
-      const rsi =
-        core?.rsi ?? scan?.rsi ?? 50;
+      const price = core?.lastClose ?? scan?.price ?? 0;
+      const rsi = core?.rsi ?? scan?.rsi ?? 50;
       const trend =
-        core?.trend ?? scan?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+        core?.trend ??
+        scan?.trend ??
+        (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+
       const signal =
         scan?.signal ??
-        (trend === "Uptrend"
-          ? "Buy"
-          : trend === "Downtrend"
-          ? "Sell"
-          : "Hold");
+        (trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold");
 
       const company = core?.companyName || companyMap[sym] || sym;
 
@@ -103,7 +97,6 @@ export default function Favorites({ favorites, setFavorites }) {
         signal,
       };
 
-      // ✅ อัปเดต state ให้ไม่ซ้ำ
       setData((prev) => {
         const existing = prev.find((x) => x.symbol === sym);
         if (existing) {
@@ -116,14 +109,12 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูล Favorites ทั้งหมด
   useEffect(() => {
     if (favorites?.length > 0) {
       favorites.forEach((sym) => fetchStockData(sym));
     }
   }, [favorites]);
 
-  // ✅ เพิ่ม symbol ใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -138,7 +129,6 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบรายการ
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -146,7 +136,6 @@ export default function Favorites({ favorites, setFavorites }) {
     setData((prev) => prev.filter((x) => x.symbol !== sym));
   };
 
-  // ✅ gesture ลบ (swipe)
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -159,7 +148,6 @@ export default function Favorites({ favorites, setFavorites }) {
 
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
-      {/* Header */}
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🔮 My Favorite Stocks
@@ -172,7 +160,6 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
-      {/* ✅ List */}
       <div className="flex flex-col divide-y divide-gray-800/50">
         {favorites?.length ? (
           favorites.map((sym, i) => {
@@ -188,14 +175,14 @@ export default function Favorites({ favorites, setFavorites }) {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
-                {/* โลโก้ + ชื่อหุ้น */}
+                {/* ✅ โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-gradient-to-br from-[#1e293b] to-[#0f172a] flex items-center justify-center overflow-hidden">
+                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     <img
                       src={`https://logo.clearbit.com/${domain}`}
                       alt={sym}
                       onError={(e) => (e.target.style.display = "none")}
-                      className="w-9 h-9 object-contain"
+                      className="w-full h-full object-cover rounded-full"
                     />
                     {!logoMap[sym] && (
                       <span className="text-emerald-400 font-bold text-[13px]">
@@ -217,7 +204,7 @@ export default function Favorites({ favorites, setFavorites }) {
                   </div>
                 </div>
 
-                {/* ขวา: ราคา / RSI / สัญญาณ */}
+                {/* ✅ ราคา / RSI / สัญญาณ */}
                 <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
                   <span className="text-gray-100 text-[14px] font-semibold">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
@@ -261,14 +248,12 @@ export default function Favorites({ favorites, setFavorites }) {
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
-            <h3 className="text-lg text-emerald-400 font-bold mb-3">
-              Search Stock
-            </h3>
+            <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
             <input
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
+              placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
               className="w-full text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
                          focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
             />
@@ -291,4 +276,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-    }
+              }
