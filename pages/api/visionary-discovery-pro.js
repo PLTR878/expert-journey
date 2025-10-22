@@ -1,6 +1,5 @@
-// ✅ Visionary Discovery Pro (Lite + Memory Edition)
-// จำหุ้น 30 ตัวล่าสุด + อัปเดตเฉพาะตัวที่ดีกว่า
-// ใช้กับ cron-job.org ได้จริง ไม่พัง ไม่ timeout
+// ✅ Visionary Discovery Pro (Full Scan Edition)
+// สแกนทั้งตลาด 7,000 ตัวทีละ 10 ตัว + จำหุ้นถาวร 30 ตัวที่ดีที่สุด
 
 import fs from "fs";
 import path from "path";
@@ -10,7 +9,17 @@ export default async function handler(req, res) {
     const BATCH_SIZE = 10;
     const STORAGE_PATH = path.join(process.cwd(), "public", "ai-portfolio.json");
 
-    // ===== โหลดรายชื่อหุ้นทั้งหมด (~7,000 ตัว) =====
+    // โหลดพอร์ตเดิม
+    let oldPortfolio = [];
+    try {
+      if (fs.existsSync(STORAGE_PATH)) {
+        oldPortfolio = JSON.parse(fs.readFileSync(STORAGE_PATH, "utf8") || "[]");
+      }
+    } catch {
+      oldPortfolio = [];
+    }
+
+    // โหลดรายชื่อหุ้น
     const stockSources = [
       "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv",
       "https://datahub.io/core/nyse-other-listings/r/nyse-listed.csv",
@@ -30,9 +39,20 @@ export default async function handler(req, res) {
     }
 
     allSymbols = [...new Set(allSymbols)].slice(0, 7000);
-    const sample = allSymbols.sort(() => Math.random() - 0.5).slice(0, BATCH_SIZE);
 
-    // ===== ฟังก์ชันคำนวณ =====
+    // อ่าน index ล่าสุด (ถ้ามี)
+    const indexFile = path.join(process.cwd(), "public", "ai-scan-index.json");
+    let lastIndex = 0;
+    try {
+      if (fs.existsSync(indexFile)) {
+        lastIndex = JSON.parse(fs.readFileSync(indexFile, "utf8")).index || 0;
+      }
+    } catch {}
+
+    // ดึงชุดต่อไป
+    const nextBatch = allSymbols.slice(lastIndex, lastIndex + BATCH_SIZE);
+
+    // ฟังก์ชันช่วยคำนวณ
     const EMA = (arr, p) => {
       if (!arr?.length) return null;
       const k = 2 / (p + 1);
@@ -83,20 +103,9 @@ export default async function handler(req, res) {
       }
     };
 
-    // ===== โหลดพอร์ตเดิม (ถ้ามี) =====
-    let oldPortfolio = [];
-    try {
-      if (fs.existsSync(STORAGE_PATH)) {
-        oldPortfolio = JSON.parse(fs.readFileSync(STORAGE_PATH, "utf8") || "[]");
-      }
-    } catch {
-      oldPortfolio = [];
-    }
-
-    const results = [];
-
-    // ===== เริ่มสแกน =====
-    for (const sym of sample) {
+    // เริ่มสแกน batch
+    const batchResults = [];
+    for (const sym of nextBatch) {
       try {
         const d = await getChart(sym);
         const q = d?.indicators?.quote?.[0];
@@ -109,12 +118,11 @@ export default async function handler(req, res) {
         const rsi = RSI(closes);
         const sentiment = await newsSentiment(sym);
 
-        // ✅ จุดที่ 1: ลดโอกาสค้าง / ฟิลเตอร์ให้เบาขึ้น
         if (last > 35 || ema20 <= ema50 || rsi < 45 || rsi > 80 || sentiment <= 0) continue;
 
         const aiScore = Math.round((rsi - 45) * 2 + sentiment * 5);
 
-        results.push({
+        batchResults.push({
           symbol: sym,
           price: Number(last.toFixed(2)),
           ema20: Number(ema20.toFixed(2)),
@@ -126,12 +134,11 @@ export default async function handler(req, res) {
           updated: new Date().toISOString(),
         });
       } catch {}
-      // ✅ จุดที่ 2: ปรับ delay จาก 30 → 20 ms ให้เร็วขึ้นแต่ไม่ timeout
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise((r) => setTimeout(r, 25));
     }
 
-    // ===== รวมพอร์ตเดิม + ใหม่ (เลือกตัวที่ aiScore สูงกว่า) =====
-    const combined = [...oldPortfolio, ...results];
+    // รวมกับพอร์ตเดิม
+    const combined = [...oldPortfolio, ...batchResults];
     const unique = combined.reduce((acc, cur) => {
       const exist = acc.find((x) => x.symbol === cur.symbol);
       if (!exist) acc.push(cur);
@@ -142,26 +149,19 @@ export default async function handler(req, res) {
       return acc;
     }, []);
 
-    // ===== Top 30 หุ้นที่ดีที่สุด =====
     const top30 = unique.sort((a, b) => b.aiScore - a.aiScore).slice(0, 30);
 
-    // ===== บันทึกพอร์ตถาวร =====
-    try {
-      // ✅ จุดที่ 3: ป้องกัน error write บาง server
-      fs.writeFileSync(STORAGE_PATH, JSON.stringify(top30, null, 2), "utf8");
-    } catch (err) {
-      console.warn("⚠️ เขียนไฟล์ไม่สำเร็จ:", err.message);
-    }
+    // บันทึกผล
+    fs.writeFileSync(STORAGE_PATH, JSON.stringify(top30, null, 2), "utf8");
+    fs.writeFileSync(indexFile, JSON.stringify({ index: lastIndex + BATCH_SIZE }), "utf8");
 
-    // ===== ส่งผลลัพธ์กลับ =====
     res.status(200).json({
       success: true,
-      total: allSymbols.length,
-      scanned: sample.length,
+      scanned: nextBatch.length,
+      progress: `${lastIndex + BATCH_SIZE}/${allSymbols.length}`,
       discovered: top30,
-      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-           }
+    }
