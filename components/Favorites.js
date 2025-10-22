@@ -1,10 +1,11 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Fixed Full Logo + Stable Syntax)
+// ✅ /components/Favorites.js — Visionary Favorites (Full Logo Fixed)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
   const [data, setData] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [symbol, setSymbol] = useState("");
+  const [imgError, setImgError] = useState({}); // ✅ เก็บสถานะรูปโหลดไม่ได้
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
@@ -148,6 +149,7 @@ export default function Favorites({ favorites, setFavorites }) {
 
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+      {/* Header */}
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🔮 My Favorite Stocks
@@ -160,6 +162,7 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
+      {/* ✅ รายการหุ้น */}
       <div className="flex flex-col divide-y divide-gray-800/50">
         {favorites?.length ? (
           favorites.map((sym, i) => {
@@ -178,16 +181,17 @@ export default function Favorites({ favorites, setFavorites }) {
                 {/* ✅ โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                    <img
-                      src={`https://logo.clearbit.com/${domain}`}
-                      alt={sym}
-                      onError={(e) => (e.target.style.display = "none")}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                    {!logoMap[sym] && (
+                    {imgError[sym] ? (
                       <span className="text-emerald-400 font-bold text-[13px]">
                         {sym[0]}
                       </span>
+                    ) : (
+                      <img
+                        src={`https://logo.clearbit.com/${domain}`}
+                        alt={sym}
+                        onError={() => setImgError((p) => ({ ...p, [sym]: true }))}
+                        className="w-full h-full object-cover rounded-full"
+                      />
                     )}
                   </div>
 
@@ -204,7 +208,7 @@ export default function Favorites({ favorites, setFavorites }) {
                   </div>
                 </div>
 
-                {/* ✅ ราคา / RSI / สัญญาณ */}
+                {/* ✅ ขวา: ราคา / RSI / สัญญาณ */}
                 <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
                   <span className="text-gray-100 text-[14px] font-semibold">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
