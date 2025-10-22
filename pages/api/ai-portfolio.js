@@ -1,3 +1,4 @@
+// ✅ /pages/api/ai-portfolio.js
 import fs from "fs";
 import path from "path";
 
@@ -5,7 +6,7 @@ export default async function handler(req, res) {
   try {
     const filePath = path.join("/tmp", "ai-portfolio.json");
 
-    // ถ้าไฟล์ยังไม่มี ให้ส่งค่าเริ่มต้นกลับไป
+    // ถ้ายังไม่มีไฟล์ ให้ส่งค่าเริ่มต้นกลับ
     if (!fs.existsSync(filePath)) {
       return res.status(200).json({
         updated: null,
@@ -16,7 +17,6 @@ export default async function handler(req, res) {
 
     const data = fs.readFileSync(filePath, "utf8");
     const json = JSON.parse(data);
-
     return res.status(200).json(json);
   } catch (err) {
     console.error("❌ Read portfolio error:", err);
