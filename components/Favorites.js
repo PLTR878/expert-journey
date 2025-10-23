@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Font Bold Square Style)
+// ✅ /components/Favorites.js — Visionary Favorites (Fixed API + Logo Fallback White Square)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -67,7 +67,7 @@ export default function Favorites({ favorites, setFavorites }) {
     LAC: "Lithium Americas",
   };
 
-  // ✅ ดึงข้อมูลจาก API 2 ตัว
+  // ✅ ดึงข้อมูลจาก API 2 ตัว (core + infinite-core)
   const fetchStockData = async (sym) => {
     try {
       const coreRes = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
@@ -78,6 +78,7 @@ export default function Favorites({ favorites, setFavorites }) {
       let trend = core?.trend ?? null;
       let company = core?.companyName || companyMap[sym] || sym;
 
+      // ✅ ถ้า core ไม่มีข้อมูล → ลอง infinite-core
       if (!price || !trend) {
         try {
           const infRes = await fetch(`/api/visionary-infinite-core?symbol=${sym}`, { cache: "no-store" });
@@ -86,7 +87,9 @@ export default function Favorites({ favorites, setFavorites }) {
           rsi = rsi || inf?.rsi || 50;
           trend = trend || inf?.trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
           company = company || inf?.companyName || sym;
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
 
       const finalTrend = trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
@@ -96,7 +99,9 @@ export default function Favorites({ favorites, setFavorites }) {
 
       setData((prev) => {
         const existing = prev.find((x) => x.symbol === sym);
-        return existing ? prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x)) : [...prev, item];
+        return existing
+          ? prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x))
+          : [...prev, item];
       });
     } catch (err) {
       console.error(`❌ Fetch error ${sym}:`, err);
@@ -141,7 +146,9 @@ export default function Favorites({ favorites, setFavorites }) {
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
-        <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">🔮 My Favorite Stocks</h2>
+        <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
+          🔮 My Favorite Stocks
+        </h2>
         <button
           onClick={() => setShowModal(true)}
           className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
@@ -167,17 +174,21 @@ export default function Favorites({ favorites, setFavorites }) {
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
                 <div className="flex items-center space-x-3">
+                  {/* ✅ แก้เฉพาะส่วนโลโก้ที่ไม่มีโลโก้ */}
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
-                      <div className="w-full h-full bg-black flex items-center justify-center rounded-full border border-gray-700">
+                      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300 shadow-sm">
                         <span
-                          className="text-white font-extrabold text-[12px] uppercase tracking-tight"
+                          className="text-black font-extrabold text-[11px] uppercase tracking-tight"
                           style={{
-                            fontFamily: `'Orbitron', 'Roboto Mono', 'IBM Plex Sans', sans-serif`,
+                            fontFamily: `'Orbitron', 'Poppins', 'Roboto Mono', sans-serif`,
                             letterSpacing: "-0.3px",
                           }}
                         >
                           {sym}
+                        </span>
+                        <span className="text-[10px] text-gray-600 font-semibold leading-none mt-[1px]">
+                          ➕
                         </span>
                       </div>
                     ) : (
@@ -191,10 +202,15 @@ export default function Favorites({ favorites, setFavorites }) {
                   </div>
 
                   <div>
-                    <a href={`/analyze/${sym}`} className="text-white hover:text-emerald-400 font-semibold text-[15px]">
+                    <a
+                      href={`/analyze/${sym}`}
+                      className="text-white hover:text-emerald-400 font-semibold text-[15px]"
+                    >
                       {sym}
                     </a>
-                    <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">{companyName}</div>
+                    <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                      {companyName}
+                    </div>
                   </div>
                 </div>
 
@@ -231,9 +247,42 @@ export default function Favorites({ favorites, setFavorites }) {
             );
           })
         ) : (
-          <div className="py-6 text-center text-gray-500 italic">No favorites yet. Add one by searching ➕</div>
+          <div className="py-6 text-center text-gray-500 italic">
+            No favorites yet. Add one by searching ➕
+          </div>
         )}
       </div>
+
+      {/* 🔍 Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
+            <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+              className="w-full text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
+              focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
+            />
+            <div className="flex justify-around">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-sm"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
-            }
+        }
