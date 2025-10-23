@@ -1,5 +1,5 @@
-// ✅ Visionary Stock Screener — V∞.27 (Original Stable UI Restored)
-// เพิ่มระบบจำหุ้นต้นน้ำไว้ถาวร (localStorage) — ไม่แตะส่วนอื่นเลย
+// ✅ Visionary Stock Screener — V∞.31 (Optimized for Remaining APIs)
+// ใช้เฉพาะ visionary-core + visionary-batch (ไม่มี discovery-pro แล้ว)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -16,7 +16,7 @@ export default function Home() {
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // โหลด favorites
+  // ✅ โหลด favorites จาก localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem("favorites");
@@ -29,7 +29,7 @@ export default function Home() {
     } catch {}
   }, [favorites]);
 
-  // โหลดหุ้นต้นน้ำ (จำถาวร)
+  // ✅ โหลดหุ้นต้นน้ำ (จำถาวร)
   useEffect(() => {
     const saved = localStorage.getItem("futureDiscovery");
     if (saved) {
@@ -40,20 +40,22 @@ export default function Home() {
     }
   }, []);
 
-  // ===== ฟังก์ชันดึงข้อมูลหุ้นต้นน้ำ =====
+  // ✅ ฟังก์ชันดึงข้อมูลหุ้นต้นน้ำจาก visionary-batch
   async function loadDiscovery() {
     try {
       setLoadingDiscovery(true);
       addLog("🌋 AI Discovery Pro กำลังโหลดหุ้นต้นน้ำ...");
 
-      const res = await fetch("/api/visionary-discovery-pro", { cache: "no-store" });
+      // ดึงข้อมูลจาก batch แรก (เปลี่ยนได้ตามต้องการ)
+      const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const j = await res.json();
-      const list = j.discovered || [];
+      const list = j.results || [];
 
       if (!list.length) throw new Error("ไม่พบข้อมูลหุ้นต้นน้ำ");
 
+      // เก็บจำถาวร
       setFutureDiscovery(list);
-      localStorage.setItem("futureDiscovery", JSON.stringify(list)); // ✅ จำถาวร
+      localStorage.setItem("futureDiscovery", JSON.stringify(list));
       addLog(`✅ โหลดหุ้นต้นน้ำสำเร็จ ${list.length} ตัว`);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
@@ -62,7 +64,7 @@ export default function Home() {
     }
   }
 
-  // ===== แสดงหน้า =====
+  // ✅ แสดงหน้า
   const renderPage = () => {
     if (active === "favorites")
       return (
@@ -92,6 +94,7 @@ export default function Home() {
     return null;
   };
 
+  // ✅ UI หลัก
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <header className="px-3 py-1 h-[4px]" />
@@ -136,4 +139,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+    }
