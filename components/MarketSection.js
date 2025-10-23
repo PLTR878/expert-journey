@@ -1,9 +1,9 @@
-// ✅ /components/Discovery.js — หุ้นต้นน้ำ (Manual Input Version)
+// ✅ /components/MarketSection.js — หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)
 import { useState, useRef, useEffect } from "react";
 
-export default function Discovery() {
-  // ✅ เริ่มต้นด้วยหุ้น AEHR
-  const [favorites, setFavorites] = useState(() => {
+export default function MarketSection() {
+  // ✅ หุ้นเริ่มต้น
+  const [stocks, setStocks] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("discovery-stocks");
       return stored ? JSON.parse(stored) : ["AEHR"];
@@ -43,11 +43,11 @@ export default function Discovery() {
     NVO: "Novo Nordisk A/S",
   };
 
-  // ✅ ดึงข้อมูลจาก API
+  // ✅ ดึงข้อมูลราคาหุ้น
   const fetchStockData = async (sym) => {
     try {
-      const coreRes = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
-      const core = await coreRes.json();
+      const res = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
+      const core = await res.json();
 
       const price = core?.lastClose ?? 0;
       const rsi = core?.rsi ?? 50;
@@ -67,42 +67,41 @@ export default function Discovery() {
     }
   };
 
-  // ✅ โหลดข้อมูลทั้งหมด
+  // ✅ โหลดข้อมูลตอนเปิดหน้า
   useEffect(() => {
-    if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
-  }, [favorites]);
+    if (stocks?.length > 0) stocks.forEach((sym) => fetchStockData(sym));
+  }, [stocks]);
 
   // ✅ เพิ่มหุ้นใหม่
   const handleAdd = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
-
-    if (!favorites.includes(sym)) {
-      const updated = [...favorites, sym];
-      setFavorites(updated);
+    if (!stocks.includes(sym)) {
+      const updated = [...stocks, sym];
+      setStocks(updated);
       localStorage.setItem("discovery-stocks", JSON.stringify(updated));
       await fetchStockData(sym);
     }
     setSymbol("");
   };
 
-  // ✅ ลบรายการ
-  const removeFavorite = (sym) => {
-    const updated = favorites.filter((s) => s !== sym);
-    setFavorites(updated);
-    localStorage.setItem("discovery-stocks", JSON.stringify(updated));
-    setData((prev) => prev.filter((x) => x.symbol !== sym));
-  };
-
-  // ✅ ลบด้วยการ swipe
+  // ✅ ลบหุ้นด้วย swipe
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
     if (!touchStartX.current || !touchEndX.current) return;
     const distance = touchStartX.current - touchEndX.current;
-    if (distance > 70) removeFavorite(sym);
+    if (distance > 70) removeStock(sym);
     touchStartX.current = null;
     touchEndX.current = null;
+  };
+
+  // ✅ ลบหุ้น
+  const removeStock = (sym) => {
+    const updated = stocks.filter((s) => s !== sym);
+    setStocks(updated);
+    localStorage.setItem("discovery-stocks", JSON.stringify(updated));
+    setData((prev) => prev.filter((x) => x.symbol !== sym));
   };
 
   return (
@@ -113,11 +112,11 @@ export default function Discovery() {
           🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)
         </h2>
         <span className="text-[12px] text-gray-400">
-          {favorites.length ? `ทั้งหมด ${favorites.length} ตัว` : "—"}
+          {stocks.length ? `ทั้งหมด ${stocks.length} ตัว` : "—"}
         </span>
       </div>
 
-      {/* ✅ ช่องใส่หุ้น */}
+      {/* ช่องกรอกหุ้น */}
       <div className="flex items-center mb-4 gap-2 px-2">
         <input
           type="text"
@@ -135,10 +134,10 @@ export default function Discovery() {
         </button>
       </div>
 
-      {/* ✅ รายการหุ้น */}
+      {/* รายการหุ้น */}
       <div className="flex flex-col divide-y divide-gray-800/50">
-        {favorites.length ? (
-          favorites.map((sym, i) => {
+        {stocks.length ? (
+          stocks.map((sym, i) => {
             const r = data.find((x) => x.symbol === sym);
             const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
             const companyName = r?.companyName || companyMap[sym] || "";
@@ -165,6 +164,7 @@ export default function Discovery() {
                       />
                     )}
                   </div>
+
                   <div>
                     <a
                       href={`/analyze/${sym}`}
@@ -219,4 +219,4 @@ export default function Discovery() {
       </div>
     </section>
   );
-              }
+    }
