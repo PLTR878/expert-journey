@@ -1,8 +1,55 @@
-// ✅ /components/MarketSection.js — หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro, TradingView Logo Edition)
+// ✅ /components/MarketSection.js — หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro, Smart Logo Edition)
 import { useState, useRef, useEffect } from "react";
 
+// ✅ ฟังก์ชันสร้างโลโก้อัจฉริยะ
+function StockLogo({ sym, imgError, setImgError }) {
+  const tradingView = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
+  const clearbit = `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
+
+  // ลอง TradingView ก่อน
+  if (imgError[sym] === "tv") {
+    // ถ้า TradingView ไม่มี → Clearbit
+    return (
+      <img
+        src={clearbit}
+        alt={sym}
+        onError={() => setImgError((p) => ({ ...p, [sym]: "none" }))}
+        className="w-full h-full object-contain rounded-full bg-[#0b0f17]"
+      />
+    );
+  }
+
+  if (imgError[sym] === "none") {
+    // ถ้าไม่มีโลโก้ → วาด Gradient + ตัวอักษร
+    const colors = [
+      "from-emerald-400 to-teal-600",
+      "from-blue-400 to-indigo-600",
+      "from-pink-400 to-rose-500",
+      "from-yellow-400 to-orange-500",
+      "from-purple-400 to-violet-600",
+    ];
+    const rand = colors[sym.charCodeAt(0) % colors.length];
+    return (
+      <div
+        className={`w-full h-full flex items-center justify-center text-white text-sm font-bold rounded-full bg-gradient-to-br ${rand}`}
+      >
+        {sym[0]}
+      </div>
+    );
+  }
+
+  // เริ่มจาก TradingView
+  return (
+    <img
+      src={tradingView}
+      alt={sym}
+      onError={() => setImgError((p) => ({ ...p, [sym]: "tv" }))}
+      className="w-full h-full object-contain p-[3px]"
+    />
+  );
+}
+
 export default function MarketSection() {
-  // ✅ หุ้นเริ่มต้น
   const [stocks, setStocks] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("discovery-stocks");
@@ -40,8 +87,10 @@ export default function MarketSection() {
 
       const price = core?.lastClose ?? 0;
       const rsi = core?.rsi ?? 50;
-      const trend = core?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
-      const signal = trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
+      const trend =
+        core?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+      const signal =
+        trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
       const company = core?.companyName || companyMap[sym] || sym;
 
       const item = { symbol: sym, companyName: company, lastClose: price, rsi, signal };
@@ -129,7 +178,6 @@ export default function MarketSection() {
           stocks.map((sym, i) => {
             const r = data.find((x) => x.symbol === sym);
             const companyName = r?.companyName || companyMap[sym] || "";
-            const logoUrl = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
 
             return (
               <div
@@ -142,16 +190,7 @@ export default function MarketSection() {
                 {/* โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                    {imgError[sym] ? (
-                      <span className="text-emerald-400 font-bold text-[13px]">{sym[0]}</span>
-                    ) : (
-                      <img
-                        src={logoUrl}
-                        alt={sym}
-                        onError={() => setImgError((p) => ({ ...p, [sym]: true }))}
-                        className="w-full h-full object-contain p-[3px]"
-                      />
-                    )}
+                    <StockLogo sym={sym} imgError={imgError} setImgError={setImgError} />
                   </div>
 
                   <div>
@@ -208,4 +247,4 @@ export default function MarketSection() {
       </div>
     </section>
   );
-            }
+        }
