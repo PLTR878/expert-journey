@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Refined Logo Fallback)
+// ✅ /components/Favorites.js — Visionary Favorites (Fixed Add Function + Fallback Logo)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -106,19 +106,24 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
+  // ✅ โหลดข้อมูลเมื่อ favorites เปลี่ยน
   useEffect(() => {
     if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
   }, [favorites]);
 
+  // ✅ เพิ่มหุ้น (แก้ใหม่ ใช้งานได้แน่นอน)
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
-    if (!favorites.includes(sym)) {
-      const updated = [...favorites, sym];
+
+    const stored = JSON.parse(localStorage.getItem("favorites") || "[]");
+    if (!stored.includes(sym)) {
+      const updated = [...stored, sym];
       setFavorites(updated);
       localStorage.setItem("favorites", JSON.stringify(updated));
       await fetchStockData(sym);
     }
+
     setSymbol("");
     setShowModal(false);
   };
@@ -171,21 +176,20 @@ export default function Favorites({ favorites, setFavorites }) {
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
                 <div className="flex items-center space-x-3">
-                  {/* ✅ โลโก้ fallback ที่ปรับแล้ว */}
+                  {/* ✅ โลโก้ fallback */}
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
-                      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300 shadow-[0_0_6px_rgba(255,255,255,0.6)]">
+                      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300">
                         <span
-                          className="text-black font-black text-[11px] uppercase tracking-tight mt-[3px]"
+                          className="text-black font-extrabold text-[11px] uppercase tracking-tight mt-[3px]"
                           style={{
-                            fontFamily: `'Orbitron', 'Poppins', 'Roboto Mono', sans-serif`,
-                            letterSpacing: "-0.25px",
-                            textShadow: "0 0.6px 1.2px rgba(0,0,0,0.4)",
+                            fontFamily: `'Poppins', 'Roboto Mono', sans-serif`,
+                            letterSpacing: "-0.2px",
                           }}
                         >
                           {sym}
                         </span>
-                        <span className="text-[8.5px] text-gray-700 font-semibold leading-none mt-[1px]">
+                        <span className="text-[8px] text-gray-700 font-semibold leading-none mt-[1px]">
                           ➕
                         </span>
                       </div>
@@ -250,6 +254,37 @@ export default function Favorites({ favorites, setFavorites }) {
           </div>
         )}
       </div>
+
+      {/* 🔍 Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
+            <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+              className="w-full text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
+              focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
+            />
+            <div className="flex justify-around">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-sm"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
-            }
+}
