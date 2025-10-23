@@ -1,5 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.31 (Optimized for Remaining APIs)
-// ใช้เฉพาะ visionary-core + visionary-batch (ไม่มี discovery-pro แล้ว)
+// ✅ Visionary Stock Screener — V∞.32 (Stable + Favorites Fixed + Full API)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -7,7 +6,6 @@ import Favorites from "../components/Favorites";
 export default function Home() {
   const [active, setActive] = useState("market");
   const [favorites, setFavorites] = useState([]);
-  const [favoritePrices, setFavoritePrices] = useState({});
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loadingDiscovery, setLoadingDiscovery] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -16,17 +14,22 @@ export default function Home() {
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // ✅ โหลด favorites จาก localStorage
+  // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem("favorites");
       if (saved) setFavorites(JSON.parse(saved));
-    } catch {}
+    } catch (e) {
+      console.error("❌ Load favorites error:", e);
+    }
   }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem("favorites", JSON.stringify(favorites));
-    } catch {}
+    } catch (e) {
+      console.error("❌ Save favorites error:", e);
+    }
   }, [favorites]);
 
   // ✅ โหลดหุ้นต้นน้ำ (จำถาวร)
@@ -40,20 +43,18 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ ฟังก์ชันดึงข้อมูลหุ้นต้นน้ำจาก visionary-batch
+  // ✅ ดึงข้อมูลหุ้นต้นน้ำจาก visionary-batch
   async function loadDiscovery() {
     try {
       setLoadingDiscovery(true);
-      addLog("🌋 AI Discovery Pro กำลังโหลดหุ้นต้นน้ำ...");
+      addLog("🌋 AI Discovery กำลังโหลดหุ้นต้นน้ำ...");
 
-      // ดึงข้อมูลจาก batch แรก (เปลี่ยนได้ตามต้องการ)
       const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const j = await res.json();
       const list = j.results || [];
 
       if (!list.length) throw new Error("ไม่พบข้อมูลหุ้นต้นน้ำ");
 
-      // เก็บจำถาวร
       setFutureDiscovery(list);
       localStorage.setItem("futureDiscovery", JSON.stringify(list));
       addLog(`✅ โหลดหุ้นต้นน้ำสำเร็จ ${list.length} ตัว`);
@@ -64,31 +65,47 @@ export default function Home() {
     }
   }
 
-  // ✅ แสดงหน้า
+  // ✅ Render หน้าปัจจุบัน
   const renderPage = () => {
-    if (active === "favorites")
+    if (active === "favorites") {
       return (
         <Favorites
-          data={favorites.map((f) => favoritePrices[f] || { symbol: f })}
           favorites={favorites}
           setFavorites={setFavorites}
         />
       );
+    }
 
-    if (active === "market")
+    if (active === "market") {
       return (
         <MarketSection
-          title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)"
+          title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery)"
           loading={loadingDiscovery}
           rows={futureDiscovery}
           favorites={favorites}
           toggleFavorite={(sym) =>
             setFavorites((prev) =>
-              prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
+              prev.includes(sym)
+                ? prev.filter((x) => x !== sym)
+                : [...prev, sym]
             )
           }
-          favoritePrices={favoritePrices}
         />
+      );
+    }
+
+    if (active === "scan")
+      return (
+        <div className="text-center py-20 text-gray-400 italic">
+          🔍 Scanner — Coming soon...
+        </div>
+      );
+
+    if (active === "trade")
+      return (
+        <div className="text-center py-20 text-gray-400 italic">
+          🤖 AI Trade — Coming soon...
+        </div>
       );
 
     return null;
@@ -117,7 +134,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* ✅ Bottom Nav */}
+      {/* ✅ Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0b1220] border-t border-white/5 flex justify-around text-gray-400 text-[11px]">
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
@@ -139,4 +156,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+              }
