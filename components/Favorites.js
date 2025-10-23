@@ -1,11 +1,11 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Full Logo Fixed + Fallback Style)
+// ✅ /components/Favorites.js — Visionary Favorites (Full Logo Fixed + Syntax Fixed)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
   const [data, setData] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [symbol, setSymbol] = useState("");
-  const [imgError, setImgError] = useState({});
+  const [imgError, setImgError] = useState({}); // ✅ เก็บสถานะรูปโหลดไม่ได้
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
@@ -100,7 +100,9 @@ export default function Favorites({ favorites, setFavorites }) {
 
       setData((prev) => {
         const existing = prev.find((x) => x.symbol === sym);
-        if (existing) return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
+        if (existing) {
+          return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
+        }
         return [...prev, item];
       });
     } catch (err) {
@@ -108,12 +110,12 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลตอนเปิดหน้า
   useEffect(() => {
-    if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
+    if (favorites?.length > 0) {
+      favorites.forEach((sym) => fetchStockData(sym));
+    }
   }, [favorites]);
 
-  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -128,7 +130,6 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -136,7 +137,6 @@ export default function Favorites({ favorites, setFavorites }) {
     setData((prev) => prev.filter((x) => x.symbol !== sym));
   };
 
-  // ✅ ลบด้วย swipe
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -162,7 +162,7 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
-      {/* รายการหุ้น */}
+      {/* ✅ รายการหุ้น */}
       <div className="flex flex-col divide-y divide-gray-800/50">
         {favorites?.length ? (
           favorites.map((sym, i) => {
@@ -180,11 +180,11 @@ export default function Favorites({ favorites, setFavorites }) {
               >
                 {/* ✅ โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-full border border-gray-700 flex items-center justify-center overflow-hidden bg-[#0b0f17]">
+                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
-                      <div className="w-full h-full flex items-center justify-center bg-white rounded-full">
-                        <span className="text-black font-extrabold text-[13px]">{sym}</span>
-                      </div>
+                      <span className="text-emerald-400 font-bold text-[13px]">
+                        {sym[0]}
+                      </span>
                     ) : (
                       <img
                         src={`https://logo.clearbit.com/${domain}`}
@@ -280,4 +280,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-                }
+    }
