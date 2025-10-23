@@ -1,11 +1,11 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Full Logo Fixed + Syntax Fixed)
+// ✅ /components/Favorites.js — Visionary Favorites (Fixed API + Full Working)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
   const [data, setData] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [symbol, setSymbol] = useState("");
-  const [imgError, setImgError] = useState({}); // ✅ เก็บสถานะรูปโหลดไม่ได้
+  const [imgError, setImgError] = useState({});
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
@@ -67,43 +67,41 @@ export default function Favorites({ favorites, setFavorites }) {
     LAC: "Lithium Americas",
   };
 
-  // ✅ ดึงข้อมูลจาก API 2 ตัว
+  // ✅ ดึงข้อมูลจาก API 2 ตัว (core + infinite-core)
   const fetchStockData = async (sym) => {
     try {
-      const coreRes = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
+      const coreRes = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
       const core = await coreRes.json();
 
-      const scanRes = await fetch(`/api/visionary-scanner?type=single&symbol=${sym}`);
-      const scan = await scanRes.json();
+      let price = core?.lastClose ?? 0;
+      let rsi = core?.rsi ?? 50;
+      let trend = core?.trend ?? null;
+      let company = core?.companyName || companyMap[sym] || sym;
 
-      const price = core?.lastClose ?? scan?.price ?? 0;
-      const rsi = core?.rsi ?? scan?.rsi ?? 50;
-      const trend =
-        core?.trend ??
-        scan?.trend ??
-        (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+      // ✅ ถ้า core ไม่มีข้อมูล → ลอง infinite-core
+      if (!price || !trend) {
+        try {
+          const infRes = await fetch(`/api/visionary-infinite-core?symbol=${sym}`, { cache: "no-store" });
+          const inf = await infRes.json();
+          price = price || inf?.lastClose || 0;
+          rsi = rsi || inf?.rsi || 50;
+          trend = trend || inf?.trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+          company = company || inf?.companyName || sym;
+        } catch {
+          // ignore
+        }
+      }
 
-      const signal =
-        scan?.signal ??
-        (trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold");
+      const finalTrend = trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+      const signal = finalTrend === "Uptrend" ? "Buy" : finalTrend === "Downtrend" ? "Sell" : "Hold";
 
-      const company = core?.companyName || companyMap[sym] || sym;
-
-      const item = {
-        symbol: sym,
-        companyName: company,
-        lastClose: price,
-        rsi,
-        trend,
-        signal,
-      };
+      const item = { symbol: sym, companyName: company, lastClose: price, rsi, trend: finalTrend, signal };
 
       setData((prev) => {
         const existing = prev.find((x) => x.symbol === sym);
-        if (existing) {
-          return prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x));
-        }
-        return [...prev, item];
+        return existing
+          ? prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x))
+          : [...prev, item];
       });
     } catch (err) {
       console.error(`❌ Fetch error ${sym}:`, err);
@@ -111,9 +109,7 @@ export default function Favorites({ favorites, setFavorites }) {
   };
 
   useEffect(() => {
-    if (favorites?.length > 0) {
-      favorites.forEach((sym) => fetchStockData(sym));
-    }
+    if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
   }, [favorites]);
 
   const handleSubmit = async () => {
@@ -149,7 +145,6 @@ export default function Favorites({ favorites, setFavorites }) {
 
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
-      {/* Header */}
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🔮 My Favorite Stocks
@@ -178,13 +173,10 @@ export default function Favorites({ favorites, setFavorites }) {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
-                {/* ✅ โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
-                      <span className="text-emerald-400 font-bold text-[13px]">
-                        {sym[0]}
-                      </span>
+                      <span className="text-emerald-400 font-bold text-[13px]">{sym}</span>
                     ) : (
                       <img
                         src={`https://logo.clearbit.com/${domain}`}
@@ -194,7 +186,6 @@ export default function Favorites({ favorites, setFavorites }) {
                       />
                     )}
                   </div>
-
                   <div>
                     <a
                       href={`/analyze/${sym}`}
@@ -208,7 +199,6 @@ export default function Favorites({ favorites, setFavorites }) {
                   </div>
                 </div>
 
-                {/* ✅ ขวา: ราคา / RSI / สัญญาณ */}
                 <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
                   <span className="text-gray-100 text-[14px] font-semibold">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
@@ -280,4 +270,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-    }
+}
