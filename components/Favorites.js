@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Fixed Build + Keep All Original Features)
+// ✅ /components/Favorites.js — Visionary Favorites (TradingView Logo Edition)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -9,37 +9,12 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หลัก
-  const logoMap = {
-    NVDA: "nvidia.com",
-    AAPL: "apple.com",
-    TSLA: "tesla.com",
-    MSFT: "microsoft.com",
-    AMZN: "amazon.com",
-    META: "meta.com",
-    GOOG: "google.com",
-    AMD: "amd.com",
-    INTC: "intel.com",
-    PLTR: "palantir.com",
-    IREN: "irisenergy.co",
-    RXRX: "recursion.com",
-    RR: "rolls-royce.com",
-    AEHR: "aehr.com",
-    SLDP: "solidpowerbattery.com",
-    NRGV: "energyvault.com",
-    BBAI: "bigbear.ai",
-    NVO: "novonordisk.com",
-    GWH: "esstech.com",
-    COST: "costco.com",
-    QUBT: "quantumcomputinginc.com",
-    UNH: "uhc.com",
-    EZGO: "ezgoev.com",
-    QMCO: "quantum.com",
-    LAC: "lithiumamericas.com",
-  };
-
-  // ✅ ชื่อบริษัท
+  // ✅ บริษัทที่มีชื่อเต็ม (optional)
   const companyMap = {
+    AEHR: "Aehr Test Systems",
+    PLTR: "Palantir Technologies",
+    EYPT: "EyePoint Pharmaceuticals",
+    CLF: "Cleveland-Cliffs Inc",
     NVDA: "NVIDIA Corp",
     AAPL: "Apple Inc.",
     TSLA: "Tesla Inc.",
@@ -47,27 +22,9 @@ export default function Favorites({ favorites, setFavorites }) {
     AMZN: "Amazon.com Inc.",
     META: "Meta Platforms Inc.",
     GOOG: "Alphabet Inc.",
-    AMD: "Advanced Micro Devices",
-    INTC: "Intel Corp",
-    PLTR: "Palantir Technologies",
-    IREN: "Iris Energy Ltd",
-    RXRX: "Recursion Pharmaceuticals",
-    RR: "Rolls-Royce Holdings",
-    AEHR: "Aehr Test Systems",
-    SLDP: "Solid Power Inc",
-    NRGV: "Energy Vault Holdings",
-    BBAI: "BigBear.ai Holdings",
-    NVO: "Novo Nordisk A/S",
-    GWH: "ESS Tech Inc",
-    COST: "Costco Wholesale Corp",
-    QUBT: "Quantum Computing Inc",
-    UNH: "UnitedHealth Group",
-    EZGO: "EZGO Technologies",
-    QMCO: "Quantum Corp",
-    LAC: "Lithium Americas",
   };
 
-  // ✅ ดึงข้อมูลจาก API 1 ตัว (แก้ backtick ให้ถูก)
+  // ✅ ดึงข้อมูลจาก API
   const fetchStockData = async (sym) => {
     try {
       const coreRes = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
@@ -93,7 +50,7 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลเมื่อมี favorites
+  // ✅ โหลดข้อมูลเมื่อ favorites เปลี่ยน
   useEffect(() => {
     if (favorites?.length > 0) {
       favorites.forEach((sym) => fetchStockData(sym));
@@ -115,7 +72,7 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้นออกจาก favorites
+  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -123,7 +80,7 @@ export default function Favorites({ favorites, setFavorites }) {
     setData((prev) => prev.filter((x) => x.symbol !== sym));
   };
 
-  // ✅ gesture ลบ (swipe)
+  // ✅ gesture ลบ
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -154,8 +111,8 @@ export default function Favorites({ favorites, setFavorites }) {
         {favorites?.length ? (
           favorites.map((sym, i) => {
             const r = data.find((x) => x.symbol === sym);
-            const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
             const companyName = r?.companyName || companyMap[sym] || "";
+            const logoUrl = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
 
             return (
               <div
@@ -165,17 +122,17 @@ export default function Favorites({ favorites, setFavorites }) {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
-                {/* โลโก้ + ชื่อหุ้น */}
+                {/* ✅ โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
                       <span className="text-emerald-400 font-bold text-[13px]">{sym[0]}</span>
                     ) : (
                       <img
-                        src={`https://logo.clearbit.com/${domain}`}
+                        src={logoUrl}
                         alt={sym}
                         onError={() => setImgError((p) => ({ ...p, [sym]: true }))}
-                        className="w-full h-full object-cover rounded-full"
+                        className="w-full h-full object-contain p-[3px]"
                       />
                     )}
                   </div>
@@ -193,7 +150,7 @@ export default function Favorites({ favorites, setFavorites }) {
                   </div>
                 </div>
 
-                {/* ขวา: ราคา / RSI / สัญญาณ */}
+                {/* ✅ ขวา: ราคา / RSI / สัญญาณ */}
                 <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
                   <span className="text-gray-100 text-[14px] font-semibold">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
@@ -265,4 +222,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-            }
+                  }
