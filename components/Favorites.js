@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Fixed API + Logo Fallback White Square)
+// ✅ /components/Favorites.js — Visionary Favorites (Fixed API + Premium Fallback Logo Like LAES)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -174,20 +174,21 @@ export default function Favorites({ favorites, setFavorites }) {
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
                 <div className="flex items-center space-x-3">
-                  {/* ✅ แก้เฉพาะส่วนโลโก้ที่ไม่มีโลโก้ */}
+                  {/* ✅ ปรับเฉพาะโลโก้ไม่มีโลโก้ */}
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
-                      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300 shadow-sm">
+                      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300 shadow-[0_0_6px_rgba(255,255,255,0.6)]">
                         <span
-                          className="text-black font-extrabold text-[11px] uppercase tracking-tight"
+                          className="text-black font-extrabold text-[13px] uppercase tracking-tight mt-[2px]"
                           style={{
                             fontFamily: `'Orbitron', 'Poppins', 'Roboto Mono', sans-serif`,
-                            letterSpacing: "-0.3px",
+                            letterSpacing: "-0.4px",
+                            textShadow: "0 0.6px 1.2px rgba(0,0,0,0.4)",
                           }}
                         >
                           {sym}
                         </span>
-                        <span className="text-[10px] text-gray-600 font-semibold leading-none mt-[1px]">
+                        <span className="text-[10px] text-gray-700 font-semibold leading-none mt-[1px]">
                           ➕
                         </span>
                       </div>
@@ -285,4 +286,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-        }
+    }
