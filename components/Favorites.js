@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Fixed API + Full Working)
+// ✅ /components/Favorites.js — Visionary Favorites (Fixed API + Logo Style Like LAES)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -176,7 +176,11 @@ export default function Favorites({ favorites, setFavorites }) {
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
-                      <span className="text-emerald-400 font-bold text-[13px]">{sym}</span>
+                      <div className="w-full h-full bg-black flex items-center justify-center rounded-full border border-gray-700">
+                        <span className="text-white font-semibold text-[11px] tracking-wide">
+                          {sym}
+                        </span>
+                      </div>
                     ) : (
                       <img
                         src={`https://logo.clearbit.com/${domain}`}
@@ -186,6 +190,7 @@ export default function Favorites({ favorites, setFavorites }) {
                       />
                     )}
                   </div>
+
                   <div>
                     <a
                       href={`/analyze/${sym}`}
@@ -270,4 +275,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-}
+    }
