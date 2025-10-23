@@ -1,13 +1,31 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Smart Logo Enhanced)
+// ✅ /components/Favorites.js — Visionary Favorites (Smart Logo Final)
 import { useState, useRef, useEffect } from "react";
 
-// ✅ โลโก้แบบอัจฉริยะ (TradingView → Clearbit → ชื่อบริษัท)
+// ✅ รายชื่อหุ้นที่ “มีโลโก้จริง” (ไม่ต้องแตะ)
+const hasRealLogo = [
+  "NVDA", "AAPL", "TSLA", "MSFT", "AMZN", "META", "GOOG", "AMD", "INTC",
+  "PLTR", "IREN", "RXRX", "NVO", "COST", "UNH", "SLDP", "NRGV", "GWH", "BBAI"
+];
+
+// ✅ โลโก้อัจฉริยะ (TradingView → Clearbit → fallback เป็นชื่อบริษัท)
 function StockLogo({ sym, name, imgError, setImgError }) {
   const tradingView = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
   const clearbit = `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
 
+  // ถ้ามีโลโก้จริงอยู่แล้ว → ใช้ TradingView อย่างเดียว
+  if (hasRealLogo.includes(sym)) {
+    return (
+      <img
+        src={tradingView}
+        alt={sym}
+        onError={() => setImgError((p) => ({ ...p, [sym]: "tv" }))}
+        className="w-full h-full object-contain p-[3px]"
+      />
+    );
+  }
+
+  // ถ้าโหลด TradingView ไม่ได้ → ลอง Clearbit
   if (imgError[sym] === "tv") {
-    // ถ้า TradingView ไม่มี → Clearbit
     return (
       <img
         src={clearbit}
@@ -18,8 +36,8 @@ function StockLogo({ sym, name, imgError, setImgError }) {
     );
   }
 
+  // ถ้าไม่มีโลโก้เลย → ใช้ชื่อบริษัทพื้นขาวตัวดำ
   if (imgError[sym] === "none") {
-    // ถ้าไม่มีโลโก้เลย → ใช้ชื่อบริษัทพื้นขาวตัวดำ
     return (
       <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-black bg-white rounded-full text-center p-[3px] leading-tight">
         {name.length > 12 ? name.slice(0, 12) + "…" : name}
@@ -27,7 +45,7 @@ function StockLogo({ sym, name, imgError, setImgError }) {
     );
   }
 
-  // เริ่มจาก TradingView
+  // เริ่มจาก TradingView ก่อน
   return (
     <img
       src={tradingView}
@@ -46,41 +64,23 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ ชื่อบริษัท
   const companyMap = {
-    NVDA: "NVIDIA Corp",
-    AAPL: "Apple Inc.",
-    TSLA: "Tesla Inc.",
-    MSFT: "Microsoft Corp",
-    AMZN: "Amazon.com Inc.",
-    META: "Meta Platforms Inc.",
-    GOOG: "Alphabet Inc.",
-    AMD: "Advanced Micro Devices",
-    INTC: "Intel Corp",
-    PLTR: "Palantir Technologies",
-    IREN: "Iris Energy Ltd",
-    RXRX: "Recursion Pharmaceuticals",
-    RR: "Rolls-Royce Holdings",
-    AEHR: "Aehr Test Systems",
-    SLDP: "Solid Power Inc",
-    NRGV: "Energy Vault Holdings",
-    BBAI: "BigBear.ai Holdings",
-    NVO: "Novo Nordisk A/S",
-    GWH: "ESS Tech Inc",
-    COST: "Costco Wholesale Corp",
-    QUBT: "Quantum Computing Inc",
-    UNH: "UnitedHealth Group",
-    EZGO: "EZGO Technologies",
-    QMCO: "Quantum Corp",
-    LAC: "Lithium Americas",
+    NVDA: "NVIDIA Corp", AAPL: "Apple Inc.", TSLA: "Tesla Inc.",
+    MSFT: "Microsoft Corp", AMZN: "Amazon.com Inc.", META: "Meta Platforms Inc.",
+    GOOG: "Alphabet Inc.", AMD: "Advanced Micro Devices", INTC: "Intel Corp",
+    PLTR: "Palantir Technologies", IREN: "Iris Energy Ltd", RXRX: "Recursion Pharmaceuticals",
+    RR: "Rolls-Royce Holdings", AEHR: "Aehr Test Systems", SLDP: "Solid Power Inc",
+    NRGV: "Energy Vault Holdings", BBAI: "BigBear.ai Holdings", NVO: "Novo Nordisk A/S",
+    GWH: "ESS Tech Inc", COST: "Costco Wholesale Corp", QUBT: "Quantum Computing Inc",
+    UNH: "UnitedHealth Group", EZGO: "EZGO Technologies", QMCO: "Quantum Corp",
+    LAC: "Lithium Americas", EYPT: "EyePoint Pharmaceuticals", CLF: "Cleveland-Cliffs Inc",
   };
 
-  // ✅ ดึงข้อมูลจาก API
+  // ✅ ดึงข้อมูลหุ้น
   const fetchStockData = async (sym) => {
     try {
       const coreRes = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
       const core = await coreRes.json();
-
       const scanRes = await fetch(`/api/visionary-scanner?type=single&symbol=${sym}`);
       const scan = await scanRes.json();
 
@@ -90,7 +90,6 @@ export default function Favorites({ favorites, setFavorites }) {
         core?.trend ?? scan?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
       const signal =
         scan?.signal ?? (trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold");
-
       const company = core?.companyName || companyMap[sym] || sym;
 
       const item = { symbol: sym, companyName: company, lastClose: price, rsi, trend, signal };
@@ -105,12 +104,10 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลตอนเปิดหน้า
   useEffect(() => {
     if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
   }, [favorites]);
 
-  // ✅ เพิ่มหุ้นใหม่
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -125,7 +122,6 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบด้วยการ swipe
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -236,37 +232,6 @@ export default function Favorites({ favorites, setFavorites }) {
           </div>
         )}
       </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
-            <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
-            <input
-              type="text"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
-              className="w-full text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
-                         focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
-            />
-            <div className="flex justify-around">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-1.5 rounded-md text-gray-400 hover:text-gray-200 border border-gray-700 text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="px-4 py-1.5 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white font-bold text-sm"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
-}
+        }
