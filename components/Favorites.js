@@ -1,5 +1,42 @@
-// ✅ /components/Favorites.js — Visionary Favorites (TradingView Logo Edition)
+// ✅ /components/Favorites.js — Visionary Favorites (Smart Logo Enhanced)
 import { useState, useRef, useEffect } from "react";
+
+// ✅ โลโก้แบบอัจฉริยะ (TradingView → Clearbit → ชื่อบริษัท)
+function StockLogo({ sym, name, imgError, setImgError }) {
+  const tradingView = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
+  const clearbit = `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
+
+  if (imgError[sym] === "tv") {
+    // ถ้า TradingView ไม่มี → Clearbit
+    return (
+      <img
+        src={clearbit}
+        alt={sym}
+        onError={() => setImgError((p) => ({ ...p, [sym]: "none" }))}
+        className="w-full h-full object-contain rounded-full bg-[#0b0f17]"
+      />
+    );
+  }
+
+  if (imgError[sym] === "none") {
+    // ถ้าไม่มีโลโก้เลย → ใช้ชื่อบริษัทพื้นขาวตัวดำ
+    return (
+      <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-black bg-white rounded-full text-center p-[3px] leading-tight">
+        {name.length > 12 ? name.slice(0, 12) + "…" : name}
+      </div>
+    );
+  }
+
+  // เริ่มจาก TradingView
+  return (
+    <img
+      src={tradingView}
+      alt={sym}
+      onError={() => setImgError((p) => ({ ...p, [sym]: "tv" }))}
+      className="w-full h-full object-contain p-[3px]"
+    />
+  );
+}
 
 export default function Favorites({ favorites, setFavorites }) {
   const [data, setData] = useState([]);
@@ -9,12 +46,8 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ บริษัทที่มีชื่อเต็ม (optional)
+  // ✅ ชื่อบริษัท
   const companyMap = {
-    AEHR: "Aehr Test Systems",
-    PLTR: "Palantir Technologies",
-    EYPT: "EyePoint Pharmaceuticals",
-    CLF: "Cleveland-Cliffs Inc",
     NVDA: "NVIDIA Corp",
     AAPL: "Apple Inc.",
     TSLA: "Tesla Inc.",
@@ -22,6 +55,24 @@ export default function Favorites({ favorites, setFavorites }) {
     AMZN: "Amazon.com Inc.",
     META: "Meta Platforms Inc.",
     GOOG: "Alphabet Inc.",
+    AMD: "Advanced Micro Devices",
+    INTC: "Intel Corp",
+    PLTR: "Palantir Technologies",
+    IREN: "Iris Energy Ltd",
+    RXRX: "Recursion Pharmaceuticals",
+    RR: "Rolls-Royce Holdings",
+    AEHR: "Aehr Test Systems",
+    SLDP: "Solid Power Inc",
+    NRGV: "Energy Vault Holdings",
+    BBAI: "BigBear.ai Holdings",
+    NVO: "Novo Nordisk A/S",
+    GWH: "ESS Tech Inc",
+    COST: "Costco Wholesale Corp",
+    QUBT: "Quantum Computing Inc",
+    UNH: "UnitedHealth Group",
+    EZGO: "EZGO Technologies",
+    QMCO: "Quantum Corp",
+    LAC: "Lithium Americas",
   };
 
   // ✅ ดึงข้อมูลจาก API
@@ -30,12 +81,16 @@ export default function Favorites({ favorites, setFavorites }) {
       const coreRes = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
       const core = await coreRes.json();
 
-      const price = core?.lastClose ?? 0;
-      const rsi = core?.rsi ?? 50;
+      const scanRes = await fetch(`/api/visionary-scanner?type=single&symbol=${sym}`);
+      const scan = await scanRes.json();
+
+      const price = core?.lastClose ?? scan?.price ?? 0;
+      const rsi = core?.rsi ?? scan?.rsi ?? 50;
       const trend =
-        core?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+        core?.trend ?? scan?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
       const signal =
-        core?.signal ?? (trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold");
+        scan?.signal ?? (trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold");
+
       const company = core?.companyName || companyMap[sym] || sym;
 
       const item = { symbol: sym, companyName: company, lastClose: price, rsi, trend, signal };
@@ -50,11 +105,9 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลเมื่อ favorites เปลี่ยน
+  // ✅ โหลดข้อมูลตอนเปิดหน้า
   useEffect(() => {
-    if (favorites?.length > 0) {
-      favorites.forEach((sym) => fetchStockData(sym));
-    }
+    if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
   }, [favorites]);
 
   // ✅ เพิ่มหุ้นใหม่
@@ -72,15 +125,7 @@ export default function Favorites({ favorites, setFavorites }) {
     setShowModal(false);
   };
 
-  // ✅ ลบหุ้น
-  const removeFavorite = (sym) => {
-    const updated = favorites.filter((s) => s !== sym);
-    setFavorites(updated);
-    localStorage.setItem("favorites", JSON.stringify(updated));
-    setData((prev) => prev.filter((x) => x.symbol !== sym));
-  };
-
-  // ✅ gesture ลบ
+  // ✅ ลบด้วยการ swipe
   const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
   const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
   const handleTouchEnd = (sym) => {
@@ -89,6 +134,13 @@ export default function Favorites({ favorites, setFavorites }) {
     if (distance > 70) removeFavorite(sym);
     touchStartX.current = null;
     touchEndX.current = null;
+  };
+
+  const removeFavorite = (sym) => {
+    const updated = favorites.filter((s) => s !== sym);
+    setFavorites(updated);
+    localStorage.setItem("favorites", JSON.stringify(updated));
+    setData((prev) => prev.filter((x) => x.symbol !== sym));
   };
 
   return (
@@ -106,13 +158,12 @@ export default function Favorites({ favorites, setFavorites }) {
         </button>
       </div>
 
-      {/* ✅ รายการหุ้น */}
+      {/* รายการหุ้น */}
       <div className="flex flex-col divide-y divide-gray-800/50">
         {favorites?.length ? (
           favorites.map((sym, i) => {
             const r = data.find((x) => x.symbol === sym);
-            const companyName = r?.companyName || companyMap[sym] || "";
-            const logoUrl = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
+            const companyName = r?.companyName || companyMap[sym] || sym;
 
             return (
               <div
@@ -122,19 +173,15 @@ export default function Favorites({ favorites, setFavorites }) {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
-                {/* ✅ โลโก้ + ชื่อหุ้น */}
+                {/* โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                    {imgError[sym] ? (
-                      <span className="text-emerald-400 font-bold text-[13px]">{sym[0]}</span>
-                    ) : (
-                      <img
-                        src={logoUrl}
-                        alt={sym}
-                        onError={() => setImgError((p) => ({ ...p, [sym]: true }))}
-                        className="w-full h-full object-contain p-[3px]"
-                      />
-                    )}
+                    <StockLogo
+                      sym={sym}
+                      name={companyName}
+                      imgError={imgError}
+                      setImgError={setImgError}
+                    />
                   </div>
 
                   <div>
@@ -150,7 +197,7 @@ export default function Favorites({ favorites, setFavorites }) {
                   </div>
                 </div>
 
-                {/* ✅ ขวา: ราคา / RSI / สัญญาณ */}
+                {/* ราคา / RSI / สัญญาณ */}
                 <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
                   <span className="text-gray-100 text-[14px] font-semibold">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
@@ -190,7 +237,7 @@ export default function Favorites({ favorites, setFavorites }) {
         )}
       </div>
 
-      {/* 🔍 Modal */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
@@ -201,7 +248,7 @@ export default function Favorites({ favorites, setFavorites }) {
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
               className="w-full text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
-                     focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
+                         focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
             />
             <div className="flex justify-around">
               <button
@@ -222,4 +269,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-                  }
+}
