@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Full Logo + API Restored)
+// ✅ /components/Favorites.js — Visionary Favorites (Full Logo Fixed)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -65,15 +65,6 @@ export default function Favorites({ favorites, setFavorites }) {
     EZGO: "EZGO Technologies",
     QMCO: "Quantum Corp",
     LAC: "Lithium Americas",
-  };
-
-  // ✅ ขนาดตัวอักษรโลโก้สำรอง
-  const fontSizeFor = (ticker = "") => {
-    const n = ticker.length;
-    if (n <= 2) return "text-[14px]";
-    if (n === 3) return "text-[13px]";
-    if (n === 4) return "text-[12px]";
-    return "text-[11px]";
   };
 
   // ✅ ดึงข้อมูลจาก API 2 ตัว
@@ -190,13 +181,9 @@ export default function Favorites({ favorites, setFavorites }) {
                 {/* ✅ โลโก้ + ชื่อหุ้น */}
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                    {imgError[sym] || !logoMap[sym] ? (
+                    {imgError[sym] ? (
                       <div className="w-full h-full bg-white flex items-center justify-center rounded-full">
-                        <span
-                          className={`text-black font-extrabold ${fontSizeFor(
-                            sym
-                          )} tracking-wide`}
-                        >
+                        <span className="text-black font-extrabold text-[11px] tracking-wide">
                           {sym}
                         </span>
                       </div>
@@ -204,9 +191,7 @@ export default function Favorites({ favorites, setFavorites }) {
                       <img
                         src={`https://logo.clearbit.com/${domain}`}
                         alt={sym}
-                        onError={() =>
-                          setImgError((p) => ({ ...p, [sym]: true }))
-                        }
+                        onError={() => setImgError((p) => ({ ...p, [sym]: true }))}
                         className="w-full h-full object-cover rounded-full"
                       />
                     )}
@@ -269,9 +254,7 @@ export default function Favorites({ favorites, setFavorites }) {
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
-            <h3 className="text-lg text-emerald-400 font-bold mb-3">
-              Search Stock
-            </h3>
+            <h3 className="text-lg text-emerald-400 font-bold mb-3">Search Stock</h3>
             <input
               type="text"
               value={symbol}
