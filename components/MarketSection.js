@@ -1,4 +1,4 @@
-// ✅ /components/MarketSection.js — หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)
+// ✅ /components/MarketSection.js — หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro, TradingView Logo Edition)
 import { useState, useRef, useEffect } from "react";
 
 export default function MarketSection() {
@@ -17,19 +17,6 @@ export default function MarketSection() {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หุ้น
-  const logoMap = {
-    AEHR: "aehr.com",
-    PLTR: "palantir.com",
-    SLDP: "solidpowerbattery.com",
-    NRGV: "energyvault.com",
-    GWH: "esstech.com",
-    RXRX: "recursion.com",
-    BBAI: "bigbear.ai",
-    IREN: "irisenergy.co",
-    NVO: "novonordisk.com",
-  };
-
   // ✅ ชื่อบริษัท
   const companyMap = {
     AEHR: "Aehr Test Systems",
@@ -41,6 +28,8 @@ export default function MarketSection() {
     BBAI: "BigBear.ai Holdings",
     IREN: "Iris Energy Ltd",
     NVO: "Novo Nordisk A/S",
+    EYPT: "EyePoint Pharmaceuticals",
+    CLF: "Cleveland-Cliffs Inc",
   };
 
   // ✅ ดึงข้อมูลราคาหุ้น
@@ -139,8 +128,8 @@ export default function MarketSection() {
         {stocks.length ? (
           stocks.map((sym, i) => {
             const r = data.find((x) => x.symbol === sym);
-            const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
             const companyName = r?.companyName || companyMap[sym] || "";
+            const logoUrl = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
 
             return (
               <div
@@ -157,10 +146,10 @@ export default function MarketSection() {
                       <span className="text-emerald-400 font-bold text-[13px]">{sym[0]}</span>
                     ) : (
                       <img
-                        src={`https://logo.clearbit.com/${domain}`}
+                        src={logoUrl}
                         alt={sym}
                         onError={() => setImgError((p) => ({ ...p, [sym]: true }))}
-                        className="w-full h-full object-cover rounded-full"
+                        className="w-full h-full object-contain p-[3px]"
                       />
                     )}
                   </div>
@@ -219,4 +208,4 @@ export default function MarketSection() {
       </div>
     </section>
   );
-    }
+            }
