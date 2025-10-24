@@ -79,7 +79,7 @@ export default function Home() {
     if (active === "market") {
       return (
         <MarketSection
-          title="🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery)"
+          title="OriginX  (AI Discovery)"
           loading={loadingDiscovery}
           rows={futureDiscovery}
           favorites={favorites}
