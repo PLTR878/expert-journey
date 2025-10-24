@@ -138,7 +138,7 @@ export default function Home() {
       <nav className="fixed bottom-0 left-0 right-0 bg-[#0b1220] border-t border-white/5 flex justify-around text-gray-400 text-[11px]">
         {[
           { id: "favorites", label: "Favorites", icon: "💙" },
-          { id: "market", label: "หุ้นต้นน้ำ", icon: "🌋" },
+          { id: "market", label: "OriginX", icon: "🌋" },
           { id: "scan", label: "Scanner", icon: "📡" },
           { id: "trade", label: "AI Trade", icon: "🤖" },
         ].map((t) => (
