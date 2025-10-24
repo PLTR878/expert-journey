@@ -1,4 +1,4 @@
-// ✅ /components/MarketSection.js — Visionary Discovery (เหมือน Favorites ทุกอย่าง)
+// ✅ /components/MarketSection.js — OriginX (เหมือน Favorites ทุกอย่าง)
 import { useState, useRef, useEffect } from "react";
 
 export default function MarketSection() {
@@ -110,9 +110,7 @@ export default function MarketSection() {
 
       setData((prev) => {
         const existing = prev.find((x) => x.symbol === sym);
-        return existing
-          ? prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x))
-          : [...prev, item];
+        return existing ? prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x)) : [...prev, item];
       });
     } catch (err) {
       console.error(`❌ Fetch error ${sym}:`, err);
@@ -158,8 +156,8 @@ export default function MarketSection() {
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
-        <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)
+        <h2 className="text-[22px] font-extrabold text-white tracking-tight uppercase font-sans flex items-center gap-2">
+          🚀 OriginX
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -190,10 +188,10 @@ export default function MarketSection() {
                     {imgError[sym] ? (
                       <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300">
                         <span
-                          className="text-black font-extrabold text-[11px] uppercase tracking-tight mt-[3px]"
+                          className="text-black font-extrabold text-[10px] uppercase tracking-tight mt-[2px]"
                           style={{
                             fontFamily: `'Poppins', 'Roboto Mono', sans-serif`,
-                            letterSpacing: "-0.2px",
+                            letterSpacing: "-0.3px",
                           }}
                         >
                           {sym}
@@ -296,4 +294,4 @@ export default function MarketSection() {
       )}
     </section>
   );
-}
+                     }
