@@ -1,17 +1,15 @@
-// ✅ /components/MarketSection.js — หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro, Smart Logo Edition)
+// ✅ /components/MarketSection.js — หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro, Visionary Style)
 import { useState, useRef, useEffect } from "react";
 
-// ✅ ฟังก์ชันสร้างโลโก้อัจฉริยะ
+// ✅ ฟังก์ชันโลโก้: ใช้ TradingView > Clearbit > Fallback
 function StockLogo({ sym, imgError, setImgError }) {
-  const tradingView = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
-  const clearbit = `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
+  const tv = `https://s3-symbol-logo.tradingview.com/${sym.toLowerCase()}.svg`;
+  const cb = `https://logo.clearbit.com/${sym.toLowerCase()}.com`;
 
-  // ลอง TradingView ก่อน
   if (imgError[sym] === "tv") {
-    // ถ้า TradingView ไม่มี → Clearbit
     return (
       <img
-        src={clearbit}
+        src={cb}
         alt={sym}
         onError={() => setImgError((p) => ({ ...p, [sym]: "none" }))}
         className="w-full h-full object-contain rounded-full bg-[#0b0f17]"
@@ -20,28 +18,27 @@ function StockLogo({ sym, imgError, setImgError }) {
   }
 
   if (imgError[sym] === "none") {
-    // ถ้าไม่มีโลโก้ → วาด Gradient + ตัวอักษร
-    const colors = [
-      "from-emerald-400 to-teal-600",
-      "from-blue-400 to-indigo-600",
-      "from-pink-400 to-rose-500",
-      "from-yellow-400 to-orange-500",
-      "from-purple-400 to-violet-600",
-    ];
-    const rand = colors[sym.charCodeAt(0) % colors.length];
     return (
-      <div
-        className={`w-full h-full flex items-center justify-center text-white text-sm font-bold rounded-full bg-gradient-to-br ${rand}`}
-      >
-        {sym[0]}
+      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300">
+        <span
+          className="text-black font-extrabold text-[11px] uppercase tracking-tight mt-[3px]"
+          style={{
+            fontFamily: `'Poppins', 'Roboto Mono', sans-serif`,
+            letterSpacing: "-0.2px",
+          }}
+        >
+          {sym}
+        </span>
+        <span className="text-[8px] text-gray-700 font-semibold leading-none mt-[1px]">
+          ➕
+        </span>
       </div>
     );
   }
 
-  // เริ่มจาก TradingView
   return (
     <img
-      src={tradingView}
+      src={tv}
       alt={sym}
       onError={() => setImgError((p) => ({ ...p, [sym]: "tv" }))}
       className="w-full h-full object-contain p-[3px]"
@@ -82,7 +79,7 @@ export default function MarketSection() {
   // ✅ ดึงข้อมูลราคาหุ้น
   const fetchStockData = async (sym) => {
     try {
-      const res = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`);
+      const res = await fetch(`/api/visionary-core?type=daily&symbol=${sym}`, { cache: "no-store" });
       const core = await res.json();
 
       const price = core?.lastClose ?? 0;
@@ -110,28 +107,19 @@ export default function MarketSection() {
     if (stocks?.length > 0) stocks.forEach((sym) => fetchStockData(sym));
   }, [stocks]);
 
-  // ✅ เพิ่มหุ้นใหม่
+  // ✅ เพิ่มหุ้นใหม่ (เหมือน Favorites)
   const handleAdd = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
-    if (!stocks.includes(sym)) {
-      const updated = [...stocks, sym];
+
+    const stored = JSON.parse(localStorage.getItem("discovery-stocks") || "[]");
+    if (!stored.includes(sym)) {
+      const updated = [...stored, sym];
       setStocks(updated);
       localStorage.setItem("discovery-stocks", JSON.stringify(updated));
       await fetchStockData(sym);
     }
     setSymbol("");
-  };
-
-  // ✅ ลบหุ้นด้วย swipe
-  const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
-  const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
-  const handleTouchEnd = (sym) => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const distance = touchStartX.current - touchEndX.current;
-    if (distance > 70) removeStock(sym);
-    touchStartX.current = null;
-    touchEndX.current = null;
   };
 
   // ✅ ลบหุ้น
@@ -142,10 +130,21 @@ export default function MarketSection() {
     setData((prev) => prev.filter((x) => x.symbol !== sym));
   };
 
+  // ✅ swipe ลบ
+  const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
+  const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
+  const handleTouchEnd = (sym) => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > 70) removeStock(sym);
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   return (
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4 px-[2px] sm:px-2">
+      <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🌋 หุ้นต้นน้ำ อนาคตไกล (AI Discovery Pro)
         </h2>
@@ -192,7 +191,6 @@ export default function MarketSection() {
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     <StockLogo sym={sym} imgError={imgError} setImgError={setImgError} />
                   </div>
-
                   <div>
                     <a
                       href={`/analyze/${sym}`}
@@ -247,4 +245,4 @@ export default function MarketSection() {
       </div>
     </section>
   );
-        }
+    }
