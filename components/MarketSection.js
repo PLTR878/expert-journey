@@ -1,46 +1,45 @@
-// ✅ /components/MarketSection.js — OriginX Picks (Fixed Version)
+// ✅ /components/MarketSection.js — OriginX Picks (TradingView Style)
 import { useEffect, useState } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
 
-  // ✅ รายชื่อหุ้นที่พี่คัดเอง (25 ตัว)
+  // ✅ หุ้นทั้งหมด 25 ตัว
   const symbols = [
-    "LAES", "PATH", "WULF", "AXTI", "CCCX", "RXRX", "SOFI", "RKLB", "LWLG",
-    "ASTS", "BBAI", "SLDP", "CRSP", "ACHR", "OSCR", "KSCP", "MVIS", "HASI",
-    "IREN", "GWH", "AEHR", "PLTR", "NRGV", "ENVX", "SES"
+    "WULF","DNA","BYND","OSCR","BBAI","ACHR","PATH","MVIS","SES","KSCP",
+    "CCCX","RKLB","ASTS","CRSP","SLDP","ENVX","SOFI","HASI","LWLG","SOUN",
+    "AXTI","LAES","RXRX","NRGV","PLTR"
   ];
 
-  // ✅ แผนที่โลโก้ (แก้ให้ถูก domain)
+  // ✅ แผนที่โลโก้ (อัปเดตครบ)
   const logoMap = {
-    LAES: "sealsq.com",
-    PATH: "uipath.com",
-    WULF: "terawulf.com",
-    AXTI: "axt.com",
-    CCCX: "churchillcapitalcorp.com",
-    RXRX: "recursion.com",
-    SOFI: "sofi.com",
-    RKLB: "rocketlabusa.com",
-    LWLG: "lightwavelogic.com",
-    ASTS: "ast-science.com",
-    BBAI: "bigbear.ai",
-    SLDP: "solidpowerbattery.com",
-    CRSP: "crisprtx.com",
-    ACHR: "archer.com",
-    OSCR: "hioscar.com",
-    KSCP: "knightscope.com",
-    MVIS: "microvision.com",
-    HASI: "hannonarmstrong.com",
-    IREN: "irisenergy.co",
-    GWH: "esstech.com",
-    AEHR: "aehr.com",
-    PLTR: "palantir.com",
-    NRGV: "energyvault.com",
-    ENVX: "enovix.com",
-    SES: "ses.ai",
+    WULF:"terawulf.com",
+    DNA:"ginkgobioworks.com",
+    BYND:"beyondmeat.com",
+    OSCR:"hioscar.com",
+    BBAI:"bigbear.ai",
+    ACHR:"archer.com",
+    PATH:"uipath.com",
+    MVIS:"microvision.com",
+    SES:"ses.ai",
+    KSCP:"knightscope.com",
+    CCCX:"churchillcapitalcorp.com",
+    RKLB:"rocketlabusa.com",
+    ASTS:"ast-science.com",
+    CRSP:"crisprtx.com",
+    SLDP:"solidpowerbattery.com",
+    ENVX:"enovix.com",
+    SOFI:"sofi.com",
+    HASI:"hannonarmstrong.com",
+    LWLG:"lightwavelogic.com",
+    SOUN:"soundhound.com",
+    AXTI:"axt.com",
+    LAES:"sealsq.com",
+    RXRX:"recursion.com",
+    NRGV:"energyvault.com",
+    PLTR:"palantir.com"
   };
 
-  // ✅ ดึงข้อมูลจาก API
   useEffect(() => {
     async function loadAll() {
       const results = [];
@@ -48,16 +47,13 @@ export default function MarketSection() {
         try {
           const res = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
           const json = await res.json();
-
           const price = json?.lastClose ?? 0;
           const rsi = json?.rsi ?? 50;
-          const trend = json?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
-          const signal = trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
+          const signal = rsi > 55 ? "Buy" : rsi < 45 ? "Sell" : "Hold";
           const company = json?.companyName || sym;
-
-          results.push({ symbol: sym, price, rsi, signal, company });
+          results.push({ symbol: sym, company, price, rsi, signal });
         } catch (err) {
-          console.warn("Fetch fail", sym, err);
+          console.warn("Error:", sym, err);
         }
       }
       setData(results);
@@ -66,43 +62,43 @@ export default function MarketSection() {
   }, []);
 
   return (
-    <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
-      <h2 className="text-[22px] font-extrabold text-white tracking-tight uppercase font-sans flex items-center gap-2 mb-4">
+    <section className="w-full bg-[#0b1220] min-h-screen text-gray-100 px-2 pt-3">
+      <h2 className="text-[22px] font-extrabold text-white flex items-center gap-2 mb-4">
         🚀 OriginX Picks
       </h2>
 
-      <div className="flex flex-col divide-y divide-gray-800/50">
-        {data.length > 0 ? (
-          data.map((r, i) => (
+      {data.length === 0 ? (
+        <div className="text-center text-gray-400 py-10 italic">⏳ Loading data...</div>
+      ) : (
+        <div className="flex flex-col divide-y divide-gray-800/50">
+          {data.map((r, i) => (
             <a
-              key={r.symbol + i}
+              key={i}
               href={`/analyze/${r.symbol}`}
-              className="flex items-center justify-between py-[12px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
+              className="flex items-center justify-between py-[10px] px-1 hover:bg-[#111827]/60 transition-all"
             >
               <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-700 flex items-center justify-center bg-[#0d111a]">
                   <img
                     src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
                     alt={r.symbol}
-                    className="w-full h-full object-cover rounded-full"
+                    className="w-full h-full object-cover"
                     onError={(e) => {
                       e.target.src = `https://placehold.co/48x48/0b1220/FFF?text=${r.symbol}`;
                     }}
                   />
                 </div>
                 <div>
-                  <div className="text-white font-semibold text-[15px]">{r.symbol}</div>
-                  <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                  <div className="text-white text-[15px] font-semibold">{r.symbol}</div>
+                  <div className="text-gray-400 text-[11px] font-medium truncate max-w-[150px]">
                     {r.company}
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col items-end font-mono pr-[3px] sm:pr-4 leading-tight">
-                <span className="text-gray-100 text-[14px] font-semibold">
-                  ${r.price.toFixed(2)}
-                </span>
-                <span
+              <div className="text-right pr-3 leading-tight font-mono">
+                <div className="text-[14px] text-white font-semibold">${r.price.toFixed(2)}</div>
+                <div
                   className={`text-[13px] font-semibold ${
                     r.rsi > 70
                       ? "text-red-400"
@@ -112,8 +108,8 @@ export default function MarketSection() {
                   }`}
                 >
                   {Math.round(r.rsi)}
-                </span>
-                <span
+                </div>
+                <div
                   className={`text-[13px] font-bold ${
                     r.signal === "Buy"
                       ? "text-green-400"
@@ -123,14 +119,12 @@ export default function MarketSection() {
                   }`}
                 >
                   {r.signal}
-                </span>
+                </div>
               </div>
             </a>
-          ))
-        ) : (
-          <div className="py-10 text-center text-gray-500 italic">⏳ Loading OriginX Picks...</div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
-            }
+                      }
