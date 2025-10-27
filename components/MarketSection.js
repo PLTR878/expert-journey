@@ -1,4 +1,4 @@
-// ✅ /components/MarketSection.js — OriginX Picks (Right-Tight Layout)
+// ✅ /components/MarketSection.js — OriginX Picks (Right Edge Layout)
 import { useEffect, useState } from "react";
 
 export default function MarketSection() {
@@ -92,8 +92,8 @@ export default function MarketSection() {
                 </div>
               </div>
 
-              {/* ราคา + RSI + สัญญาณ */}
-              <div className="text-right leading-tight font-mono min-w-[70px] pr-[2px]">
+              {/* ✅ ราคา + RSI + สัญญาณ (ชิดขอบขวาสุด) */}
+              <div className="text-right leading-tight font-mono min-w-[70px] pr-0 mr-[-12px]">
                 <div className="text-[15px] text-white font-extrabold">
                   ${r.price.toFixed(2)}
                 </div>
@@ -126,4 +126,4 @@ export default function MarketSection() {
       )}
     </section>
   );
-}
+        }
