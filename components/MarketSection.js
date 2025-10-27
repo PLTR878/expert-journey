@@ -1,17 +1,17 @@
-// ✅ /components/MarketSection.js — OriginX Picks (TradingView Style)
+// ✅ /components/MarketSection.js — OriginX Picks (TradingView Style v2)
 import { useEffect, useState } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
 
-  // ✅ หุ้นทั้งหมด 25 ตัว
+  // ✅ หุ้นทั้งหมด 25 ตัว (เอา PLTR ออก + ใส่ RIVN)
   const symbols = [
     "WULF","DNA","BYND","OSCR","BBAI","ACHR","PATH","MVIS","SES","KSCP",
     "CCCX","RKLB","ASTS","CRSP","SLDP","ENVX","SOFI","HASI","LWLG","SOUN",
-    "AXTI","LAES","RXRX","NRGV","PLTR"
+    "AXTI","LAES","RXRX","NRGV","RIVN"
   ];
 
-  // ✅ แผนที่โลโก้ (อัปเดตครบ)
+  // ✅ แผนที่โลโก้ครบ
   const logoMap = {
     WULF:"terawulf.com",
     DNA:"ginkgobioworks.com",
@@ -37,7 +37,7 @@ export default function MarketSection() {
     LAES:"sealsq.com",
     RXRX:"recursion.com",
     NRGV:"energyvault.com",
-    PLTR:"palantir.com"
+    RIVN:"rivian.com"
   };
 
   useEffect(() => {
@@ -77,6 +77,7 @@ export default function MarketSection() {
               href={`/analyze/${r.symbol}`}
               className="flex items-center justify-between py-[10px] px-1 hover:bg-[#111827]/60 transition-all"
             >
+              {/* โลโก้ + ชื่อ */}
               <div className="flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-700 flex items-center justify-center bg-[#0d111a]">
                   <img
@@ -89,17 +90,20 @@ export default function MarketSection() {
                   />
                 </div>
                 <div>
-                  <div className="text-white text-[15px] font-semibold">{r.symbol}</div>
+                  <div className="text-white text-[16px] font-black tracking-wide">
+                    {r.symbol}
+                  </div>
                   <div className="text-gray-400 text-[11px] font-medium truncate max-w-[150px]">
                     {r.company}
                   </div>
                 </div>
               </div>
 
+              {/* ราคา + RSI + สัญญาณ */}
               <div className="text-right pr-3 leading-tight font-mono">
-                <div className="text-[14px] text-white font-semibold">${r.price.toFixed(2)}</div>
+                <div className="text-[15px] text-white font-extrabold">${r.price.toFixed(2)}</div>
                 <div
-                  className={`text-[13px] font-semibold ${
+                  className={`text-[13px] font-bold ${
                     r.rsi > 70
                       ? "text-red-400"
                       : r.rsi < 40
@@ -110,7 +114,7 @@ export default function MarketSection() {
                   {Math.round(r.rsi)}
                 </div>
                 <div
-                  className={`text-[13px] font-bold ${
+                  className={`text-[13px] font-extrabold ${
                     r.signal === "Buy"
                       ? "text-green-400"
                       : r.signal === "Sell"
@@ -127,4 +131,4 @@ export default function MarketSection() {
       )}
     </section>
   );
-                      }
+        }
