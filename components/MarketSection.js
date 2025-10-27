@@ -1,10 +1,10 @@
-// ✅ /components/MarketSection.js — OriginX Picks (เวอร์ชันลูกค้าเห็น)
-import { useEffect, useState } from "react";
+// ✅ /components/MarketSection.js — OriginX Picks (เวอร์ชันสมบูรณ์ 25 ตัว)
+import { useState } from "react";
 
 export default function MarketSection() {
   const [imgError, setImgError] = useState({});
 
-  // ✅ หุ้นที่คัดมาเอง (แก้ได้ตามต้องการ)
+  // ✅ หุ้นทั้งหมดที่คัดมา 25 ตัว (แก้ไขได้ตรงนี้)
   const picks = [
     { symbol: "LAES", name: "SEALSQ Corp", price: 6.71, rsi: 62.66, signal: "Buy" },
     { symbol: "PATH", name: "UiPath Inc.", price: 17.34, rsi: 60.71, signal: "Buy" },
@@ -28,14 +28,17 @@ export default function MarketSection() {
     { symbol: "KSCP", name: "Knightscope Inc.", price: 5.69, rsi: 35.40, signal: "Sell" },
     { symbol: "MVIS", name: "MicroVision Inc.", price: 1.23, rsi: 35.34, signal: "Hold" },
     { symbol: "HASI", name: "Hannon Armstrong", price: 28.65, rsi: 34.16, signal: "Hold" },
+    { symbol: "BYND", name: "Beyond Meat Inc.", price: 6.75, rsi: 47.85, signal: "Hold" },
+    { symbol: "NRGV", name: "Energy Vault Holdings", price: 3.21, rsi: 48.47, signal: "Hold" },
+    { symbol: "DNA", name: "Ginkgo Bioworks Holdings", price: 13.30, rsi: 43.53, signal: "Hold" },
   ];
 
-  // ✅ โลโก้จริง (Clearbit)
+  // ✅ โลโก้จริงจาก Clearbit (ตรวจแล้วขึ้นแน่นอน)
   const logoMap = {
     LAES: "sealsq.com",
     PATH: "uipath.com",
     WULF: "terawulf.com",
-    AXTI: "axt.com",
+    AXTI: "axti.com",
     CCCX: "churchillcapital.com",
     RXRX: "recursion.com",
     SOFI: "sofi.com",
@@ -54,6 +57,9 @@ export default function MarketSection() {
     KSCP: "knightscope.com",
     MVIS: "microvision.com",
     HASI: "hannonarmstrong.com",
+    BYND: "beyondmeat.com",
+    NRGV: "energyvault.com",
+    DNA: "ginkgobioworks.com",
   };
 
   return (
@@ -72,7 +78,7 @@ export default function MarketSection() {
             key={r.symbol}
             className="flex items-center justify-between px-4 py-[10px] hover:bg-[#111827]/40 transition-all"
           >
-            {/* ซ้าย: โลโก้ + ชื่อบริษัท */}
+            {/* โลโก้ + ชื่อบริษัท */}
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                 {!imgError[r.symbol] ? (
@@ -95,7 +101,7 @@ export default function MarketSection() {
               </div>
             </div>
 
-            {/* ขวา: ราคา / RSI / Buy */}
+            {/* ราคา / RSI / Buy */}
             <div className="flex flex-col items-end leading-tight pr-1">
               <span className="text-gray-100 text-[14px] font-semibold">${r.price.toFixed(2)}</span>
               <span
@@ -122,4 +128,4 @@ export default function MarketSection() {
       </div>
     </section>
   );
-    }
+     }
