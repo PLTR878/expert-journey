@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Fixed Add Function + Fallback Logo)
+// ✅ /components/Favorites.js — Visionary Favorites (OriginX Style Vertical RSI)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -9,65 +9,28 @@ export default function Favorites({ favorites, setFavorites }) {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
 
-  // ✅ โลโก้หลัก
+  // ✅ โลโก้
   const logoMap = {
-    NVDA: "nvidia.com",
-    AAPL: "apple.com",
-    TSLA: "tesla.com",
-    MSFT: "microsoft.com",
-    AMZN: "amazon.com",
-    META: "meta.com",
-    GOOG: "google.com",
-    AMD: "amd.com",
-    INTC: "intel.com",
-    PLTR: "palantir.com",
-    IREN: "irisenergy.co",
-    RXRX: "recursion.com",
-    RR: "rolls-royce.com",
-    AEHR: "aehr.com",
-    SLDP: "solidpowerbattery.com",
-    NRGV: "energyvault.com",
-    BBAI: "bigbear.ai",
-    NVO: "novonordisk.com",
-    GWH: "esstech.com",
-    COST: "costco.com",
-    QUBT: "quantumcomputinginc.com",
-    UNH: "uhc.com",
-    EZGO: "ezgoev.com",
-    QMCO: "quantum.com",
-    LAC: "lithiumamericas.com",
+    NVDA: "nvidia.com", AAPL: "apple.com", TSLA: "tesla.com", MSFT: "microsoft.com",
+    AMZN: "amazon.com", META: "meta.com", GOOG: "google.com", AMD: "amd.com",
+    INTC: "intel.com", PLTR: "palantir.com", IREN: "irisenergy.co", RXRX: "recursion.com",
+    RR: "rolls-royce.com", AEHR: "aehr.com", SLDP: "solidpowerbattery.com",
+    NRGV: "energyvault.com", BBAI: "bigbear.ai", NVO: "novonordisk.com", GWH: "esstech.com",
+    COST: "costco.com", QUBT: "quantumcomputinginc.com", UNH: "uhc.com", EZGO: "ezgoev.com",
+    QMCO: "quantum.com", LAC: "lithiumamericas.com",
   };
 
-  // ✅ ชื่อบริษัท
   const companyMap = {
-    NVDA: "NVIDIA Corp",
-    AAPL: "Apple Inc.",
-    TSLA: "Tesla Inc.",
-    MSFT: "Microsoft Corp",
-    AMZN: "Amazon.com Inc.",
-    META: "Meta Platforms Inc.",
-    GOOG: "Alphabet Inc.",
-    AMD: "Advanced Micro Devices",
-    INTC: "Intel Corp",
-    PLTR: "Palantir Technologies",
-    IREN: "Iris Energy Ltd",
-    RXRX: "Recursion Pharmaceuticals",
-    RR: "Rolls-Royce Holdings",
-    AEHR: "Aehr Test Systems",
-    SLDP: "Solid Power Inc",
-    NRGV: "Energy Vault Holdings",
-    BBAI: "BigBear.ai Holdings",
-    NVO: "Novo Nordisk A/S",
-    GWH: "ESS Tech Inc",
-    COST: "Costco Wholesale Corp",
-    QUBT: "Quantum Computing Inc",
-    UNH: "UnitedHealth Group",
-    EZGO: "EZGO Technologies",
-    QMCO: "Quantum Corp",
-    LAC: "Lithium Americas",
+    NVDA: "NVIDIA Corp", AAPL: "Apple Inc.", TSLA: "Tesla Inc.", MSFT: "Microsoft Corp",
+    AMZN: "Amazon.com Inc.", META: "Meta Platforms Inc.", GOOG: "Alphabet Inc.",
+    AMD: "Advanced Micro Devices", INTC: "Intel Corp", PLTR: "Palantir Technologies",
+    IREN: "Iris Energy Ltd", RXRX: "Recursion Pharmaceuticals", RR: "Rolls-Royce Holdings",
+    AEHR: "Aehr Test Systems", SLDP: "Solid Power Inc", NRGV: "Energy Vault Holdings",
+    BBAI: "BigBear.ai Holdings", NVO: "Novo Nordisk A/S", GWH: "ESS Tech Inc",
+    COST: "Costco Wholesale Corp", QUBT: "Quantum Computing Inc", UNH: "UnitedHealth Group",
+    EZGO: "EZGO Technologies", QMCO: "Quantum Corp", LAC: "Lithium Americas",
   };
 
-  // ✅ ดึงข้อมูลจาก API
   const fetchStockData = async (sym) => {
     try {
       const coreRes = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
@@ -78,7 +41,6 @@ export default function Favorites({ favorites, setFavorites }) {
       let trend = core?.trend ?? null;
       let company = core?.companyName || companyMap[sym] || sym;
 
-      // ✅ ถ้า core ไม่มีข้อมูล → ลอง infinite-core
       if (!price || !trend) {
         try {
           const infRes = await fetch(`/api/visionary-infinite-core?symbol=${sym}`, { cache: "no-store" });
@@ -93,7 +55,7 @@ export default function Favorites({ favorites, setFavorites }) {
       const finalTrend = trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
       const signal = finalTrend === "Uptrend" ? "Buy" : finalTrend === "Downtrend" ? "Sell" : "Hold";
 
-      const item = { symbol: sym, companyName: company, lastClose: price, rsi, trend: finalTrend, signal };
+      const item = { symbol: sym, companyName: company, lastClose: price, rsi, signal };
 
       setData((prev) => {
         const existing = prev.find((x) => x.symbol === sym);
@@ -106,12 +68,10 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
-  // ✅ โหลดข้อมูลเมื่อ favorites เปลี่ยน
   useEffect(() => {
     if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
   }, [favorites]);
 
-  // ✅ เพิ่มหุ้น (แก้ใหม่ ใช้งานได้แน่นอน)
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
@@ -170,27 +130,18 @@ export default function Favorites({ favorites, setFavorites }) {
             return (
               <div
                 key={sym + i}
-                className="flex items-center justify-between py-[12px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
+                className="flex items-center justify-between py-[10px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={() => handleTouchEnd(sym)}
               >
-                <div className="flex items-center space-x-3">
-                  {/* ✅ โลโก้ fallback */}
+                {/* โลโก้ + ชื่อ */}
+                <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
                       <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300">
-                        <span
-                          className="text-black font-extrabold text-[11px] uppercase tracking-tight mt-[3px]"
-                          style={{
-                            fontFamily: `'Poppins', 'Roboto Mono', sans-serif`,
-                            letterSpacing: "-0.2px",
-                          }}
-                        >
+                        <span className="text-black font-extrabold text-[11px] uppercase tracking-tight mt-[3px]">
                           {sym}
-                        </span>
-                        <span className="text-[8px] text-gray-700 font-semibold leading-none mt-[1px]">
-                          ➕
                         </span>
                       </div>
                     ) : (
@@ -202,39 +153,37 @@ export default function Favorites({ favorites, setFavorites }) {
                       />
                     )}
                   </div>
-
                   <div>
                     <a
                       href={`/analyze/${sym}`}
-                      className="text-white hover:text-emerald-400 font-semibold text-[15px]"
+                      className="text-white hover:text-emerald-400 font-extrabold text-[15px]"
                     >
                       {sym}
                     </a>
-                    <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                    <div className="text-[11px] text-gray-400 font-medium truncate max-w-[160px] leading-snug">
                       {companyName}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
-                  <span className="text-gray-100 text-[14px] font-semibold">
+                {/* ราคา + RSI + Signal (แนวตั้งเหมือน OriginX) */}
+                <div className="text-right leading-tight font-mono min-w-[75px]">
+                  <div className="text-[15px] text-white font-black">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
-                  </span>
-                  <span
-                    className={`text-[14px] font-semibold ${
-                      typeof r?.rsi === "number"
-                        ? r.rsi > 70
-                          ? "text-red-400"
-                          : r.rsi < 40
-                          ? "text-blue-400"
-                          : "text-emerald-400"
-                        : "text-gray-400"
+                  </div>
+                  <div
+                    className={`text-[13px] font-bold ${
+                      r?.rsi > 70
+                        ? "text-red-400"
+                        : r?.rsi < 40
+                        ? "text-blue-400"
+                        : "text-emerald-400"
                     }`}
                   >
-                    {typeof r?.rsi === "number" ? Math.round(r.rsi) : "-"}
-                  </span>
-                  <span
-                    className={`text-[14px] font-bold ${
+                    {r?.rsi ? Math.round(r.rsi) : "-"}
+                  </div>
+                  <div
+                    className={`text-[13px] font-extrabold ${
                       r?.signal === "Buy"
                         ? "text-green-400"
                         : r?.signal === "Sell"
@@ -243,7 +192,7 @@ export default function Favorites({ favorites, setFavorites }) {
                     }`}
                   >
                     {r?.signal || "-"}
-                  </span>
+                  </div>
                 </div>
               </div>
             );
@@ -287,4 +236,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-}
+    }
