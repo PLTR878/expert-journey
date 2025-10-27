@@ -1,17 +1,17 @@
-// ✅ /components/MarketSection.js — OriginX Picks (Full Company Name Added)
+// ✅ /components/MarketSection.js — OriginX Picks (Full Company Names Visible)
 import { useEffect, useState } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
 
-  // ✅ หุ้นทั้งหมด 25 ตัว (มี RIVN แทน PLTR)
+  // ✅ หุ้นทั้งหมด 25 ตัว (RIVN แทน PLTR)
   const symbols = [
     "WULF","DNA","BYND","OSCR","BBAI","ACHR","PATH","MVIS","SES","KSCP",
     "CCCX","RKLB","ASTS","CRSP","SLDP","ENVX","SOFI","HASI","LWLG","SOUN",
     "AXTI","LAES","RXRX","NRGV","RIVN"
   ];
 
-  // ✅ แผนที่โลโก้
+  // ✅ โลโก้บริษัท
   const logoMap = {
     WULF:"terawulf.com",
     DNA:"ginkgobioworks.com",
@@ -40,6 +40,35 @@ export default function MarketSection() {
     RIVN:"rivian.com"
   };
 
+  // ✅ ชื่อเต็มบริษัท
+  const companyMap = {
+    WULF:"TeraWulf Inc.",
+    DNA:"Ginkgo Bioworks Holdings Inc.",
+    BYND:"Beyond Meat Inc.",
+    OSCR:"Oscar Health Inc.",
+    BBAI:"BigBear.ai Holdings Inc.",
+    ACHR:"Archer Aviation Inc.",
+    PATH:"UiPath Inc.",
+    MVIS:"MicroVision Inc.",
+    SES:"SES AI Corporation",
+    KSCP:"Knightscope Inc.",
+    CCCX:"Churchill Capital Corp X",
+    RKLB:"Rocket Lab USA Inc.",
+    ASTS:"AST SpaceMobile Inc.",
+    CRSP:"CRISPR Therapeutics AG",
+    SLDP:"Solid Power Inc.",
+    ENVX:"Enovix Corporation",
+    SOFI:"SoFi Technologies Inc.",
+    HASI:"Hannon Armstrong Sustainable Infrastructure Capital Inc.",
+    LWLG:"Lightwave Logic Inc.",
+    SOUN:"SoundHound AI Inc.",
+    AXTI:"AXT Inc.",
+    LAES:"SEALSQ Corp",
+    RXRX:"Recursion Pharmaceuticals Inc.",
+    NRGV:"Energy Vault Holdings Inc.",
+    RIVN:"Rivian Automotive Inc."
+  };
+
   useEffect(() => {
     async function loadAll() {
       const results = [];
@@ -50,7 +79,7 @@ export default function MarketSection() {
           const price = json?.lastClose ?? 0;
           const rsi = json?.rsi ?? 50;
           const signal = rsi > 55 ? "Buy" : rsi < 45 ? "Sell" : "Hold";
-          const company = json?.companyName || sym;
+          const company = json?.companyName || companyMap[sym] || sym;
           results.push({ symbol: sym, company, price, rsi, signal });
         } catch (err) {
           console.warn("Error:", sym, err);
@@ -77,7 +106,7 @@ export default function MarketSection() {
               href={`/analyze/${r.symbol}`}
               className="flex items-center justify-between py-[10px] px-1 hover:bg-[#111827]/60 transition-all"
             >
-              {/* โลโก้ + ชื่อหุ้น */}
+              {/* โลโก้ + ชื่อ */}
               <div className="flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-700 flex items-center justify-center bg-[#0d111a]">
                   <img
@@ -93,7 +122,7 @@ export default function MarketSection() {
                   <div className="text-white text-[16px] font-black tracking-wide leading-tight">
                     {r.symbol}
                   </div>
-                  <div className="text-gray-400 text-[11px] font-medium truncate max-w-[160px] leading-snug">
+                  <div className="text-gray-400 text-[11px] font-medium truncate max-w-[180px] leading-snug">
                     {r.company}
                   </div>
                 </div>
@@ -131,4 +160,4 @@ export default function MarketSection() {
       )}
     </section>
   );
-        }
+    }
