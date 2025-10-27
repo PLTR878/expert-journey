@@ -1,22 +1,84 @@
-// ✅ /components/MarketSection.js — OriginX (แนวตั้งขวาเหมือน TradingView Mobile)
-import { useState } from "react";
+// ✅ /components/MarketSection.js — OriginX (Search เท่านั้น, ไม่มี Add)
+import { useState, useRef, useEffect } from "react";
 
 export default function MarketSection() {
+  const [stocks, setStocks] = useState([]);
+  const [data, setData] = useState([]);
   const [imgError, setImgError] = useState({});
+  const [search, setSearch] = useState("");
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
 
-  const data = [
-    { symbol: "LAES", company: "SEALSQ Corp", price: 6.71, rsi: 62.66, signal: "Buy" },
-    { symbol: "PATH", company: "UiPath Inc.", price: 17.34, rsi: 60.71, signal: "Buy" },
-    { symbol: "WULF", company: "TeraWulf Inc.", price: 13.63, rsi: 59.91, signal: "Buy" },
-    { symbol: "AXTI", company: "AXT Inc.", price: 6.12, rsi: 58.56, signal: "Buy" },
-    { symbol: "CCCX", company: "Churchill Capital Corp X", price: 22.25, rsi: 57.88, signal: "Buy" },
-    { symbol: "RXRX", company: "Recursion Pharmaceuticals", price: 6.10, rsi: 57.05, signal: "Buy" },
-    { symbol: "SOFI", company: "SoFi Technologies Inc.", price: 29.82, rsi: 56.70, signal: "Buy" },
-    { symbol: "RKLB", company: "Rocket Lab Corp.", price: 65.01, rsi: 56.39, signal: "Buy" },
-    { symbol: "LWLG", company: "Lightwave Logic Inc.", price: 4.87, rsi: 52.33, signal: "Buy" },
-    { symbol: "ASTS", company: "AST SpaceMobile Inc.", price: 76.99, rsi: 51.85, signal: "Buy" },
-  ];
+  // ✅ โหลดหุ้นจากหลังบ้าน (หรือจาก localStorage)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("discovery-stocks");
+      if (saved) setStocks(JSON.parse(saved));
+      else {
+        // 🔹 default หุ้นที่ backend กำหนดไว้
+        setStocks([
+          "LAES", "PATH", "WULF", "AXTI", "CCCX",
+          "RXRX", "SOFI", "RKLB", "LWLG", "ASTS",
+          "RIVN", "SOUN", "ENVX", "SES", "BBAI",
+          "SLDP", "CRSP", "ACHR", "OSCR", "KSCP", "MVIS"
+        ]);
+      }
+    } catch {}
+  }, []);
 
+  // ✅ ดึงข้อมูลหุ้นจาก API
+  const fetchStockData = async (sym) => {
+    try {
+      const res = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
+      const core = await res.json();
+
+      const price = core?.lastClose ?? 0;
+      const rsi = core?.rsi ?? 50;
+      const trend = core?.trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+      const signal = trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
+      const company = core?.companyName || sym;
+
+      const item = { symbol: sym, companyName: company, lastClose: price, rsi, trend, signal };
+
+      setData((prev) => {
+        const exist = prev.find((x) => x.symbol === sym);
+        return exist ? prev.map((x) => (x.symbol === sym ? item : x)) : [...prev, item];
+      });
+    } catch (err) {
+      console.error(`❌ Fetch error ${sym}:`, err);
+    }
+  };
+
+  // ✅ ดึงข้อมูลทั้งหมด (ครั้งเดียว)
+  useEffect(() => {
+    if (stocks.length > 0) stocks.forEach((sym) => fetchStockData(sym));
+  }, [stocks]);
+
+  // ✅ ลบหุ้นด้วยการ swipe ซ้าย
+  const removeStock = (sym) => {
+    const updated = stocks.filter((s) => s !== sym);
+    setStocks(updated);
+    localStorage.setItem("discovery-stocks", JSON.stringify(updated));
+    setData((prev) => prev.filter((x) => x.symbol !== sym));
+  };
+
+  const handleTouchStart = (e) => (touchStartX.current = e.targetTouches[0].clientX);
+  const handleTouchMove = (e) => (touchEndX.current = e.targetTouches[0].clientX);
+  const handleTouchEnd = (sym) => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > 70) removeStock(sym);
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  // ✅ กรองด้วยช่องค้นหา
+  const filtered = data.filter((x) =>
+    x.symbol.toLowerCase().includes(search.toLowerCase()) ||
+    x.companyName?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // ✅ โลโก้หลัก
   const logoMap = {
     LAES: "sealsq.com",
     PATH: "uipath.com",
@@ -28,67 +90,111 @@ export default function MarketSection() {
     RKLB: "rocketlabusa.com",
     LWLG: "lightwavelogic.com",
     ASTS: "ast-science.com",
+    RIVN: "rivian.com",
+    SOUN: "soundhound.com",
+    ENVX: "enovix.com",
+    SES: "ses.ai",
+    BBAI: "bigbear.ai",
+    SLDP: "solidpowerbattery.com",
+    CRSP: "crisprtx.com",
+    ACHR: "archer.com",
+    OSCR: "hioscar.com",
+    KSCP: "knightscope.com",
+    MVIS: "microvision.com",
   };
 
   return (
-    <section className="w-full min-h-screen bg-[#0b1220] text-gray-200 pt-3 font-[Inter]">
-      <div className="flex justify-between items-center mb-3 px-4">
-        <h2 className="text-[22px] font-extrabold text-white uppercase tracking-tight flex items-center gap-2">
-          🚀 ORIGINX
+    <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+      {/* 🔎 ช่องค้นหา */}
+      <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
+        <h2 className="text-[22px] font-extrabold text-white tracking-tight uppercase font-sans flex items-center gap-2">
+          🚀 OriginX
         </h2>
       </div>
 
-      <div className="flex flex-col divide-y divide-gray-800/60 pb-6">
-        {data.map((r) => (
-          <div
-            key={r.symbol}
-            className="flex items-center justify-between px-4 py-[10px] hover:bg-[#111827]/40 transition-all"
-          >
-            {/* ซ้าย: โลโก้ + ชื่อบริษัท */}
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                {!imgError[r.symbol] ? (
-                  <img
-                    src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
-                    alt={r.symbol}
-                    onError={() => setImgError((p) => ({ ...p, [r.symbol]: true }))}
-                    className="w-full h-full object-cover rounded-full"
-                  />
-                ) : (
-                  <span className="text-white font-bold text-[10px] uppercase">{r.symbol}</span>
-                )}
-              </div>
+      <div className="px-3 mb-4">
+        <input
+          type="text"
+          placeholder="ค้นหาหุ้น เช่น PLTR หรือ Tesla..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-[#111827]/90 border border-gray-700 rounded-md text-gray-100 text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+        />
+      </div>
 
-              <div>
-                <div className="text-white font-semibold text-[15px] leading-tight">{r.symbol}</div>
-                <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">{r.company}</div>
-              </div>
-            </div>
+      {/* ✅ รายการหุ้น */}
+      <div className="flex flex-col divide-y divide-gray-800/50">
+        {filtered?.length ? (
+          filtered.map((r, i) => {
+            const domain = logoMap[r.symbol] || `${r.symbol.toLowerCase()}.com`;
 
-            {/* ขวา: ราคา / RSI / Buy แนวตั้ง */}
-            <div className="flex flex-col items-end leading-tight pr-1">
-              <span className="text-gray-100 text-[14px] font-semibold">${r.price.toFixed(2)}</span>
-              <span
-                className={`text-[13px] font-semibold ${
-                  r.rsi > 70 ? "text-red-400" : r.rsi < 40 ? "text-blue-400" : "text-emerald-400"
-                }`}
+            return (
+              <div
+                key={r.symbol + i}
+                className="flex items-center justify-between py-[12px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={() => handleTouchEnd(r.symbol)}
               >
-                {r.rsi.toFixed(2)}
-              </span>
-              <span
-                className={`text-[13px] font-bold ${
-                  r.signal === "Buy"
-                    ? "text-green-400"
-                    : r.signal === "Sell"
-                    ? "text-red-400"
-                    : "text-yellow-400"
-                }`}
-              >
-                {r.signal}
-              </span>
-            </div>
-          </div>
-        ))}
+                {/* โลโก้ + ชื่อบริษัท */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                    {imgError[r.symbol] ? (
+                      <span className="text-white text-[10px] font-bold uppercase">{r.symbol}</span>
+                    ) : (
+                      <img
+                        src={`https://logo.clearbit.com/${domain}`}
+                        alt={r.symbol}
+                        onError={() => setImgError((p) => ({ ...p, [r.symbol]: true }))}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-white font-semibold text-[15px]">{r.symbol}</div>
+                    <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                      {r.companyName}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ราคา / RSI / Signal */}
+                <div className="flex flex-col items-end font-mono pr-[3px] sm:pr-4 leading-tight">
+                  <span className="text-gray-100 text-[14px] font-semibold">
+                    {r.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
+                  </span>
+                  <span
+                    className={`text-[13px] font-semibold ${
+                      typeof r.rsi === "number"
+                        ? r.rsi > 70
+                          ? "text-red-400"
+                          : r.rsi < 40
+                          ? "text-blue-400"
+                          : "text-emerald-400"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {typeof r.rsi === "number" ? Math.round(r.rsi) : "-"}
+                  </span>
+                  <span
+                    className={`text-[13px] font-bold ${
+                      r.signal === "Buy"
+                        ? "text-green-400"
+                        : r.signal === "Sell"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {r.signal || "-"}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="py-6 text-center text-gray-500 italic">ไม่พบหุ้นที่ตรงกับคำค้นหา</div>
+        )}
       </div>
     </section>
   );
