@@ -1,5 +1,5 @@
-// ✅ /components/MarketSection.js — OriginX (Perfect Alignment, Full Width)
-import { useState, useEffect } from "react";
+// ✅ /components/MarketSection.js — OriginX (แนวตั้งขวาเหมือน TradingView Mobile)
+import { useState } from "react";
 
 export default function MarketSection() {
   const [imgError, setImgError] = useState({});
@@ -38,68 +38,58 @@ export default function MarketSection() {
         </h2>
       </div>
 
-      {/* ✅ รายการหุ้น */}
       <div className="flex flex-col divide-y divide-gray-800/60 pb-6">
         {data.map((r) => (
           <div
             key={r.symbol}
-            className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center px-4 py-[11px] hover:bg-[#111827]/40 transition-all"
+            className="flex items-center justify-between px-4 py-[10px] hover:bg-[#111827]/40 transition-all"
           >
-            {/* โลโก้ */}
-            <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-              {!imgError[r.symbol] ? (
-                <img
-                  src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
-                  alt={r.symbol}
-                  onError={() => setImgError((p) => ({ ...p, [r.symbol]: true }))}
-                  className="w-full h-full object-cover rounded-full"
-                />
-              ) : (
-                <span className="text-white font-bold text-[10px] uppercase">{r.symbol}</span>
-              )}
-            </div>
+            {/* ซ้าย: โลโก้ + ชื่อบริษัท */}
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                {!imgError[r.symbol] ? (
+                  <img
+                    src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
+                    alt={r.symbol}
+                    onError={() => setImgError((p) => ({ ...p, [r.symbol]: true }))}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <span className="text-white font-bold text-[10px] uppercase">{r.symbol}</span>
+                )}
+              </div>
 
-            {/* ชื่อ */}
-            <div className="ml-3">
-              <div className="text-white font-semibold text-[14px] leading-tight">{r.symbol}</div>
-              <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
-                {r.company}
+              <div>
+                <div className="text-white font-semibold text-[15px] leading-tight">{r.symbol}</div>
+                <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">{r.company}</div>
               </div>
             </div>
 
-            {/* ราคา */}
-            <div className="text-gray-100 text-[14px] font-semibold text-right tabular-nums pr-2">
-              ${r.price.toFixed(2)}
-            </div>
-
-            {/* RSI */}
-            <div
-              className={`text-[14px] font-semibold text-right ${
-                r.rsi > 70
-                  ? "text-red-400"
-                  : r.rsi < 40
-                  ? "text-blue-400"
-                  : "text-emerald-400"
-              }`}
-            >
-              {r.rsi.toFixed(2)}
-            </div>
-
-            {/* สัญญาณ */}
-            <div
-              className={`text-[14px] font-bold text-right pl-3 ${
-                r.signal === "Buy"
-                  ? "text-green-400"
-                  : r.signal === "Sell"
-                  ? "text-red-400"
-                  : "text-yellow-400"
-              }`}
-            >
-              {r.signal}
+            {/* ขวา: ราคา / RSI / Buy แนวตั้ง */}
+            <div className="flex flex-col items-end leading-tight pr-1">
+              <span className="text-gray-100 text-[14px] font-semibold">${r.price.toFixed(2)}</span>
+              <span
+                className={`text-[13px] font-semibold ${
+                  r.rsi > 70 ? "text-red-400" : r.rsi < 40 ? "text-blue-400" : "text-emerald-400"
+                }`}
+              >
+                {r.rsi.toFixed(2)}
+              </span>
+              <span
+                className={`text-[13px] font-bold ${
+                  r.signal === "Buy"
+                    ? "text-green-400"
+                    : r.signal === "Sell"
+                    ? "text-red-400"
+                    : "text-yellow-400"
+                }`}
+              >
+                {r.signal}
+              </span>
             </div>
           </div>
         ))}
       </div>
     </section>
   );
-        }
+    }
