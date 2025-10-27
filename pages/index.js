@@ -1,7 +1,8 @@
-// ✅ Visionary Stock Screener — V∞.32 (Stable + Favorites Fixed + Full API)
+// ✅ Visionary Stock Screener — V∞.33 (AI Super Scanner Integrated)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
+import Scanner from "../pages/scanner"; // ✅ เพิ่ม Scanner ที่ทำงานจริง
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -24,6 +25,7 @@ export default function Home() {
     }
   }, []);
 
+  // ✅ บันทึก Favorites
   useEffect(() => {
     try {
       localStorage.setItem("favorites", JSON.stringify(favorites));
@@ -65,7 +67,7 @@ export default function Home() {
     }
   }
 
-  // ✅ Render หน้าปัจจุบัน
+  // ✅ Render หน้าแต่ละส่วน
   const renderPage = () => {
     if (active === "favorites") {
       return (
@@ -94,10 +96,14 @@ export default function Home() {
       );
     }
 
+    // ✅ แก้ส่วน Scanner ให้เชื่อมกับระบบจริง
     if (active === "scan")
       return (
-        <div className="text-center py-20 text-gray-400 italic">
-          🔍 Scanner — Coming soon...
+        <div className="p-4">
+          <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
+            🚀 AI Super Scanner
+          </h2>
+          <Scanner /> {/* ✅ เรียก component Scanner จริง */}
         </div>
       );
 
