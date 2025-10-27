@@ -1,10 +1,10 @@
-// ✅ /components/MarketSection.js — OriginX Top Picks (Fixed List)
+// ✅ /components/MarketSection.js — OriginX Top Picks (Refined TradingView Style)
 import { useState, useEffect } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
+  const [imgError, setImgError] = useState({});
 
-  // 🔹 หุ้นทั้งหมดในภาพ (รวมครบ)
   const topStocks = [
     "SOFI", "HASI", "RIVN", "LWLG", "SOUN", "AXTI", "LAES",
     "RXRX", "NRGV", "WULF", "DNA", "BYND", "OSCR", "BBAI",
@@ -68,7 +68,6 @@ export default function MarketSection() {
     ENVX: "enovix.com",
   };
 
-  // ✅ ดึงข้อมูลทั้งหมด
   useEffect(() => {
     (async () => {
       const result = [];
@@ -80,76 +79,66 @@ export default function MarketSection() {
           const rsi = core?.rsi ?? Math.floor(Math.random() * 20) + 40;
           const trend = core?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
           const signal = trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
-
-          result.push({
-            symbol: sym,
-            company: companyMap[sym],
-            price,
-            rsi,
-            signal,
-          });
-        } catch (err) {
-          console.error("❌ Error fetching", sym, err);
-        }
+          result.push({ symbol: sym, company: companyMap[sym], price, rsi, signal });
+        } catch {}
       }
-      // ✅ เรียงจาก RSI มาก → น้อย
       result.sort((a, b) => b.rsi - a.rsi);
       setData(result);
     })();
   }, []);
 
   return (
-    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen font-[Inter]">
       <div className="flex justify-between items-center mb-3 px-2">
         <h2 className="text-[22px] font-extrabold text-white tracking-tight uppercase flex items-center gap-2">
           🚀 OriginX Top Picks
         </h2>
       </div>
 
-      {/* ✅ ตารางหุ้น */}
       <div className="flex flex-col divide-y divide-gray-800/60">
         {data.length > 0 ? (
           data.map((r, i) => (
             <div
               key={r.symbol}
-              className="flex items-center justify-between py-[12px] px-[6px] hover:bg-[#111827]/40 transition-all"
+              className="flex items-center justify-between py-[10px] px-[4px] hover:bg-[#111827]/40 transition-all"
             >
               <div className="flex items-center space-x-3">
-                {/* อันดับ */}
-                <div className="text-gray-400 text-[11px] w-5 text-right">{i + 1}.</div>
+                <div className="text-gray-500 text-[11px] w-5 text-right">{i + 1}.</div>
 
                 {/* โลโก้ */}
-                <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                  <img
-                    src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
-                    alt={r.symbol}
-                    onError={(e) => (e.target.style.display = "none")}
-                    className="w-full h-full object-cover rounded-full"
-                  />
-                  <span className="absolute text-[10px] text-gray-200 font-bold">
-                    {r.symbol}
-                  </span>
+                <div className="relative w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                  {!imgError[r.symbol] ? (
+                    <img
+                      src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
+                      alt={r.symbol}
+                      onError={() => setImgError((p) => ({ ...p, [r.symbol]: true }))}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <span className="text-white font-extrabold text-[11px] uppercase tracking-tight">
+                      {r.symbol}
+                    </span>
+                  )}
                 </div>
 
+                {/* ชื่อ */}
                 <div>
-                  <a
-                    href={`/analyze/${r.symbol}`}
-                    className="text-white hover:text-emerald-400 font-semibold text-[15px]"
-                  >
+                  <div className="text-white font-semibold text-[14px] leading-tight">
                     {r.symbol}
-                  </a>
-                  <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
+                  </div>
+                  <div className="text-[11px] text-gray-400 font-medium truncate max-w-[150px]">
                     {r.company}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 font-mono pr-2">
-                <span className="text-gray-100 text-[14px] font-semibold">
+              {/* ขวา */}
+              <div className="flex items-center space-x-3 font-mono pr-[3px]">
+                <span className="text-gray-100 text-[13px] font-semibold">
                   {r.price ? `$${r.price.toFixed(2)}` : "-"}
                 </span>
                 <span
-                  className={`text-[14px] font-semibold ${
+                  className={`text-[13px] font-semibold ${
                     r.rsi > 70
                       ? "text-red-400"
                       : r.rsi < 40
@@ -160,7 +149,7 @@ export default function MarketSection() {
                   {r.rsi}
                 </span>
                 <span
-                  className={`text-[14px] font-bold ${
+                  className={`text-[13px] font-bold ${
                     r.signal === "Buy"
                       ? "text-green-400"
                       : r.signal === "Sell"
@@ -175,10 +164,10 @@ export default function MarketSection() {
           ))
         ) : (
           <div className="py-6 text-center text-gray-500 italic">
-            กำลังดึงข้อมูลหุ้นทั้งหมด...
+            กำลังดึงข้อมูล...
           </div>
         )}
       </div>
     </section>
   );
-                                        }
+    }
