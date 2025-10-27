@@ -1,72 +1,36 @@
-// ✅ /components/MarketSection.js — OriginX Picks (Full Company Names Visible)
+// ✅ /components/MarketSection.js — OriginX Picks (Right-Tight Layout)
 import { useEffect, useState } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
 
-  // ✅ หุ้นทั้งหมด 25 ตัว (RIVN แทน PLTR)
   const symbols = [
     "WULF","DNA","BYND","OSCR","BBAI","ACHR","PATH","MVIS","SES","KSCP",
     "CCCX","RKLB","ASTS","CRSP","SLDP","ENVX","SOFI","HASI","LWLG","SOUN",
     "AXTI","LAES","RXRX","NRGV","RIVN"
   ];
 
-  // ✅ โลโก้บริษัท
   const logoMap = {
-    WULF:"terawulf.com",
-    DNA:"ginkgobioworks.com",
-    BYND:"beyondmeat.com",
-    OSCR:"hioscar.com",
-    BBAI:"bigbear.ai",
-    ACHR:"archer.com",
-    PATH:"uipath.com",
-    MVIS:"microvision.com",
-    SES:"ses.ai",
-    KSCP:"knightscope.com",
-    CCCX:"churchillcapitalcorp.com",
-    RKLB:"rocketlabusa.com",
-    ASTS:"ast-science.com",
-    CRSP:"crisprtx.com",
-    SLDP:"solidpowerbattery.com",
-    ENVX:"enovix.com",
-    SOFI:"sofi.com",
-    HASI:"hannonarmstrong.com",
-    LWLG:"lightwavelogic.com",
-    SOUN:"soundhound.com",
-    AXTI:"axt.com",
-    LAES:"sealsq.com",
-    RXRX:"recursion.com",
-    NRGV:"energyvault.com",
-    RIVN:"rivian.com"
+    WULF:"terawulf.com", DNA:"ginkgobioworks.com", BYND:"beyondmeat.com",
+    OSCR:"hioscar.com", BBAI:"bigbear.ai", ACHR:"archer.com", PATH:"uipath.com",
+    MVIS:"microvision.com", SES:"ses.ai", KSCP:"knightscope.com", CCCX:"churchillcapitalcorp.com",
+    RKLB:"rocketlabusa.com", ASTS:"ast-science.com", CRSP:"crisprtx.com", SLDP:"solidpowerbattery.com",
+    ENVX:"enovix.com", SOFI:"sofi.com", HASI:"hannonarmstrong.com", LWLG:"lightwavelogic.com",
+    SOUN:"soundhound.com", AXTI:"axt.com", LAES:"sealsq.com", RXRX:"recursion.com",
+    NRGV:"energyvault.com", RIVN:"rivian.com"
   };
 
-  // ✅ ชื่อเต็มบริษัท
   const companyMap = {
-    WULF:"TeraWulf Inc.",
-    DNA:"Ginkgo Bioworks Holdings Inc.",
-    BYND:"Beyond Meat Inc.",
-    OSCR:"Oscar Health Inc.",
-    BBAI:"BigBear.ai Holdings Inc.",
-    ACHR:"Archer Aviation Inc.",
-    PATH:"UiPath Inc.",
-    MVIS:"MicroVision Inc.",
-    SES:"SES AI Corporation",
-    KSCP:"Knightscope Inc.",
-    CCCX:"Churchill Capital Corp X",
-    RKLB:"Rocket Lab USA Inc.",
-    ASTS:"AST SpaceMobile Inc.",
-    CRSP:"CRISPR Therapeutics AG",
-    SLDP:"Solid Power Inc.",
-    ENVX:"Enovix Corporation",
-    SOFI:"SoFi Technologies Inc.",
+    WULF:"TeraWulf Inc.", DNA:"Ginkgo Bioworks Holdings Inc.", BYND:"Beyond Meat Inc.",
+    OSCR:"Oscar Health Inc.", BBAI:"BigBear.ai Holdings Inc.", ACHR:"Archer Aviation Inc.",
+    PATH:"UiPath Inc.", MVIS:"MicroVision Inc.", SES:"SES AI Corporation",
+    KSCP:"Knightscope Inc.", CCCX:"Churchill Capital Corp X", RKLB:"Rocket Lab USA Inc.",
+    ASTS:"AST SpaceMobile Inc.", CRSP:"CRISPR Therapeutics AG", SLDP:"Solid Power Inc.",
+    ENVX:"Enovix Corporation", SOFI:"SoFi Technologies Inc.",
     HASI:"Hannon Armstrong Sustainable Infrastructure Capital Inc.",
-    LWLG:"Lightwave Logic Inc.",
-    SOUN:"SoundHound AI Inc.",
-    AXTI:"AXT Inc.",
-    LAES:"SEALSQ Corp",
-    RXRX:"Recursion Pharmaceuticals Inc.",
-    NRGV:"Energy Vault Holdings Inc.",
-    RIVN:"Rivian Automotive Inc."
+    LWLG:"Lightwave Logic Inc.", SOUN:"SoundHound AI Inc.",
+    AXTI:"AXT Inc.", LAES:"SEALSQ Corp", RXRX:"Recursion Pharmaceuticals Inc.",
+    NRGV:"Energy Vault Holdings Inc.", RIVN:"Rivian Automotive Inc."
   };
 
   useEffect(() => {
@@ -129,8 +93,10 @@ export default function MarketSection() {
               </div>
 
               {/* ราคา + RSI + สัญญาณ */}
-              <div className="text-right pr-3 leading-tight font-mono">
-                <div className="text-[15px] text-white font-extrabold">${r.price.toFixed(2)}</div>
+              <div className="text-right leading-tight font-mono min-w-[70px] pr-[2px]">
+                <div className="text-[15px] text-white font-extrabold">
+                  ${r.price.toFixed(2)}
+                </div>
                 <div
                   className={`text-[13px] font-bold ${
                     r.rsi > 70
@@ -160,4 +126,4 @@ export default function MarketSection() {
       )}
     </section>
   );
-    }
+}
