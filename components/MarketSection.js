@@ -1,131 +1,132 @@
-import { useState } from "react";
+// ✅ /components/MarketSection.js — OriginX Picks (TradingView Style)
+import { useEffect, useState } from "react";
 
-export default function OriginXSection() {
-  const [imgError, setImgError] = useState({});
+export default function MarketSection() {
+  const [data, setData] = useState([]);
 
-  // ✅ หุ้นที่อยากให้แสดงทันที
-  const stocks = [
-    { symbol: "LAES", name: "SEALSQ Corp", price: 6.71, rsi: 62.66, signal: "Buy" },
-    { symbol: "PATH", name: "UiPath Inc.", price: 17.34, rsi: 60.71, signal: "Buy" },
-    { symbol: "WULF", name: "TeraWulf Inc.", price: 13.63, rsi: 59.91, signal: "Buy" },
-    { symbol: "AXTI", name: "AXT Inc.", price: 6.12, rsi: 58.56, signal: "Buy" },
-    { symbol: "CCCX", name: "Churchill Capital Corp X", price: 22.25, rsi: 57.88, signal: "Buy" },
-    { symbol: "RXRX", name: "Recursion Pharmaceuticals", price: 6.10, rsi: 57.05, signal: "Buy" },
-    { symbol: "SOFI", name: "SoFi Technologies Inc.", price: 29.82, rsi: 56.70, signal: "Buy" },
-    { symbol: "RKLB", name: "Rocket Lab Corp.", price: 65.01, rsi: 56.39, signal: "Buy" },
-    { symbol: "LWLG", name: "Lightwave Logic Inc.", price: 4.87, rsi: 52.33, signal: "Buy" },
-    { symbol: "ASTS", name: "AST SpaceMobile Inc.", price: 76.99, rsi: 51.85, signal: "Buy" },
-    { symbol: "IREN", name: "Iris Energy Ltd", price: 64.41, rsi: 53, signal: "Buy" },
-    { symbol: "BBAI", name: "BigBear.ai Holdings", price: 7.08, rsi: 46, signal: "Hold" },
-    { symbol: "GWH", name: "ESS Tech Inc", price: 5.00, rsi: 60, signal: "Buy" },
-    { symbol: "PLUG", name: "Plug Power Inc", price: 2.95, rsi: 32, signal: "Hold" },
-    { symbol: "NVDA", name: "NVIDIA Corp", price: 191.36, rsi: 57, signal: "Buy" },
-    { symbol: "AEHR", name: "Aehr Test Systems", price: 12.50, rsi: 55, signal: "Buy" },
-    { symbol: "NRGV", name: "Energy Vault Holdings", price: 3.19, rsi: 48, signal: "Hold" },
-    { symbol: "CRSP", name: "CRISPR Therapeutics AG", price: 65.14, rsi: 42, signal: "Hold" },
-    { symbol: "ACHR", name: "Archer Aviation Inc", price: 11.38, rsi: 41, signal: "Buy" },
-    { symbol: "MVIS", name: "MicroVision Inc", price: 1.23, rsi: 35, signal: "Hold" },
-    { symbol: "KSCP", name: "Knightscope Inc", price: 5.69, rsi: 35, signal: "Sell" },
-    { symbol: "SLDP", name: "Solid Power Inc", price: 5.74, rsi: 44, signal: "Buy" },
-    { symbol: "SES", name: "SES AI Corp", price: 2.44, rsi: 45, signal: "Hold" },
-    { symbol: "OSCR", name: "Oscar Health Inc", price: 19.45, rsi: 38, signal: "Hold" },
-    { symbol: "HASI", name: "Hannon Armstrong", price: 28.65, rsi: 34, signal: "Hold" },
+  const symbols = [
+    "WULF","DNA","BYND","OSCR","BBAI","ACHR","PATH","MVIS","SES","KSCP",
+    "CCCX","RKLB","ASTS","CRSP","SLDP","ENVX","SOFI","HASI","LWLG","SOUN",
+    "AXTI","LAES","RXRX","NRGV","RIVN"
   ];
 
-  // ✅ โลโก้จริง
   const logoMap = {
-    LAES: "sealsq.com",
-    PATH: "uipath.com",
-    WULF: "terawulf.com",
-    AXTI: "axt.com",
-    CCCX: "churchillcapital.com",
-    RXRX: "recursion.com",
-    SOFI: "sofi.com",
-    RKLB: "rocketlabusa.com",
-    LWLG: "lightwavelogic.com",
-    ASTS: "ast-science.com",
-    IREN: "irisenergy.co",
-    BBAI: "bigbear.ai",
-    GWH: "esstech.com",
-    PLUG: "plugpower.com",
-    NVDA: "nvidia.com",
-    AEHR: "aehr.com",
-    NRGV: "energyvault.com",
-    CRSP: "crisprtx.com",
-    ACHR: "archer.com",
-    MVIS: "microvision.com",
-    KSCP: "knightscope.com",
-    SLDP: "solidpowerbattery.com",
-    SES: "ses.ai",
-    OSCR: "oscarhealth.com",
-    HASI: "hannonarmstrong.com",
+    WULF:"terawulf.com", DNA:"ginkgobioworks.com", BYND:"beyondmeat.com",
+    OSCR:"hioscar.com", BBAI:"bigbear.ai", ACHR:"archer.com", PATH:"uipath.com",
+    MVIS:"microvision.com", SES:"ses.ai", KSCP:"knightscope.com", CCCX:"churchillcapitalcorp.com",
+    RKLB:"rocketlabusa.com", ASTS:"ast-science.com", CRSP:"crisprtx.com", SLDP:"solidpowerbattery.com",
+    ENVX:"enovix.com", SOFI:"sofi.com", HASI:"hannonarmstrong.com", LWLG:"lightwavelogic.com",
+    SOUN:"soundhound.com", AXTI:"axt.com", LAES:"sealsq.com", RXRX:"recursion.com",
+    NRGV:"energyvault.com", RIVN:"rivian.com"
   };
 
+  const companyMap = {
+    WULF:"TeraWulf Inc.", DNA:"Ginkgo Bioworks Holdings Inc.", BYND:"Beyond Meat Inc.",
+    OSCR:"Oscar Health Inc.", BBAI:"BigBear.ai Holdings Inc.", ACHR:"Archer Aviation Inc.",
+    PATH:"UiPath Inc.", MVIS:"MicroVision Inc.", SES:"SES AI Corporation",
+    KSCP:"Knightscope Inc.", CCCX:"Churchill Capital Corp X", RKLB:"Rocket Lab USA Inc.",
+    ASTS:"AST SpaceMobile Inc.", CRSP:"CRISPR Therapeutics AG", SLDP:"Solid Power Inc.",
+    ENVX:"Enovix Corporation", SOFI:"SoFi Technologies Inc.",
+    HASI:"Hannon Armstrong Sustainable Infrastructure Capital Inc.",
+    LWLG:"Lightwave Logic Inc.", SOUN:"SoundHound AI Inc.",
+    AXTI:"AXT Inc.", LAES:"SEALSQ Corp", RXRX:"Recursion Pharmaceuticals Inc.",
+    NRGV:"Energy Vault Holdings Inc.", RIVN:"Rivian Automotive Inc."
+  };
+
+  async function loadAll() {
+    const results = [];
+    for (const sym of symbols) {
+      try {
+        const res = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
+        const json = await res.json();
+
+        const price = json?.lastClose ?? 0;
+        const prev = json?.previousClose ?? price;
+        const diff = price - prev;
+        const change = ((diff / prev) * 100).toFixed(2);
+
+        results.push({
+          symbol: sym,
+          company: companyMap[sym],
+          price,
+          diff,
+          change,
+        });
+      } catch (err) {
+        console.warn("Error:", sym, err);
+      }
+    }
+    setData(results);
+  }
+
+  useEffect(() => {
+    loadAll();
+    const interval = setInterval(loadAll, 60000); // ⏱ refresh ทุก 1 นาที
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <section className="w-full min-h-screen bg-[#0b1220] text-gray-200 pt-3 pb-8 font-[Inter]">
-      <div className="flex justify-between items-center mb-3 px-4">
-        <h2 className="text-[22px] font-extrabold text-white tracking-tight uppercase flex items-center gap-2">
-          🚀 OriginX Picks
-        </h2>
-      </div>
+    <section className="w-full bg-[#0b1220] min-h-screen text-gray-100 px-2 pt-3 font-sans">
+      <h2 className="text-[22px] font-extrabold text-white flex items-center gap-2 mb-4">
+        🚀 OriginX Picks
+      </h2>
 
-      <div className="flex flex-col divide-y divide-gray-800/60">
-        {stocks.map((r) => (
-          <div
-            key={r.symbol}
-            className="flex items-center justify-between px-4 py-[10px] hover:bg-[#111827]/40 transition-all"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                {!imgError[r.symbol] ? (
-                  <img
-                    src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
-                    alt={r.symbol}
-                    onError={() => setImgError((p) => ({ ...p, [r.symbol]: true }))}
-                    className="w-full h-full object-cover rounded-full"
-                  />
-                ) : (
-                  <span className="text-white font-bold text-[10px] uppercase">{r.symbol}</span>
-                )}
-              </div>
+      {data.length === 0 ? (
+        <div className="text-center text-gray-400 py-10 italic">⏳ Loading...</div>
+      ) : (
+        <div className="flex flex-col divide-y divide-gray-800/50">
+          {data.map((r, i) => {
+            const domain = logoMap[r.symbol];
+            const isUp = r.diff > 0;
+            const diffText = `${isUp ? "+" : ""}${r.diff.toFixed(2)}`;
+            const pctText = `${isUp ? "+" : ""}${r.change}%`;
 
-              <div>
-                <a
-                  href={`/analyze/${r.symbol}`}
-                  className="text-white hover:text-emerald-400 font-semibold text-[15px]"
-                >
-                  {r.symbol}
-                </a>
-                <div className="text-[11px] text-gray-400 font-medium truncate max-w-[140px]">
-                  {r.name}
+            return (
+              <a
+                key={i}
+                href={`/analyze/${r.symbol}`}
+                className="flex items-center justify-between py-[10px] px-1 hover:bg-[#111827]/60 transition-all"
+              >
+                {/* โลโก้ + ชื่อหุ้น */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-700 flex items-center justify-center bg-[#0d111a]">
+                    <img
+                      src={`https://logo.clearbit.com/${domain}`}
+                      alt={r.symbol}
+                      className="w-full h-full object-cover"
+                      onError={(e) =>
+                        (e.target.src = `https://placehold.co/48x48/0b1220/FFF?text=${r.symbol}`)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div className="text-white text-[15px] font-black tracking-wide leading-tight">
+                      {r.symbol}
+                    </div>
+                    <div className="text-gray-400 text-[11px] font-medium truncate max-w-[180px] leading-snug">
+                      {r.company}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="flex flex-col items-end leading-tight pr-1">
-              <span className="text-gray-100 text-[14px] font-semibold">${r.price}</span>
-              <span
-                className={`text-[13px] font-semibold ${
-                  r.rsi > 70 ? "text-red-400" : r.rsi < 40 ? "text-blue-400" : "text-emerald-400"
-                }`}
-              >
-                {r.rsi}
-              </span>
-              <span
-                className={`text-[13px] font-bold ${
-                  r.signal === "Buy"
-                    ? "text-green-400"
-                    : r.signal === "Sell"
-                    ? "text-red-400"
-                    : "text-yellow-400"
-                }`}
-              >
-                {r.signal}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+                {/* ราคา + เปลี่ยนแปลง */}
+                <div className="text-right leading-tight font-mono min-w-[80px] pr-[2px]">
+                  <div className="text-[15px] text-white font-extrabold">
+                    ${r.price.toFixed(2)}
+                  </div>
+                  <div
+                    className={`text-[13px] font-bold ${
+                      isUp ? "text-emerald-400" : "text-red-400"
+                    }`}
+                  >
+                    {diffText} ({pctText})
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
-                                                        }
+        }
