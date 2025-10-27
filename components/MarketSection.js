@@ -1,191 +1,137 @@
-// ✅ /components/MarketSection.js — OriginX Top Picks (Ranked AI Selection)
+// ✅ /components/MarketSection.js — OriginX Top Picks (Fixed List)
 import { useState, useEffect } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
-  const [imgError, setImgError] = useState({});
 
-  // ✅ หุ้น Top ที่เลือกไว้ล่วงหน้า
+  // รายชื่อหุ้นจากรูปทั้งหมด
   const topStocks = [
-    "PLTR", "AEHR", "RXRX", "NRGV", "GWH", "IREN", 
-    "SLDP", "BBAI", "NVO", "EYPT", "ACHR", "SOFI", 
-    "PATH", "SES", "KSCP", "LWLG"
+    "SOFI", "HASI", "RIVN", "LWLG", "SOUN", "AXTI", "LAES",
+    "RXRX", "NRGV", "WULF", "DNA", "BYND", "OSCR", "BBAI",
+    "ACHR", "PATH", "MVIS", "SES", "KSCP", "CCCX", "RKLB",
+    "ASTS", "CRSP", "SLDP", "ENVX"
   ];
 
-  // ✅ ชื่อบริษัท
-  const companyMap = {
-    PLTR: "Palantir Technologies",
-    AEHR: "Aehr Test Systems",
-    RXRX: "Recursion Pharmaceuticals",
-    NRGV: "Energy Vault Holdings",
-    GWH: "ESS Tech Inc",
-    IREN: "Iris Energy Ltd",
-    SLDP: "Solid Power Inc",
-    BBAI: "BigBear.ai Holdings",
-    NVO: "Novo Nordisk A/S",
-    EYPT: "EyePoint Pharmaceuticals",
-    ACHR: "Archer Aviation Inc",
-    SOFI: "SoFi Technologies Inc",
-    PATH: "UiPath Inc",
-    SES: "SES AI Corporation",
-    KSCP: "Knightscope Inc",
-    LWLG: "Lightwave Logic Inc",
+  // map domain โลโก้
+  const logoMap = {
+    SOFI: "sofi.com",
+    HASI: "hannonarmstrong.com",
+    RIVN: "rivian.com",
+    LWLG: "lightwavelogic.com",
+    SOUN: "soundhound.com",
+    AXTI: "axt.com",
+    LAES: "sealsq.com",
+    RXRX: "recursion.com",
+    NRGV: "energyvault.com",
+    WULF: "terawulf.com",
+    DNA: "ginkgobioworks.com",
+    BYND: "beyondmeat.com",
+    OSCR: "oscarhealth.com",
+    BBAI: "bigbear.ai",
+    ACHR: "archer.com",
+    PATH: "uipath.com",
+    MVIS: "microvision.com",
+    SES: "ses.ai",
+    KSCP: "knightscope.com",
+    CCCX: "churchillcapital.com",
+    RKLB: "rocketlabusa.com",
+    ASTS: "ast-science.com",
+    CRSP: "crisprtx.com",
+    SLDP: "solidpowerbattery.com",
+    ENVX: "enovix.com"
   };
 
-  // ✅ ดึงข้อมูลจาก API (core + infinite-core)
+  // ดึงข้อมูลจาก API
   const fetchStockData = async (sym) => {
     try {
       const coreRes = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
       const core = await coreRes.json();
-
       let price = core?.lastClose ?? 0;
       let rsi = core?.rsi ?? 50;
       let trend = core?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
-      let company = core?.companyName || companyMap[sym] || sym;
+      let signal = trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
 
-      if (!price || !rsi) {
-        try {
-          const infRes = await fetch(`/api/visionary-infinite-core?symbol=${sym}`, { cache: "no-store" });
-          const inf = await infRes.json();
-          price = inf?.lastClose ?? price;
-          rsi = inf?.rsi ?? rsi;
-          trend = inf?.trend ?? trend;
-          company = inf?.companyName || company;
-        } catch {}
-      }
-
-      const signal =
-        trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
-
-      const item = { symbol: sym, companyName: company, lastClose: price, rsi, trend, signal };
-
-      setData((prev) => {
-        const exist = prev.find((x) => x.symbol === sym);
-        return exist
-          ? prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x))
-          : [...prev, item];
-      });
+      setData((prev) => [
+        ...prev.filter((x) => x.symbol !== sym),
+        { symbol: sym, price, rsi, trend, signal }
+      ]);
     } catch (err) {
-      console.error(`❌ Fetch error ${sym}:`, err);
+      console.error("❌ Error:", sym, err);
     }
   };
 
   useEffect(() => {
-    topStocks.forEach((sym) => fetchStockData(sym));
+    topStocks.forEach((s) => fetchStockData(s));
   }, []);
 
-  // ✅ จัดอันดับ RSI จากสูง → ต่ำ
-  const ranked = [...data].sort((a, b) => (b?.rsi || 0) - (a?.rsi || 0));
-
-  // ✅ โลโก้หลัก
-  const logoMap = {
-    PLTR: "palantir.com",
-    AEHR: "aehr.com",
-    RXRX: "recursion.com",
-    NRGV: "energyvault.com",
-    GWH: "esstech.com",
-    IREN: "irisenergy.co",
-    SLDP: "solidpowerbattery.com",
-    BBAI: "bigbear.ai",
-    NVO: "novonordisk.com",
-    EYPT: "eyepointpharma.com",
-    ACHR: "archer.com",
-    SOFI: "sofi.com",
-    PATH: "uipath.com",
-    SES: "ses.ai",
-    KSCP: "knightscope.com",
-    LWLG: "lightwavelogic.com",
-  };
+  // เรียง RSI สูง -> ต่ำ
+  const sorted = [...data].sort((a, b) => (b.rsi || 0) - (a.rsi || 0));
 
   return (
-    <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
-      {/* ✅ Header */}
-      <div className="flex justify-between items-center mb-4 px-[2px] sm:px-2">
-        <h2 className="text-[22px] font-extrabold text-white tracking-tight uppercase font-sans flex items-center gap-2">
+    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-[22px] font-extrabold text-white uppercase flex items-center gap-2">
           🚀 OriginX Top Picks
         </h2>
-        <span className="text-[13px] text-gray-400">
-          {ranked.length ? `รวม ${ranked.length} ตัว` : "กำลังโหลด..."}
-        </span>
       </div>
 
-      {/* ✅ ตารางหุ้น */}
-      <div className="flex flex-col divide-y divide-gray-800/50">
-        {ranked.length ? (
-          ranked.map((r, i) => {
-            const sym = r.symbol;
-            const domain = logoMap[sym] || `${sym.toLowerCase()}.com`;
-
-            return (
-              <div
-                key={sym}
-                className="flex items-center justify-between py-[12px] px-[6px] sm:px-3 hover:bg-[#111827]/40 transition-all"
-              >
-                {/* โลโก้ + ชื่อ */}
-                <div className="flex items-center space-x-3">
-                  <div className="relative w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
-                    {imgError[sym] ? (
-                      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300">
-                        <span className="text-black font-extrabold text-[10px] uppercase tracking-tight">
-                          {sym}
-                        </span>
-                      </div>
-                    ) : (
-                      <img
-                        src={`https://logo.clearbit.com/${domain}`}
-                        alt={sym}
-                        onError={() => setImgError((p) => ({ ...p, [sym]: true }))}
-                        className="w-full h-full object-cover rounded-full"
-                      />
-                    )}
-                    <span className="absolute -top-1 -left-1 bg-emerald-500/80 text-[10px] font-bold text-white rounded-full w-[16px] h-[16px] flex items-center justify-center">
-                      {i + 1}
-                    </span>
+      {sorted.length ? (
+        <div className="flex flex-col divide-y divide-gray-800/50">
+          {sorted.map((r, i) => (
+            <div
+              key={r.symbol}
+              className="flex items-center justify-between py-[10px] px-2 hover:bg-[#111827]/40 transition-all"
+            >
+              {/* โลโก้ + ลำดับ */}
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="absolute -top-2 -left-2 text-[10px] text-gray-400 font-bold">
+                    {i + 1}
                   </div>
-
-                  <div>
-                    <div className="text-white font-semibold text-[15px]">{sym}</div>
-                    <div className="text-[11px] text-gray-400 font-medium truncate max-w-[150px]">
-                      {r.companyName}
-                    </div>
+                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] overflow-hidden flex items-center justify-center">
+                    <img
+                      src={`https://logo.clearbit.com/${logoMap[r.symbol] || r.symbol.toLowerCase() + ".com"}`}
+                      alt={r.symbol}
+                      className="w-full h-full object-cover rounded-full"
+                    />
                   </div>
                 </div>
 
-                {/* ขวา */}
-                <div className="flex items-center space-x-3 font-mono pr-[3px] sm:pr-4">
-                  <span className="text-gray-100 text-[14px] font-semibold">
-                    {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
-                  </span>
-                  <span
-                    className={`text-[14px] font-semibold ${
-                      r?.rsi > 70
-                        ? "text-red-400"
-                        : r?.rsi < 40
-                        ? "text-blue-400"
-                        : "text-emerald-400"
-                    }`}
-                  >
-                    {Math.round(r.rsi || 0)}
-                  </span>
-                  <span
-                    className={`text-[14px] font-bold ${
-                      r?.signal === "Buy"
+                <div>
+                  <div className="text-white font-bold text-[15px]">{r.symbol}</div>
+                  <div
+                    className={`text-[11px] font-medium ${
+                      r.signal === "Buy"
                         ? "text-green-400"
-                        : r?.signal === "Sell"
+                        : r.signal === "Sell"
                         ? "text-red-400"
                         : "text-yellow-400"
                     }`}
                   >
-                    {r?.signal}
-                  </span>
+                    {r.signal}
+                  </div>
                 </div>
               </div>
-            );
-          })
-        ) : (
-          <div className="py-6 text-center text-gray-500 italic">กำลังโหลดข้อมูล...</div>
-        )}
-      </div>
+
+              {/* ราคา / RSI */}
+              <div className="flex items-center gap-3 font-mono">
+                <span className="text-[14px] text-gray-100 font-semibold">
+                  {r.price ? `$${r.price.toFixed(2)}` : "-"}
+                </span>
+                <span
+                  className={`text-[14px] font-bold ${
+                    r.rsi > 70 ? "text-red-400" : r.rsi < 40 ? "text-blue-400" : "text-emerald-400"
+                  }`}
+                >
+                  {r.rsi ? Math.round(r.rsi) : "-"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="py-6 text-center text-gray-500 italic">⏳ กำลังโหลดข้อมูล...</div>
+      )}
     </section>
   );
-        }
+                        }
