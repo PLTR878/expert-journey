@@ -1,4 +1,4 @@
-// ✅ /components/MarketSection.js — OriginX Top Picks (Refined TradingView Style)
+// ✅ /components/MarketSection.js — OriginX Top Picks (Full Layout)
 import { useState, useEffect } from "react";
 
 export default function MarketSection() {
@@ -88,25 +88,23 @@ export default function MarketSection() {
   }, []);
 
   return (
-    <section className="w-full px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen font-[Inter]">
-      <div className="flex justify-between items-center mb-3 px-2">
-        <h2 className="text-[22px] font-extrabold text-white tracking-tight uppercase flex items-center gap-2">
+    <section className="w-full min-h-screen bg-[#0b1220] text-gray-200 pt-3 font-[Inter]">
+      <div className="flex justify-between items-center mb-3 px-3">
+        <h2 className="text-[22px] font-extrabold text-white uppercase tracking-tight flex items-center gap-2">
           🚀 OriginX Top Picks
         </h2>
       </div>
 
-      <div className="flex flex-col divide-y divide-gray-800/60">
+      <div className="flex flex-col divide-y divide-gray-800/60 px-2 pb-6">
         {data.length > 0 ? (
-          data.map((r, i) => (
+          data.map((r) => (
             <div
               key={r.symbol}
-              className="flex items-center justify-between py-[10px] px-[4px] hover:bg-[#111827]/40 transition-all"
+              className="flex items-center justify-between py-[12px] hover:bg-[#111827]/40 rounded-lg transition-all"
             >
-              <div className="flex items-center space-x-3">
-                <div className="text-gray-500 text-[11px] w-5 text-right">{i + 1}.</div>
-
-                {/* โลโก้ */}
-                <div className="relative w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+              {/* ซ้าย */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                   {!imgError[r.symbol] ? (
                     <img
                       src={`https://logo.clearbit.com/${logoMap[r.symbol]}`}
@@ -121,24 +119,23 @@ export default function MarketSection() {
                   )}
                 </div>
 
-                {/* ชื่อ */}
                 <div>
                   <div className="text-white font-semibold text-[14px] leading-tight">
                     {r.symbol}
                   </div>
-                  <div className="text-[11px] text-gray-400 font-medium truncate max-w-[150px]">
+                  <div className="text-[11px] text-gray-400 font-medium truncate max-w-[160px]">
                     {r.company}
                   </div>
                 </div>
               </div>
 
               {/* ขวา */}
-              <div className="flex items-center space-x-3 font-mono pr-[3px]">
-                <span className="text-gray-100 text-[13px] font-semibold">
+              <div className="flex items-center gap-3 font-mono pr-[3px]">
+                <span className="text-gray-100 text-[14px] font-semibold">
                   {r.price ? `$${r.price.toFixed(2)}` : "-"}
                 </span>
                 <span
-                  className={`text-[13px] font-semibold ${
+                  className={`text-[14px] font-semibold ${
                     r.rsi > 70
                       ? "text-red-400"
                       : r.rsi < 40
@@ -149,7 +146,7 @@ export default function MarketSection() {
                   {r.rsi}
                 </span>
                 <span
-                  className={`text-[13px] font-bold ${
+                  className={`text-[14px] font-bold ${
                     r.signal === "Buy"
                       ? "text-green-400"
                       : r.signal === "Sell"
@@ -170,4 +167,4 @@ export default function MarketSection() {
       </div>
     </section>
   );
-    }
+      }
