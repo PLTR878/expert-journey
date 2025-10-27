@@ -1,17 +1,17 @@
-// ✅ /components/MarketSection.js — OriginX Picks (TradingView Style v2)
+// ✅ /components/MarketSection.js — OriginX Picks (Full Company Name Added)
 import { useEffect, useState } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
 
-  // ✅ หุ้นทั้งหมด 25 ตัว (เอา PLTR ออก + ใส่ RIVN)
+  // ✅ หุ้นทั้งหมด 25 ตัว (มี RIVN แทน PLTR)
   const symbols = [
     "WULF","DNA","BYND","OSCR","BBAI","ACHR","PATH","MVIS","SES","KSCP",
     "CCCX","RKLB","ASTS","CRSP","SLDP","ENVX","SOFI","HASI","LWLG","SOUN",
     "AXTI","LAES","RXRX","NRGV","RIVN"
   ];
 
-  // ✅ แผนที่โลโก้ครบ
+  // ✅ แผนที่โลโก้
   const logoMap = {
     WULF:"terawulf.com",
     DNA:"ginkgobioworks.com",
@@ -77,7 +77,7 @@ export default function MarketSection() {
               href={`/analyze/${r.symbol}`}
               className="flex items-center justify-between py-[10px] px-1 hover:bg-[#111827]/60 transition-all"
             >
-              {/* โลโก้ + ชื่อ */}
+              {/* โลโก้ + ชื่อหุ้น */}
               <div className="flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-gray-700 flex items-center justify-center bg-[#0d111a]">
                   <img
@@ -90,10 +90,10 @@ export default function MarketSection() {
                   />
                 </div>
                 <div>
-                  <div className="text-white text-[16px] font-black tracking-wide">
+                  <div className="text-white text-[16px] font-black tracking-wide leading-tight">
                     {r.symbol}
                   </div>
-                  <div className="text-gray-400 text-[11px] font-medium truncate max-w-[150px]">
+                  <div className="text-gray-400 text-[11px] font-medium truncate max-w-[160px] leading-snug">
                     {r.company}
                   </div>
                 </div>
