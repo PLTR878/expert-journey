@@ -1,4 +1,4 @@
-// ✅ /pages/api/visionary-core.js (Enhanced Chart + Technical Data)
+// ✅ /pages/api/visionary-core.js — v∞.52 (Enhanced AI Signal + Confidence)
 export default async function handler(req, res) {
   const { symbol } = req.query;
   if (!symbol) return res.status(400).json({ error: "Missing symbol" });
@@ -14,13 +14,13 @@ export default async function handler(req, res) {
     const timestamps = result.timestamp || [];
     const quotes = result.indicators?.quote?.[0] || {};
     const prices = quotes.close?.filter(Boolean) || [];
-
     const lastClose = prices.at(-1) || 0;
 
-    // RSI
+    // ✅ RSI
     const calcRSI = (arr, period = 14) => {
       if (arr.length < period + 1) return 50;
-      let gains = 0, losses = 0;
+      let gains = 0,
+        losses = 0;
       for (let i = arr.length - period; i < arr.length; i++) {
         const diff = arr[i] - arr[i - 1];
         if (diff > 0) gains += diff;
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     };
     const rsi = Number(calcRSI(prices, 14).toFixed(2));
 
-    // EMA
+    // ✅ EMA
     const calcEMA = (arr, period) => {
       if (arr.length < period) return lastClose;
       const k = 2 / (period + 1);
@@ -42,10 +42,11 @@ export default async function handler(req, res) {
       for (let i = 1; i < arr.length; i++) ema = arr[i] * k + ema * (1 - k);
       return ema.toFixed(2);
     };
-    const ema20 = calcEMA(prices, 20);
-    const ema50 = calcEMA(prices, 50);
-    const ema200 = calcEMA(prices, 200);
+    const ema20 = Number(calcEMA(prices, 20));
+    const ema50 = Number(calcEMA(prices, 50));
+    const ema200 = Number(calcEMA(prices, 200));
 
+    // ✅ Trend detection
     const trend =
       lastClose > ema20 && ema20 > ema50
         ? "Uptrend"
@@ -53,6 +54,42 @@ export default async function handler(req, res) {
         ? "Downtrend"
         : "Sideway";
 
+    // ✅ เปลี่ยนราคาเทียบเมื่อวาน (ใช้คำนวณ momentum)
+    const prevClose = prices.at(-2) || lastClose;
+    const change = ((lastClose - prevClose) / prevClose) * 100;
+
+    // ===== AI Signal Logic =====
+    let signal = "Hold";
+    let aiScore = 50;
+
+    aiScore += trend === "Uptrend" ? 15 : trend === "Downtrend" ? -15 : 0;
+    aiScore += change > 1 ? 10 : change < -1 ? -10 : 0;
+    aiScore += rsi < 40 ? 10 : rsi > 70 ? -10 : 0;
+    aiScore = Math.max(0, Math.min(100, aiScore));
+
+    if (aiScore >= 70 && trend === "Uptrend" && rsi < 70) signal = "Buy";
+    else if (aiScore <= 30 && trend === "Downtrend" && rsi > 55) signal = "Sell";
+
+    // ===== ✅ AI Confidence =====
+    let confidence = 0;
+
+    if (signal === "Buy") {
+      confidence =
+        (rsi > 40 && rsi < 65 ? 25 : 0) +
+        (ema20 > ema50 ? 25 : 0) +
+        (change > 0 ? 25 : 0) +
+        (trend === "Uptrend" ? 25 : 0);
+    } else if (signal === "Sell") {
+      confidence =
+        (rsi > 60 ? 25 : 0) +
+        (ema20 < ema50 ? 25 : 0) +
+        (change < 0 ? 25 : 0) +
+        (trend === "Downtrend" ? 25 : 0);
+    }
+
+    confidence = Math.min(100, confidence);
+
+    // ===== ✅ ส่งออกข้อมูลทั้งหมด =====
     res.status(200).json({
       symbol,
       lastClose: Number(lastClose.toFixed(2)),
@@ -61,6 +98,10 @@ export default async function handler(req, res) {
       ema50,
       ema200,
       trend,
+      change: Number(change.toFixed(2)),
+      signal,
+      aiScore,
+      confidence, // ✅ ค่าใหม่ที่เพิ่มเข้าไป
       chart: {
         timestamps,
         prices,
@@ -69,9 +110,9 @@ export default async function handler(req, res) {
         low: quotes.low,
         volume: quotes.volume,
       },
-      source: "Yahoo Finance",
+      source: "Yahoo Finance + OriginX AI Core v∞.52",
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-        }
+}
