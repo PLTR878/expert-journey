@@ -1,4 +1,4 @@
-// ✅ OriginX AI Super Scanner — v∞.46 (Ultra Stable + Max Speed + Safe Save)
+// ✅ OriginX AI Super Scanner — v∞.47 (Ultra Stable + Visionary Connected)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -12,7 +12,7 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [batch, setBatch] = useState(1);
   const [totalBatches, setTotalBatches] = useState(1);
-  const [maxPerBatch, setMaxPerBatch] = useState(300); // ✅ เร็วแต่ปลอดภัย
+  const [maxPerBatch, setMaxPerBatch] = useState(300); // ✅ เร็วแต่เสถียร
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-100), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -61,10 +61,10 @@ export default function Home() {
     addLog(`✅ Found ${total} symbols → ${batches} batches of ${maxPerBatch} each`);
   }
 
-  // ✅ ดึงข้อมูล 1 batch
+  // ✅ ดึงข้อมูล 1 batch (แก้ให้ใช้ visionary-batch)
   async function runSingleBatch(batchNo) {
     try {
-      const res = await fetch(`/api/market-scan?batch=${batchNo}`, { cache: "no-store" });
+      const res = await fetch(`/api/visionary-batch?batch=${batchNo}`, { cache: "no-store" });
       const j = await res.json();
       return j?.results || [];
     } catch {
@@ -79,7 +79,7 @@ export default function Home() {
     await prepareScanner();
 
     let allResults = [];
-    const delayPerBatch = 150; // ✅ 150ms = เร็วสุดที่ไม่พัง
+    const delayPerBatch = 200; // ✅ ปลอด block + เสถียร
 
     for (let i = 1; i <= totalBatches; i++) {
       setBatch(i);
@@ -241,4 +241,4 @@ export default function Home() {
       </nav>
     </main>
   );
-  }
+    }
