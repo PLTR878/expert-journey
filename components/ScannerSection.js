@@ -1,4 +1,4 @@
-// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.59 Refined: Logo+AI mini+RSI removed)
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.61 Clean Number RSI + Mini AI)
 import { useState } from "react";
 import Link from "next/link";
 
@@ -70,7 +70,7 @@ export default function ScannerSection() {
                           alt={r.symbol}
                           className="w-full h-full object-cover rounded-full"
                           onError={(e) => {
-                            // fallback → Finnhub → ชื่อย่อ
+                            // fallback → Finnhub → ชื่อย่อหุ้น
                             e.target.onerror = null;
                             e.target.src = `https://finnhub.io/api/logo?symbol=${r.symbol}`;
                             setTimeout(() => {
@@ -100,6 +100,8 @@ export default function ScannerSection() {
                       <div className="text-[15px] text-white font-black">
                         {r.last ? `$${r.last.toFixed(2)}` : "-"}
                       </div>
+
+                      {/* RSI เฉพาะตัวเลข */}
                       <div
                         className={`text-[13px] font-bold ${
                           r.rsi > 70
@@ -111,6 +113,8 @@ export default function ScannerSection() {
                       >
                         {r.rsi ? Math.round(r.rsi) : "-"}
                       </div>
+
+                      {/* Signal */}
                       <div
                         className={`text-[13px] font-extrabold ${
                           r.signal === "Buy"
@@ -122,7 +126,9 @@ export default function ScannerSection() {
                       >
                         {r.signal || "-"}
                       </div>
-                      <div className="text-[10px] text-gray-400 font-semibold scale-90">
+
+                      {/* AI ขนาดเล็กมาก */}
+                      <div className="text-[9px] text-gray-400 font-semibold scale-75">
                         AI {r.aiScore ? Math.round(r.aiScore) : 0}%
                       </div>
                     </div>
@@ -157,4 +163,4 @@ export default function ScannerSection() {
       </div>
     </main>
   );
-                            }
+                                  }
