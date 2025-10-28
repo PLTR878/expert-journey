@@ -1,4 +1,4 @@
-// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.61 Clean Number RSI + Mini AI)
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.63 Connected UI + RSI Number + Mini AI)
 import { useState } from "react";
 import Link from "next/link";
 
@@ -32,7 +32,7 @@ export default function ScannerSection() {
           {/* หัวข้อ + ปุ่ม */}
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-bold text-emerald-400">
-              🚀 OriginX AI Super Scanner
+              📡 OriginX AI Super Scanner
             </h2>
 
             <button
@@ -60,9 +60,9 @@ export default function ScannerSection() {
                   <Link
                     key={i}
                     href={`/analyze/${r.symbol}`}
-                    className="flex items-center justify-between py-[10px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
+                    className="flex items-center justify-between py-[10px] px-[4px] hover:bg-[#111827]/40 transition-all"
                   >
-                    {/* โลโก้บริษัทจริง */}
+                    {/* โลโก้วงกลม */}
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                         <img
@@ -70,7 +70,6 @@ export default function ScannerSection() {
                           alt={r.symbol}
                           className="w-full h-full object-cover rounded-full"
                           onError={(e) => {
-                            // fallback → Finnhub → ชื่อย่อหุ้น
                             e.target.onerror = null;
                             e.target.src = `https://finnhub.io/api/logo?symbol=${r.symbol}`;
                             setTimeout(() => {
@@ -95,7 +94,7 @@ export default function ScannerSection() {
                       </div>
                     </div>
 
-                    {/* ราคา / RSI / Signal / AI */}
+                    {/* ด้านขวา: ราคา / RSI / Signal / AI */}
                     <div className="text-right leading-tight font-mono min-w-[70px]">
                       <div className="text-[15px] text-white font-black">
                         {r.last ? `$${r.last.toFixed(2)}` : "-"}
@@ -127,7 +126,7 @@ export default function ScannerSection() {
                         {r.signal || "-"}
                       </div>
 
-                      {/* AI ขนาดเล็กมาก */}
+                      {/* AI ขนาดเล็กครึ่งหนึ่ง */}
                       <div className="text-[9px] text-gray-400 font-semibold scale-75">
                         AI {r.aiScore ? Math.round(r.aiScore) : 0}%
                       </div>
@@ -163,4 +162,4 @@ export default function ScannerSection() {
       </div>
     </main>
   );
-                                  }
+                            }
