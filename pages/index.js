@@ -1,4 +1,4 @@
-// ✅ Visionary Stock Screener — V∞.34 (AI Super Scanner Fully Integrated)
+// ✅ OriginX AI Super Scanner — V∞.35 (Full U.S. Market Mode)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -11,9 +11,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [batch, setBatch] = useState(1);
+  const [totalBatches, setTotalBatches] = useState(1);
 
   const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
+    setLogs((p) => [...p.slice(-60), `${new Date().toLocaleTimeString()} ${msg}`]);
 
   // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
@@ -52,24 +54,50 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดสแกนเนอร์ (ตลาดทั้งอเมริกา)
-  async function runScanner() {
+  // ✅ โหลดจำนวน batch ทั้งหมดจาก /api/symbols
+  async function prepareScanner() {
     try {
-      setLoading(true);
-      addLog("📡 Running AI Super Scanner...");
-      const res = await fetch("/api/market-scan", { cache: "no-store" });
+      addLog("📦 Preparing symbol list...");
+      const res = await fetch("/api/symbols");
+      const j = await res.json();
+      const total = j.total || 7000;
+      const batches = Math.ceil(total / 100);
+      setTotalBatches(batches);
+      addLog(`✅ Found ${total} symbols → ${batches} batches`);
+    } catch (err) {
+      addLog(`⚠️ Symbol list error: ${err.message}`);
+    }
+  }
+
+  // ✅ สแกน batch เดียว
+  async function runSingleBatch(batchNo) {
+    try {
+      addLog(`🚀 Running batch ${batchNo}/${totalBatches}...`);
+      const res = await fetch(`/api/market-scan?batch=${batchNo}`, { cache: "no-store" });
       const data = await res.json();
       if (data?.results?.length) {
-        setScannerResults(data.results);
-        addLog(`✅ Scanner found ${data.results.length} signals`);
-      } else {
-        addLog("⚠️ No scanner results found.");
-      }
+        setScannerResults((p) => [...p, ...data.results]);
+        addLog(`✅ Batch ${batchNo} done (${data.results.length} stocks)`);
+      } else addLog(`⚠️ Batch ${batchNo} returned no results`);
     } catch (err) {
-      addLog(`❌ Scanner error: ${err.message}`);
-    } finally {
-      setLoading(false);
+      addLog(`❌ Batch ${batchNo} error: ${err.message}`);
     }
+  }
+
+  // ✅ Auto Scan ทั้งตลาด
+  async function runFullScanner() {
+    setLoading(true);
+    setScannerResults([]);
+    await prepareScanner();
+
+    for (let i = 1; i <= totalBatches; i++) {
+      setBatch(i);
+      await runSingleBatch(i);
+      await new Promise((r) => setTimeout(r, 1500)); // ⏳ หน่วงเพื่อไม่ให้ timeout
+    }
+
+    addLog("🏁 Market Scan completed ✅");
+    setLoading(false);
   }
 
   // ✅ เริ่มต้นโหลดข้อมูลหุ้นต้นน้ำ
@@ -108,15 +136,18 @@ export default function Home() {
       return (
         <section className="p-4">
           <h2 className="text-xl font-bold text-center mb-3 text-emerald-400">
-            🚀 AI Super Scanner
+            🚀 AI Super Scanner (Full Market)
           </h2>
           <button
-            onClick={runScanner}
+            onClick={runFullScanner}
             disabled={loading}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg mb-4 font-bold transition"
           >
-            {loading ? "⏳ Scanning..." : "🔍 Run Full Market Scan"}
+            {loading
+              ? `⏳ Scanning... (Batch ${batch}/${totalBatches})`
+              : "🔍 Run Full Market Scan"}
           </button>
+
           {scannerResults.length > 0 ? (
             <div className="flex flex-col divide-y divide-gray-800/60">
               {scannerResults.map((r, i) => (
@@ -199,4 +230,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+  }
