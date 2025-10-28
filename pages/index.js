@@ -1,4 +1,4 @@
-// ✅ OriginX AI Super Scanner — v∞.42 (Full Market + AI Ranking Top 20)
+// ✅ OriginX AI Super Scanner — v∞.43 (Full Market + Save AI Top Picks)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -10,31 +10,24 @@ export default function Home() {
   const [scannerResults, setScannerResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [showLogs, setShowLogs] = useState(false);
   const [batch, setBatch] = useState(1);
   const [totalBatches, setTotalBatches] = useState(1);
   const [maxPerBatch, setMaxPerBatch] = useState(50);
 
   const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-60), `${new Date().toLocaleTimeString()} ${msg}`]);
+    setLogs((p) => [...p.slice(-80), `${new Date().toLocaleTimeString()} ${msg}`]);
 
   // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("favorites");
-      if (saved) setFavorites(JSON.parse(saved));
-    } catch (e) {
-      console.error("❌ Load favorites error:", e);
-    }
+    const saved = localStorage.getItem("favorites");
+    if (saved) setFavorites(JSON.parse(saved));
+    const savedScan = localStorage.getItem("aiTopPicks");
+    if (savedScan) setScannerResults(JSON.parse(savedScan));
   }, []);
 
-  // ✅ บันทึก Favorites
+  // ✅ บันทึก Favorites และผลสแกน
   useEffect(() => {
-    try {
-      localStorage.setItem("favorites", JSON.stringify(favorites));
-    } catch (e) {
-      console.error("❌ Save favorites error:", e);
-    }
+    localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
   // ✅ โหลดหุ้นต้นน้ำ
@@ -56,33 +49,27 @@ export default function Home() {
 
   // ✅ เตรียมจำนวน batch
   async function prepareScanner() {
-    try {
-      addLog("📦 Preparing symbol list...");
-      const res = await fetch("/api/symbols");
-      const j = await res.json();
-      const total = j.total || 7000;
-      const batches = Math.ceil(total / maxPerBatch);
-      setTotalBatches(batches);
-      addLog(`✅ Found ${total} symbols → ${batches} batches of ${maxPerBatch} each`);
-    } catch (err) {
-      addLog(`⚠️ Symbol list error: ${err.message}`);
-    }
+    addLog("📦 Preparing symbol list...");
+    const res = await fetch("/api/symbols");
+    const j = await res.json();
+    const total = j.total || 7000;
+    const batches = Math.ceil(total / maxPerBatch);
+    setTotalBatches(batches);
+    addLog(`✅ Found ${total} symbols → ${batches} batches of ${maxPerBatch} each`);
   }
 
   // ✅ สแกน batch เดียว
   async function runSingleBatch(batchNo) {
     try {
-      addLog(`🚀 Running batch ${batchNo}/${totalBatches}...`);
       const res = await fetch(`/api/market-scan?batch=${batchNo}`, { cache: "no-store" });
       const data = await res.json();
       return data?.results || [];
-    } catch (err) {
-      addLog(`❌ Batch ${batchNo} error: ${err.message}`);
+    } catch {
       return [];
     }
   }
 
-  // ✅ สแกนทั้งตลาด + คัด Top 20 หุ้น AI มั่นใจที่สุด
+  // ✅ สแกนครบตลาด (7000 หุ้น) แล้วคัด Top 20
   async function runFullScanner() {
     setLoading(true);
     setScannerResults([]);
@@ -92,10 +79,13 @@ export default function Home() {
 
     for (let i = 1; i <= totalBatches; i++) {
       setBatch(i);
+      addLog(`🚀 Scanning batch ${i}/${totalBatches}...`);
       const results = await runSingleBatch(i);
-      allResults.push(...results);
-      addLog(`✅ Batch ${i} done (${results.length} stocks)`);
-      await new Promise((r) => setTimeout(r, 1000)); // ป้องกัน block
+      if (results?.length) {
+        allResults.push(...results);
+        addLog(`✅ Batch ${i} done (${results.length} stocks)`);
+      } else addLog(`⚠️ Batch ${i} empty`);
+      await new Promise((r) => setTimeout(r, 800)); // ป้องกัน block
     }
 
     // ✅ คัดเฉพาะหุ้น BUY ที่คะแนน AI สูงสุด 20 ตัว
@@ -105,7 +95,8 @@ export default function Home() {
       .slice(0, 20);
 
     setScannerResults(topPicks);
-    addLog(`🏁 Scan Completed | Showing Top ${topPicks.length} AI Picks ✅`);
+    localStorage.setItem("aiTopPicks", JSON.stringify(topPicks)); // ✅ บันทึกถาวร
+    addLog(`🏁 Scan Completed | Saved Top ${topPicks.length} AI Picks ✅`);
     setLoading(false);
   }
 
@@ -139,7 +130,7 @@ export default function Home() {
       return (
         <section className="p-4">
           <h2 className="text-xl font-bold text-center mb-3 text-emerald-400">
-            🚀 AI Super Scanner (Top 20 Picks)
+            🚀 AI Super Scanner (Full Market)
           </h2>
 
           <button
@@ -155,7 +146,7 @@ export default function Home() {
           {scannerResults.length > 0 ? (
             <>
               <div className="text-xs text-gray-400 mb-2">
-                Showing Top {scannerResults.length} AI Picks (BUY only)
+                Top {scannerResults.length} AI Picks (Saved)
               </div>
 
               <div className="flex flex-col divide-y divide-gray-800/60">
@@ -182,7 +173,7 @@ export default function Home() {
             </>
           ) : (
             <p className="text-center text-gray-500 italic">
-              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกน AI Top 20 Picks
+              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกนและบันทึกผล AI
             </p>
           )}
         </section>
@@ -203,20 +194,18 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
       {/* 🧠 Logs */}
-      <section className="mt-5 mb-10">
+      <section className="mt-5 mb-10 px-4">
         <button
-          onClick={() => setShowLogs((p) => !p)}
-          className="flex items-center gap-2 bg-[#141b2d] border border-white/10 px-2 py-1 rounded-md text-[11px] text-emerald-400"
+          onClick={() => setLogs([])}
+          className="text-xs bg-[#1f2937] px-2 py-1 rounded-md text-emerald-400 border border-emerald-500/30"
         >
-          🧠 {showLogs ? "Hide Logs" : "Show Logs"}
+          🧠 Clear Logs
         </button>
-        {showLogs && (
-          <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto">
-            {logs.map((l, i) => (
-              <div key={i}>{l}</div>
-            ))}
-          </div>
-        )}
+        <div className="mt-2 bg-black/30 rounded-md border border-white/10 p-2 text-[11px] text-gray-400 max-h-44 overflow-auto">
+          {logs.map((l, i) => (
+            <div key={i}>{l}</div>
+          ))}
+        </div>
       </section>
 
       {/* ✅ Bottom Navigation */}
