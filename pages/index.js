@@ -1,14 +1,14 @@
-// ✅ Visionary Stock Screener — V∞.33 (AI Super Scanner Integrated)
+// ✅ Visionary Stock Screener — V∞.34 (AI Super Scanner Fully Integrated)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
-import Scanner from "../pages/scanner"; // ✅ เพิ่ม Scanner ที่ทำงานจริง
 
 export default function Home() {
   const [active, setActive] = useState("market");
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
-  const [loadingDiscovery, setLoadingDiscovery] = useState(false);
+  const [scannerResults, setScannerResults] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
 
@@ -34,55 +34,64 @@ export default function Home() {
     }
   }, [favorites]);
 
-  // ✅ โหลดหุ้นต้นน้ำ (จำถาวร)
-  useEffect(() => {
-    const saved = localStorage.getItem("futureDiscovery");
-    if (saved) {
-      setFutureDiscovery(JSON.parse(saved));
-      addLog("♻️ โหลดข้อมูลหุ้นต้นน้ำจาก LocalStorage");
-    } else {
-      loadDiscovery();
-    }
-  }, []);
-
-  // ✅ ดึงข้อมูลหุ้นต้นน้ำจาก visionary-batch
+  // ✅ โหลดหุ้นต้นน้ำจาก visionary-batch
   async function loadDiscovery() {
     try {
-      setLoadingDiscovery(true);
-      addLog("🌋 AI Discovery กำลังโหลดหุ้นต้นน้ำ...");
-
+      setLoading(true);
+      addLog("🌋 Loading AI Discovery...");
       const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const j = await res.json();
       const list = j.results || [];
-
-      if (!list.length) throw new Error("ไม่พบข้อมูลหุ้นต้นน้ำ");
-
       setFutureDiscovery(list);
       localStorage.setItem("futureDiscovery", JSON.stringify(list));
-      addLog(`✅ โหลดหุ้นต้นน้ำสำเร็จ ${list.length} ตัว`);
+      addLog(`✅ Loaded ${list.length} discovery stocks`);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
     } finally {
-      setLoadingDiscovery(false);
+      setLoading(false);
     }
   }
 
+  // ✅ โหลดสแกนเนอร์ (ตลาดทั้งอเมริกา)
+  async function runScanner() {
+    try {
+      setLoading(true);
+      addLog("📡 Running AI Super Scanner...");
+      const res = await fetch("/api/market-scan", { cache: "no-store" });
+      const data = await res.json();
+      if (data?.results?.length) {
+        setScannerResults(data.results);
+        addLog(`✅ Scanner found ${data.results.length} signals`);
+      } else {
+        addLog("⚠️ No scanner results found.");
+      }
+    } catch (err) {
+      addLog(`❌ Scanner error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ✅ เริ่มต้นโหลดข้อมูลหุ้นต้นน้ำ
+  useEffect(() => {
+    loadDiscovery();
+  }, []);
+
   // ✅ Render หน้าแต่ละส่วน
   const renderPage = () => {
-    if (active === "favorites") {
+    if (active === "favorites")
       return (
         <Favorites
           favorites={favorites}
           setFavorites={setFavorites}
         />
       );
-    }
 
-    if (active === "market") {
+    if (active === "market")
       return (
         <MarketSection
-          title="OriginX  (AI Discovery)"
-          loading={loadingDiscovery}
+          title="🌋 OriginX (AI Discovery)"
+          loading={loading}
           rows={futureDiscovery}
           favorites={favorites}
           toggleFavorite={(sym) =>
@@ -94,17 +103,46 @@ export default function Home() {
           }
         />
       );
-    }
 
-    // ✅ แก้ส่วน Scanner ให้เชื่อมกับระบบจริง
     if (active === "scan")
       return (
-        <div className="p-4">
-          <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
+        <section className="p-4">
+          <h2 className="text-xl font-bold text-center mb-3 text-emerald-400">
             🚀 AI Super Scanner
           </h2>
-          <Scanner /> {/* ✅ เรียก component Scanner จริง */}
-        </div>
+          <button
+            onClick={runScanner}
+            disabled={loading}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg mb-4 font-bold transition"
+          >
+            {loading ? "⏳ Scanning..." : "🔍 Run Full Market Scan"}
+          </button>
+          {scannerResults.length > 0 ? (
+            <div className="flex flex-col divide-y divide-gray-800/60">
+              {scannerResults.map((r, i) => (
+                <div key={i} className="flex justify-between py-2 text-sm">
+                  <span className="font-bold text-white">{r.symbol}</span>
+                  <span
+                    className={`font-bold ${
+                      r.signal === "Buy"
+                        ? "text-green-400"
+                        : r.signal === "Sell"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {r.signal}
+                  </span>
+                  <span className="text-gray-400">{Math.round(r.rsi)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 italic">
+              🔎 กดปุ่มด้านบนเพื่อเริ่มสแกนหุ้นทั้งตลาด
+            </p>
+          )}
+        </section>
       );
 
     if (active === "trade")
@@ -120,8 +158,7 @@ export default function Home() {
   // ✅ UI หลัก
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      <header className="px-3 py-1 h-[4px]" />
-      <div className="max-w-6xl mx-auto px-3 pt-2">{renderPage()}</div>
+      <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
       {/* 🧠 Logs */}
       <section className="mt-5 mb-10">
@@ -162,4 +199,4 @@ export default function Home() {
       </nav>
     </main>
   );
-  }
+            }
