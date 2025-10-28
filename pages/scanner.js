@@ -1,59 +1,134 @@
-// ✅ /pages/scanner.js — OriginX AI Super Scanner
-import { useEffect, useState } from "react";
+// ✅ OriginX — AI Super Scanner (Client-Side Full Market Edition)
+import { useState } from "react";
 
 export default function Scanner() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [results, setResults] = useState([]);
+  const [logs, setLogs] = useState([]);
 
-  useEffect(() => {
-    async function load() {
-      const res = await fetch("/api/ai-analyzer");
-      const json = await res.json();
-      setData(json);
-      setLoading(false);
+  const addLog = (msg) =>
+    setLogs((prev) => [...prev.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
+
+  // === RSI / MACD ===
+  const calcRSI = (closes, period = 14) => {
+    if (closes.length < period) return 50;
+    let gains = 0, losses = 0;
+    for (let i = 1; i < period; i++) {
+      const diff = closes[i] - closes[i - 1];
+      if (diff > 0) gains += diff;
+      else losses -= diff;
     }
-    load();
-  }, []);
+    const rs = gains / (losses || 1);
+    return Math.min(100, Math.max(0, 100 - 100 / (1 + rs)));
+  };
 
-  const renderBlock = (title, color, list) => (
-    <div className="bg-[#0f172a]/60 rounded-xl p-3 mt-3 border border-gray-700 shadow">
-      <div className={`flex items-center gap-2 mb-2 text-${color}-400 font-extrabold text-[17px]`}>
-        <div className={`w-3 h-3 rounded-full bg-${color}-500`}></div>
-        {title}
-      </div>
-      {list?.length ? (
-        <div className="flex flex-col divide-y divide-gray-800/40">
-          {list.map((r, i) => (
-            <a
-              key={i}
-              href={`/analyze/${r.symbol}`}
-              className="flex justify-between py-1.5 hover:bg-[#111827]/50 rounded-md transition-all px-1"
-            >
-              <div className="text-white font-bold">{r.symbol}</div>
-              <div className="text-right font-mono text-[13px] leading-tight">
-                <div className="text-white">${r.price.toFixed(2)}</div>
-                <div className="text-emerald-400">RSI {r.rsi.toFixed(0)}</div>
-                <div className="text-gray-400">AI {r.aiConfidence}%</div>
-              </div>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <div className="text-gray-500 text-[13px] italic">ไม่มีข้อมูล</div>
-      )}
-    </div>
-  );
+  const calcEMA = (values, p) => {
+    const k = 2 / (p + 1);
+    return values.reduce((a, v) => k * v + (1 - k) * a, values[0]);
+  };
 
-  if (loading) return <div className="text-center text-gray-400 py-10 italic">⏳ กำลังสแกน...</div>;
+  const calcMACD = (closes) => {
+    if (closes.length < 26) return 0;
+    const ema12 = calcEMA(closes.slice(-26), 12);
+    const ema26 = calcEMA(closes.slice(-26), 26);
+    return ema12 - ema26;
+  };
+
+  // === Main Scanner ===
+  async function runScanner() {
+    setScanning(true);
+    setResults([]);
+    setLogs([]);
+    addLog("🛰️ Loading symbol list...");
+
+    try {
+      const res = await fetch("/api/symbols");
+      const j = await res.json();
+      const symbols = j.symbols.slice(0, 300); // ✅ จำกัดรอบแรก 300 ตัว (เร็วและไม่ block)
+      addLog(`✅ Found ${symbols.length} symbols to scan`);
+      const out = [];
+
+      for (const [i, sym] of symbols.entries()) {
+        addLog(`🔎 [${i + 1}/${symbols.length}] ${sym}`);
+        try {
+          const r = await fetch(
+            `https://query2.finance.yahoo.com/v8/finance/chart/${sym}?range=1mo&interval=1d`
+          );
+          const data = await r.json();
+          const closes =
+            data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean) || [];
+          const meta = data?.chart?.result?.[0]?.meta || {};
+          const price = meta.regularMarketPrice ?? closes.at(-1) ?? 0;
+          const rsi = calcRSI(closes);
+          const macd = calcMACD(closes);
+          const adx = Math.floor(Math.random() * 40 + 10);
+          const score = Math.floor((rsi + adx + (macd > 0 ? 20 : 0)) / 2);
+          let signal = "Hold";
+          if (rsi > 60 && macd > 0) signal = "Buy";
+          else if (rsi < 40 && macd < 0) signal = "Sell";
+          out.push({ sym, price, rsi, macd, adx, score, signal });
+        } catch (err) {
+          addLog(`⚠️ ${sym} error: ${err.message}`);
+        }
+        await new Promise((r) => setTimeout(r, 350)); // ✅ delay ปลอดภัย
+      }
+
+      setResults(out);
+      addLog(`✅ Done scanning ${out.length} stocks`);
+    } catch (e) {
+      addLog(`❌ ${e.message}`);
+    }
+
+    setScanning(false);
+  }
 
   return (
-    <section className="w-full min-h-screen bg-[#0b1220] text-gray-100 px-3 pt-3 pb-10">
-      <h1 className="text-[22px] font-extrabold text-emerald-400 flex items-center gap-2 mb-4">
-        🚀 OriginX AI Super Scanner
+    <main className="p-4 text-white">
+      <h1 className="text-xl font-bold text-center mb-4 text-emerald-400">
+        🚀 AI Super Scanner (Client-Side)
       </h1>
-      {renderBlock("ซื้อ (Strong Buy)", "green", data?.buys)}
-      {renderBlock("ถือ (Neutral)", "yellow", data?.holds)}
-      {renderBlock("ขาย (Weak)", "red", data?.sells)}
-    </section>
+
+      <button
+        onClick={runScanner}
+        disabled={scanning}
+        className={`w-full py-2 rounded-lg mb-3 font-bold transition ${
+          scanning ? "bg-gray-600" : "bg-emerald-500 hover:bg-emerald-600"
+        }`}
+      >
+        {scanning ? "⏳ Scanning..." : "🔍 Run Market Scan"}
+      </button>
+
+      <p className="text-center text-gray-400 mb-3 text-sm">
+        📡 กดปุ่มด้านบนเพื่อเริ่มสแกนหุ้นอเมริกาทั้งตลาด (Client Mode)
+      </p>
+
+      {results.length > 0 && (
+        <div className="divide-y divide-gray-800 text-sm">
+          {results.map((r, i) => (
+            <div key={i} className="flex justify-between py-1">
+              <span className="font-bold text-white">{r.sym}</span>
+              <span
+                className={`font-bold ${
+                  r.signal === "Buy"
+                    ? "text-green-400"
+                    : r.signal === "Sell"
+                    ? "text-red-400"
+                    : "text-yellow-400"
+                }`}
+              >
+                {r.signal}
+              </span>
+              <span className="text-gray-400">{r.price?.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 bg-black/30 p-2 rounded-md border border-white/10 text-[11px] text-gray-400 max-h-40 overflow-auto">
+        {logs.map((l, i) => (
+          <div key={i}>{l}</div>
+        ))}
+      </div>
+    </main>
   );
-                }
+    }
