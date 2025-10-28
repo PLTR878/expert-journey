@@ -1,27 +1,58 @@
-// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.63 Connected UI + RSI Number + Mini AI)
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.64 No Logs + Full Batch Scan)
 import { useState } from "react";
 import Link from "next/link";
 
 export default function ScannerSection() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [logs, setLogs] = useState([]);
+  const [batch, setBatch] = useState(1);
+  const [totalBatches, setTotalBatches] = useState(1);
 
-  const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-80), `${new Date().toLocaleTimeString()} ${msg}`]);
+  // เตรียมจำนวน batch
+  async function prepareScanner() {
+    const res = await fetch("/api/symbols");
+    const j = await res.json();
+    const total = j.total || 7000;
+    const perBatch = 300;
+    const batches = Math.ceil(total / perBatch);
+    setTotalBatches(batches);
+    return batches;
+  }
 
+  // ดึงข้อมูลทีละ batch
+  async function runSingleBatch(batchNo) {
+    try {
+      const res = await fetch(`/api/visionary-batch?batch=${batchNo}`, {
+        cache: "no-store",
+      });
+      const j = await res.json();
+      return j?.results || [];
+    } catch {
+      return [];
+    }
+  }
+
+  // ✅ สแกนเต็มตลาด แล้วโชว์ผลหลังจบเท่านั้น
   async function runFullScan() {
     setLoading(true);
     setResults([]);
-    addLog("🚀 Starting AI Market Scan...");
-    try {
-      const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
-      const data = await res.json();
-      setResults(data.results || []);
-      addLog(`✅ Found ${data.results?.length || 0} stocks`);
-    } catch (e) {
-      addLog(`❌ Error: ${e.message}`);
+    const batches = await prepareScanner();
+    let allResults = [];
+    const delay = 200;
+
+    for (let i = 1; i <= batches; i++) {
+      setBatch(i);
+      const r = await runSingleBatch(i);
+      if (r?.length) allResults.push(...r);
+      await new Promise((res) => setTimeout(res, delay));
     }
+
+    const top = allResults
+      .filter((x) => x.signal === "Buy")
+      .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
+      .slice(0, 20);
+
+    setResults(top);
     setLoading(false);
   }
 
@@ -38,23 +69,24 @@ export default function ScannerSection() {
             <button
               onClick={runFullScan}
               disabled={loading}
-              className={`px-4 py-[6px] rounded-lg text-sm font-semibold border transition-all shadow-md ${
+              className={`px-4 py-[8px] rounded-lg text-sm font-semibold border transition-all shadow-md ${
                 loading
                   ? "bg-gray-700 border-gray-600 text-gray-400"
                   : "bg-emerald-500/90 border-emerald-400/50 text-white hover:bg-emerald-500"
               }`}
             >
-              {loading ? "⏳ Scanning..." : "🔍 Scan"}
+              {loading
+                ? `⏳ Scanning... (${batch}/${totalBatches})`
+                : "🔍 Scan"}
             </button>
           </div>
 
-          {/* รายการหุ้นแนวตั้ง */}
-          {results.length > 0 ? (
+          {/* รายการหุ้น */}
+          {!loading && results.length > 0 ? (
             <>
               <div className="text-xs text-gray-400 mb-2 text-center">
                 ✅ Showing Top {results.length} AI Picks
               </div>
-
               <div className="flex flex-col divide-y divide-gray-800/60">
                 {results.map((r, i) => (
                   <Link
@@ -73,7 +105,10 @@ export default function ScannerSection() {
                             e.target.onerror = null;
                             e.target.src = `https://finnhub.io/api/logo?symbol=${r.symbol}`;
                             setTimeout(() => {
-                              if (!e.target.complete || e.target.naturalWidth === 0) {
+                              if (
+                                !e.target.complete ||
+                                e.target.naturalWidth === 0
+                              ) {
                                 e.target.style.display = "none";
                                 e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
                                   <span class='text-black font-extrabold text-[11px] uppercase'>${r.symbol}</span>
@@ -94,13 +129,12 @@ export default function ScannerSection() {
                       </div>
                     </div>
 
-                    {/* ด้านขวา: ราคา / RSI / Signal / AI */}
+                    {/* ด้านขวา */}
                     <div className="text-right leading-tight font-mono min-w-[70px]">
                       <div className="text-[15px] text-white font-black">
                         {r.last ? `$${r.last.toFixed(2)}` : "-"}
                       </div>
 
-                      {/* RSI เฉพาะตัวเลข */}
                       <div
                         className={`text-[13px] font-bold ${
                           r.rsi > 70
@@ -113,7 +147,6 @@ export default function ScannerSection() {
                         {r.rsi ? Math.round(r.rsi) : "-"}
                       </div>
 
-                      {/* Signal */}
                       <div
                         className={`text-[13px] font-extrabold ${
                           r.signal === "Buy"
@@ -126,7 +159,6 @@ export default function ScannerSection() {
                         {r.signal || "-"}
                       </div>
 
-                      {/* AI ขนาดเล็กครึ่งหนึ่ง */}
                       <div className="text-[9px] text-gray-400 font-semibold scale-75">
                         AI {r.aiScore ? Math.round(r.aiScore) : 0}%
                       </div>
@@ -135,29 +167,15 @@ export default function ScannerSection() {
                 ))}
               </div>
             </>
+          ) : loading ? (
+            <p className="text-center text-gray-500 italic py-10">
+              ⏳ กำลังสแกนตลาดทั้งหมด...
+            </p>
           ) : (
             <p className="text-center text-gray-500 italic py-5">
-              {loading ? "⏳ กำลังสแกนตลาดทั้งหมด..." : "กดปุ่ม 🔍 Scan เพื่อเริ่มสแกนตลาด"}
+              กดปุ่ม 🔍 Scan เพื่อเริ่มสแกนตลาด
             </p>
           )}
-
-          {/* Logs */}
-          <section className="mt-8">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-emerald-400 text-xs">🧠 Logs</span>
-              <button
-                onClick={() => setLogs([])}
-                className="text-xs text-gray-400 hover:text-white"
-              >
-                Clear
-              </button>
-            </div>
-            <div className="bg-black/30 border border-white/10 p-2 rounded-md text-xs text-gray-400 max-h-44 overflow-auto">
-              {logs.map((l, i) => (
-                <div key={i}>{l}</div>
-              ))}
-            </div>
-          </section>
         </section>
       </div>
     </main>
