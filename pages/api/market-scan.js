@@ -1,8 +1,8 @@
-// ✅ /pages/api/market-scan.js — OriginX Super Scanner V∞.6 (Stable Mode)
+// ✅ OriginX Super Scanner — V∞.7 (Full-Market Stable Mode)
 import fs from "fs";
 import path from "path";
 
-// === เครื่องคิด RSI / MACD ===
+// === เครื่องคำนวณ RSI / MACD ===
 function calculateRSI(closes, period = 14) {
   if (closes.length < period) return 50;
   let gains = 0, losses = 0;
@@ -37,17 +37,32 @@ function calculateMACD(closes) {
 // === ตัวหลัก ===
 export default async function handler(req, res) {
   const batch = Number(req.query.batch || 1);
-  const perBatch = 30; // ⚡ ลดเหลือ 30 หุ้นต่อรอบ (เสถียรขึ้น)
+  const perBatch = 30; // ⚡ ปรับลดให้เสถียรขึ้น
 
   try {
-    // ✅ โหลด Symbol ทั้งหมด
+    // ✅ โหลด symbol list ทั้งหมด
     const symbolRes = await fetch(`${req.headers.origin}/api/symbols`);
-    const { symbols } = await symbolRes.json();
+    const { symbols, total } = await symbolRes.json();
+
+    // ✅ จำกัด batch อัตโนมัติตามจำนวนหุ้นจริง
+    const totalBatches = Math.ceil(symbols.length / perBatch);
+    if (batch > totalBatches) {
+      console.log(`⏭️ Batch ${batch}/${totalBatches} — no symbols`);
+      return res.status(200).json({
+        success: true,
+        batch,
+        total: 0,
+        message: "Skipped — beyond symbol list",
+        results: [],
+      });
+    }
 
     const start = (batch - 1) * perBatch;
     const end = start + perBatch;
     const targetSymbols = symbols.slice(start, end);
     const results = [];
+
+    console.log(`🚀 Running batch ${batch}/${totalBatches} (${targetSymbols.length} symbols)`);
 
     for (const sym of targetSymbols) {
       try {
@@ -55,10 +70,10 @@ export default async function handler(req, res) {
         const r = await fetch(url);
         const text = await r.text();
 
-        // ⚠️ ป้องกัน response ที่ไม่ใช่ JSON
+        // ⚠️ ป้องกัน HTML response
         if (!text.startsWith("{")) {
           console.log("⚠️ Invalid response for", sym);
-          await new Promise(r => setTimeout(r, 300)); // delay ต่อหุ้น
+          await new Promise(r => setTimeout(r, 300));
           continue;
         }
 
@@ -68,6 +83,7 @@ export default async function handler(req, res) {
         const closes = data?.close?.filter(Boolean) || [];
         const price = meta.regularMarketPrice ?? meta.previousClose ?? closes.at(-1) ?? 0;
 
+        // === Indicator Calculation ===
         const rsi = calculateRSI(closes);
         const macd = calculateMACD(closes);
         const adx = Math.floor(Math.random() * 40 + 10);
@@ -79,18 +95,19 @@ export default async function handler(req, res) {
 
         results.push({ symbol: sym, price, rsi, macd, adx, aiConfidence, signal });
 
-        // 🕐 เพิ่ม delay เล็กน้อยต่อหุ้น
-        await new Promise(r => setTimeout(r, 300)); // 0.3 วินาทีต่อหุ้น
+        // 🕐 เพิ่ม delay ให้ไม่โดน block
+        await new Promise(r => setTimeout(r, 250));
 
       } catch (err) {
         console.log("❌", sym, err.message);
       }
     }
 
-    // ✅ บันทึกผลใน public/
+    // ✅ บันทึก JSON แยกเป็น batch
     const filePath = path.join(process.cwd(), "public", `market-snapshot-batch${batch}.json`);
     fs.writeFileSync(filePath, JSON.stringify(results, null, 2));
 
+    console.log(`✅ Batch ${batch} done: ${results.length} results`);
     res.status(200).json({
       success: true,
       batch,
@@ -99,7 +116,7 @@ export default async function handler(req, res) {
       results,
     });
   } catch (err) {
-    console.log("🔥 Market Scan error:", err.message);
+    console.error("🔥 Market Scan error:", err.message);
     res.status(500).json({ error: err.message });
   }
     }
