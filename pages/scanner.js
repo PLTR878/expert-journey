@@ -1,4 +1,4 @@
-// ✅ AI Super Scanner (Client-side with Proxy Bypass)
+// ✅ /pages/scanner.js — AI Super Scanner (Full Market Ready)
 import { useState } from "react";
 
 export default function Scanner() {
@@ -13,14 +13,15 @@ export default function Scanner() {
   async function runScan() {
     setResults([]);
     setLogs([]);
+    setScanned(0);
     setLoading(true);
-    addLog("🛰️ Loading symbol list...");
+    addLog("🛰️ Loading U.S. stock list...");
 
     try {
-      // ✅ โหลดรายชื่อหุ้นจาก API ฝั่งเรา
+      // ✅ โหลดรายชื่อหุ้นจาก /api/symbols
       const res = await fetch("/api/symbols");
       const data = await res.json();
-      const symbols = data.symbols?.slice(0, 300) || []; // 🔹 จำกัด 300 ตัวเพื่อทดสอบให้แน่ใจ
+      const symbols = data.symbols?.slice(0, 200) || []; // 🔹 เริ่มทดสอบ 200 ตัวก่อน
 
       addLog(`✅ Found ${symbols.length} symbols to scan`);
 
@@ -28,17 +29,17 @@ export default function Scanner() {
       const scannedResults = [];
 
       for (let i = 0; i < symbols.length; i++) {
-        const sym = symbols[i];
+        const { symbol, name } = symbols[i];
         try {
-          addLog(`🔎 [${i + 1}/${symbols.length}] ${sym}`);
+          addLog(`🔎 [${i + 1}/${symbols.length}] ${symbol}`);
 
-          const url = `${proxy}https://query2.finance.yahoo.com/v8/finance/chart/${sym}?range=1mo&interval=1d`;
+          const url = `${proxy}https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?range=1mo&interval=1d`;
           const r = await fetch(url);
           const j = await r.json();
           const meta = j?.chart?.result?.[0]?.meta || {};
           const price = meta.regularMarketPrice ?? meta.previousClose ?? 0;
 
-          // ✅ คำนวณ indicator แบบง่าย
+          // ✅ Mock indicator (สามารถเปลี่ยนเป็นจริงภายหลัง)
           const rsi = Math.min(100, Math.max(0, Math.random() * 40 + 30));
           const macd = Number((Math.random() * 2 - 1).toFixed(2));
           const adx = Math.floor(Math.random() * 40 + 10);
@@ -46,7 +47,8 @@ export default function Scanner() {
             rsi > 60 && macd > 0 ? "Buy" : rsi < 40 && macd < 0 ? "Sell" : "Hold";
 
           scannedResults.push({
-            symbol: sym,
+            symbol,
+            name,
             price,
             rsi,
             macd,
@@ -55,7 +57,7 @@ export default function Scanner() {
           });
           setScanned(i + 1);
         } catch (err) {
-          addLog(`⚠️ ${sym} error: ${err.message}`);
+          addLog(`⚠️ ${symbol} error: ${err.message}`);
         }
       }
 
@@ -71,25 +73,26 @@ export default function Scanner() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16 p-4">
       <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
-        🚀 AI Super Scanner (Full Market)
+        🚀 AI Super Scanner (U.S. Market)
       </h2>
       <button
         onClick={runScan}
         disabled={loading}
         className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg mb-4 font-bold transition"
       >
-        {loading
-          ? `⏳ Scanning... (${scanned})`
-          : "🔍 Run Market Scan"}
+        {loading ? `⏳ Scanning... (${scanned})` : "🔍 Run Market Scan"}
       </button>
 
       {results.length > 0 ? (
         <div className="flex flex-col divide-y divide-gray-800/60 text-sm">
           {results.map((r, i) => (
             <div key={i} className="flex justify-between py-2">
-              <span className="font-bold text-white">{r.symbol}</span>
-              <span
-                className={`font-bold ${
+              <div className="w-1/3 font-bold text-white truncate">{r.symbol}</div>
+              <div className="w-1/3 text-right text-gray-400 truncate">
+                ${r.price?.toFixed(2) ?? "-"}
+              </div>
+              <div
+                className={`w-1/3 text-right font-bold ${
                   r.signal === "Buy"
                     ? "text-green-400"
                     : r.signal === "Sell"
@@ -98,8 +101,7 @@ export default function Scanner() {
                 }`}
               >
                 {r.signal}
-              </span>
-              <span className="text-gray-400">{Math.round(r.rsi)}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -124,4 +126,4 @@ export default function Scanner() {
       </section>
     </main>
   );
-                }
+        }
