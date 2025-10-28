@@ -1,4 +1,4 @@
-// ✅ OriginX AI Super Scanner — v∞.45 (All-Market Fusion + Save Top 20 AI Picks)
+// ✅ OriginX AI Super Scanner — v∞.46 (Ultra Stable + Max Speed + Safe Save)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -12,17 +12,16 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [batch, setBatch] = useState(1);
   const [totalBatches, setTotalBatches] = useState(1);
-  const [maxPerBatch, setMaxPerBatch] = useState(300); // ✅ ปรับให้เร็วขึ้น
+  const [maxPerBatch, setMaxPerBatch] = useState(300); // ✅ เร็วแต่ปลอดภัย
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-100), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // ✅ โหลด favorites และผลสแกนล่าสุด
+  // ✅ โหลด favorites และผลสแกนเก่า
   useEffect(() => {
     try {
       const fav = localStorage.getItem("favorites");
       if (fav) setFavorites(JSON.parse(fav));
-
       const savedTop = localStorage.getItem("aiTopPicks");
       if (savedTop) setScannerResults(JSON.parse(savedTop));
     } catch (err) {
@@ -30,7 +29,7 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ บันทึก Favorites
+  // ✅ บันทึก favorites
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -51,7 +50,7 @@ export default function Home() {
     }
   }
 
-  // ✅ เตรียมจำนวน batch ทั้งหมด
+  // ✅ เตรียมจำนวน batch
   async function prepareScanner() {
     addLog("📦 Preparing symbol list...");
     const res = await fetch("/api/symbols");
@@ -73,26 +72,31 @@ export default function Home() {
     }
   }
 
-  // ✅ สแกนครบทุก batch แล้วคัด Top 20 ที่ AI มั่นใจที่สุด
+  // ✅ สแกนตลาดทั้งหมด (เร็ว เสถียร ปลอด block)
   async function runFullScanner() {
     setLoading(true);
     setScannerResults([]);
     await prepareScanner();
 
     let allResults = [];
+    const delayPerBatch = 150; // ✅ 150ms = เร็วสุดที่ไม่พัง
 
     for (let i = 1; i <= totalBatches; i++) {
       setBatch(i);
       addLog(`🚀 Scanning batch ${i}/${totalBatches}...`);
       const results = await runSingleBatch(i);
+
       if (results?.length) {
         allResults.push(...results);
         addLog(`✅ Batch ${i} done (${results.length} stocks)`);
-      } else addLog(`⚠️ Batch ${i} empty`);
-      await new Promise((r) => setTimeout(r, 200)); // ✅ เร็วขึ้น ปลอดภัย
+      } else {
+        addLog(`⚠️ Batch ${i} empty`);
+      }
+
+      await new Promise((r) => setTimeout(r, delayPerBatch));
     }
 
-    // ✅ รวมครบทุก batch แล้วคัด Top 20
+    // ✅ รวมครบแล้วคัด Top 20 ที่ AI มั่นใจที่สุด
     if (allResults.length > 0) {
       const topPicks = allResults
         .filter((r) => r.signal === "Buy")
@@ -109,12 +113,12 @@ export default function Home() {
     setLoading(false);
   }
 
-  // ✅ โหลด Discovery ตอนเริ่ม
+  // ✅ โหลด Discovery ตอนเปิดหน้า
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ แสดง UI
+  // ✅ UI
   const renderPage = () => {
     if (active === "favorites")
       return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -128,9 +132,7 @@ export default function Home() {
           favorites={favorites}
           toggleFavorite={(sym) =>
             setFavorites((prev) =>
-              prev.includes(sym)
-                ? prev.filter((x) => x !== sym)
-                : [...prev, sym]
+              prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
             )
           }
         />
@@ -158,7 +160,6 @@ export default function Home() {
               <div className="text-xs text-gray-400 mb-2">
                 Showing Top {scannerResults.length} AI Picks (Saved)
               </div>
-
               <div className="flex flex-col divide-y divide-gray-800/60">
                 {scannerResults.map((r, i) => (
                   <div key={i} className="flex justify-between py-2 text-sm">
@@ -183,7 +184,7 @@ export default function Home() {
             </>
           ) : (
             <p className="text-center text-gray-500 italic">
-              🔎 กด “Run Full Market Scan” เพื่อเริ่มสแกนและบันทึกผล AI
+              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกนและบันทึกผล AI
             </p>
           )}
         </section>
@@ -240,4 +241,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+  }
