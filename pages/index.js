@@ -1,4 +1,4 @@
-// ✅ OriginX AI Super Scanner — v∞.52 (Logo + Vertical + Clickable + Stable)
+// ✅ OriginX AI Super Scanner — v∞.53 (Merged Full Version with Enhanced Scanner UI)
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import MarketSection from "../components/MarketSection";
@@ -73,7 +73,7 @@ export default function Home() {
     }
   }
 
-  // ✅ สแกนตลาดทั้งหมด (UI ใหม่)
+  // ✅ ฟังก์ชันสแกนตลาดทั้งหมด
   async function runFullScanner() {
     setLoading(true);
     setScannerResults([]);
@@ -115,7 +115,7 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // ✅ UI
+  // ✅ UI Renderer
   const renderPage = () => {
     if (active === "favorites")
       return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -137,77 +137,99 @@ export default function Home() {
         />
       );
 
-    // ✅ แท็บใหม่ Scanner
+    // ✅ แท็บใหม่ Scanner (เหมือนหน้า 1, 2)
     if (active === "scan")
       return (
-        <section className="p-4">
-          <h2 className="text-xl font-bold text-center mb-3 text-emerald-400">
-            🚀 OriginX AI Super Scanner (Full Market)
-          </h2>
+        <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+          {/* หัวข้อ + ปุ่ม Scan */}
+          <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
+            <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
+              📡 OriginX AI Super Scanner
+            </h2>
+            <button
+              onClick={runFullScanner}
+              disabled={loading}
+              className="text-sm text-gray-300 hover:text-emerald-400 transition flex items-center gap-1 border border-gray-700 rounded-md px-3 py-[4px] bg-[#0f172a]/70 hover:bg-[#162032]"
+            >
+              {loading ? "⏳ Scanning..." : "🔍 Scan"}
+            </button>
+          </div>
 
-          <button
-            onClick={runFullScanner}
-            disabled={loading}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-bold transition mb-3"
-          >
-            {loading
-              ? `⏳ Scanning... (Batch ${batch}/${totalBatches})`
-              : "🔍 Run Full Market Scan"}
-          </button>
-
-          {scannerResults.length > 0 ? (
-            <>
-              <div className="text-xs text-gray-400 mb-2 text-center">
-                ✅ Showing Top {scannerResults.length} AI Picks
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                {scannerResults.map((r, i) => (
-                  <Link
-                    key={i}
-                    href={`/analyze/${r.symbol}`}
-                    className="flex items-center gap-3 bg-[#111827] hover:bg-[#1f2937] transition border border-white/5 rounded-xl p-3"
-                  >
-                    {/* โลโก้หุ้น */}
-                    <img
-                      src={`https://finnhub.io/api/logo?symbol=${r.symbol}`}
-                      alt={r.symbol}
-                      className="w-8 h-8 rounded-md bg-white/10"
-                      onError={(e) => (e.target.style.display = "none")}
-                    />
-
-                    {/* ข้อมูลแนวตั้ง */}
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-white text-sm">
-                          {r.symbol}
-                        </span>
-                        <span
-                          className={`font-bold text-xs ${
-                            r.signal === "Buy"
-                              ? "text-green-400"
-                              : r.signal === "Sell"
-                              ? "text-red-400"
-                              : "text-yellow-400"
-                          }`}
-                        >
-                          {r.signal}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-gray-400 flex justify-between mt-1">
-                        <span>💵 ${r.last}</span>
-                        <span>📊 RSI {Math.round(r.rsi)}</span>
-                        <span>🤖 AI {Math.round(r.aiScore)}%</span>
+          {/* รายการหุ้น */}
+          <div className="flex flex-col divide-y divide-gray-800/50">
+            {scannerResults?.length ? (
+              scannerResults.map((r, i) => (
+                <Link
+                  key={r.symbol + i}
+                  href={`/analyze/${r.symbol}`}
+                  className="flex items-center justify-between py-[10px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
+                >
+                  {/* โลโก้วงกลม */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                      <img
+                        src={`https://logo.clearbit.com/${r.symbol.toLowerCase()}.com`}
+                        alt={r.symbol}
+                        className="w-full h-full object-cover rounded-full"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
+                            <span class='text-black font-extrabold text-[11px] uppercase'>${r.symbol}</span>
+                          </div>`;
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-white hover:text-emerald-400 font-extrabold text-[15px]">
+                        {r.symbol}
+                      </span>
+                      <div className="text-[11px] text-gray-400 font-medium truncate max-w-[160px] leading-snug">
+                        {r.companyName || "AI Discovery Candidate"}
                       </div>
                     </div>
-                  </Link>
-                ))}
+                  </div>
+
+                  {/* ราคา / RSI / Signal / AI% */}
+                  <div className="text-right leading-tight font-mono min-w-[75px]">
+                    <div className="text-[15px] text-white font-black">
+                      {r.last ? `$${r.last.toFixed(2)}` : "-"}
+                    </div>
+                    <div
+                      className={`text-[13px] font-bold ${
+                        r.rsi > 70
+                          ? "text-red-400"
+                          : r.rsi < 40
+                          ? "text-blue-400"
+                          : "text-emerald-400"
+                      }`}
+                    >
+                      {r.rsi ? `RSI ${Math.round(r.rsi)}` : "RSI -"}
+                    </div>
+                    <div
+                      className={`text-[13px] font-extrabold ${
+                        r.signal === "Buy"
+                          ? "text-green-400"
+                          : r.signal === "Sell"
+                          ? "text-red-400"
+                          : "text-yellow-400"
+                      }`}
+                    >
+                      {r.signal || "-"}
+                    </div>
+                    <div className="text-[12px] text-gray-400 font-semibold">
+                      AI {r.aiScore ? Math.round(r.aiScore) : 0}%
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="py-6 text-center text-gray-500 italic">
+                {loading
+                  ? "⏳ กำลังสแกนตลาดทั้งหมด..."
+                  : "กดปุ่ม 🔍 Scan เพื่อเริ่มสแกนตลาด"}
               </div>
-            </>
-          ) : (
-            <p className="text-gray-500 text-sm text-center mt-6">
-              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกนด้วย AI
-            </p>
-          )}
+            )}
+          </div>
         </section>
       );
 
@@ -262,4 +284,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+        }
