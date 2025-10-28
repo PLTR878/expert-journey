@@ -1,4 +1,4 @@
-// ✅ OriginX AI Super Scanner — v∞.43 (Full Market + Save AI Top Picks)
+// ✅ OriginX AI Super Scanner — v∞.45 (All-Market Fusion + Save Top 20 AI Picks)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -12,20 +12,25 @@ export default function Home() {
   const [logs, setLogs] = useState([]);
   const [batch, setBatch] = useState(1);
   const [totalBatches, setTotalBatches] = useState(1);
-  const [maxPerBatch, setMaxPerBatch] = useState(50);
+  const [maxPerBatch, setMaxPerBatch] = useState(300); // ✅ ปรับให้เร็วขึ้น
 
   const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-80), `${new Date().toLocaleTimeString()} ${msg}`]);
+    setLogs((p) => [...p.slice(-100), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // ✅ โหลด Favorites จาก localStorage
+  // ✅ โหลด favorites และผลสแกนล่าสุด
   useEffect(() => {
-    const saved = localStorage.getItem("favorites");
-    if (saved) setFavorites(JSON.parse(saved));
-    const savedScan = localStorage.getItem("aiTopPicks");
-    if (savedScan) setScannerResults(JSON.parse(savedScan));
+    try {
+      const fav = localStorage.getItem("favorites");
+      if (fav) setFavorites(JSON.parse(fav));
+
+      const savedTop = localStorage.getItem("aiTopPicks");
+      if (savedTop) setScannerResults(JSON.parse(savedTop));
+    } catch (err) {
+      console.warn("Load data error:", err);
+    }
   }, []);
 
-  // ✅ บันทึก Favorites และผลสแกน
+  // ✅ บันทึก Favorites
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -37,9 +42,8 @@ export default function Home() {
       addLog("🌋 Loading AI Discovery...");
       const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const j = await res.json();
-      const list = j.results || [];
-      setFutureDiscovery(list);
-      addLog(`✅ Loaded ${list.length} discovery stocks`);
+      setFutureDiscovery(j.results || []);
+      addLog(`✅ Loaded ${j.results?.length || 0} discovery stocks`);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
     } finally {
@@ -47,7 +51,7 @@ export default function Home() {
     }
   }
 
-  // ✅ เตรียมจำนวน batch
+  // ✅ เตรียมจำนวน batch ทั้งหมด
   async function prepareScanner() {
     addLog("📦 Preparing symbol list...");
     const res = await fetch("/api/symbols");
@@ -58,18 +62,18 @@ export default function Home() {
     addLog(`✅ Found ${total} symbols → ${batches} batches of ${maxPerBatch} each`);
   }
 
-  // ✅ สแกน batch เดียว
+  // ✅ ดึงข้อมูล 1 batch
   async function runSingleBatch(batchNo) {
     try {
       const res = await fetch(`/api/market-scan?batch=${batchNo}`, { cache: "no-store" });
-      const data = await res.json();
-      return data?.results || [];
+      const j = await res.json();
+      return j?.results || [];
     } catch {
       return [];
     }
   }
 
-  // ✅ สแกนครบตลาด (7000 หุ้น) แล้วคัด Top 20
+  // ✅ สแกนครบทุก batch แล้วคัด Top 20 ที่ AI มั่นใจที่สุด
   async function runFullScanner() {
     setLoading(true);
     setScannerResults([]);
@@ -85,26 +89,32 @@ export default function Home() {
         allResults.push(...results);
         addLog(`✅ Batch ${i} done (${results.length} stocks)`);
       } else addLog(`⚠️ Batch ${i} empty`);
-      await new Promise((r) => setTimeout(r, 800)); // ป้องกัน block
+      await new Promise((r) => setTimeout(r, 200)); // ✅ เร็วขึ้น ปลอดภัย
     }
 
-    // ✅ คัดเฉพาะหุ้น BUY ที่คะแนน AI สูงสุด 20 ตัว
-    const topPicks = allResults
-      .filter((r) => r.signal === "Buy")
-      .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
-      .slice(0, 20);
+    // ✅ รวมครบทุก batch แล้วคัด Top 20
+    if (allResults.length > 0) {
+      const topPicks = allResults
+        .filter((r) => r.signal === "Buy")
+        .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
+        .slice(0, 20);
 
-    setScannerResults(topPicks);
-    localStorage.setItem("aiTopPicks", JSON.stringify(topPicks)); // ✅ บันทึกถาวร
-    addLog(`🏁 Scan Completed | Saved Top ${topPicks.length} AI Picks ✅`);
+      setScannerResults(topPicks);
+      localStorage.setItem("aiTopPicks", JSON.stringify(topPicks));
+      addLog(`🏁 Scan Completed | Saved Top ${topPicks.length} AI Picks ✅`);
+    } else {
+      addLog("⚠️ No results found after full scan");
+    }
+
     setLoading(false);
   }
 
+  // ✅ โหลด Discovery ตอนเริ่ม
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ หน้า UI
+  // ✅ แสดง UI
   const renderPage = () => {
     if (active === "favorites")
       return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -146,7 +156,7 @@ export default function Home() {
           {scannerResults.length > 0 ? (
             <>
               <div className="text-xs text-gray-400 mb-2">
-                Top {scannerResults.length} AI Picks (Saved)
+                Showing Top {scannerResults.length} AI Picks (Saved)
               </div>
 
               <div className="flex flex-col divide-y divide-gray-800/60">
@@ -173,7 +183,7 @@ export default function Home() {
             </>
           ) : (
             <p className="text-center text-gray-500 italic">
-              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกนและบันทึกผล AI
+              🔎 กด “Run Full Market Scan” เพื่อเริ่มสแกนและบันทึกผล AI
             </p>
           )}
         </section>
@@ -230,4 +240,4 @@ export default function Home() {
       </nav>
     </main>
   );
-}
+            }
