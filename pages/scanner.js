@@ -1,5 +1,6 @@
-// ✅ /pages/scanner.js — OriginX AI Super Scanner (Connected to Visionary Batch v∞.49)
+// ✅ /pages/scanner.js — OriginX AI Super Scanner v∞.51 (Logo + Click + Vertical Layout)
 import { useState } from "react";
+import Link from "next/link";
 
 export default function Scanner() {
   const [batch, setBatch] = useState(1);
@@ -23,7 +24,7 @@ export default function Scanner() {
     addLog(`✅ Found ${total} symbols → ${batches} batches`);
   }
 
-  // ✅ เรียกใช้ Visionary Batch (แทน market-scan เดิม)
+  // ✅ เรียกใช้ Visionary Batch
   async function runBatch(batchNo) {
     try {
       const res = await fetch(`/api/visionary-batch?batch=${batchNo}`, {
@@ -50,13 +51,14 @@ export default function Scanner() {
       setBatch(i);
       addLog(`🚀 Scanning batch ${i}/${totalBatches}...`);
       await runBatch(i);
-      await new Promise((r) => setTimeout(r, 200)); // ✅ ปลอด block + เร็วขึ้น
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     addLog("🏁 Market Scan Completed ✅");
     setLoading(false);
   }
 
+  // ✅ UI
   return (
     <main className="min-h-screen bg-[#0b1220] text-white p-4 pb-20">
       <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
@@ -74,36 +76,57 @@ export default function Scanner() {
       </button>
 
       {results.length > 0 && (
-        <div className="text-xs text-gray-400 mb-2">
+        <div className="text-xs text-gray-400 mb-3 text-center">
           ✅ Total: {results.length} | BUY:{" "}
           {results.filter((x) => x.signal === "Buy").length}
         </div>
       )}
 
-      <div className="divide-y divide-gray-800/50">
+      {/* ✅ รายชื่อหุ้นแนวตั้งแบบมีโลโก้ */}
+      <div className="grid grid-cols-1 gap-2">
         {results.map((r, i) => (
-          <div key={i} className="flex justify-between py-2 text-sm">
-            <span className="font-bold">{r.symbol}</span>
-            <span
-              className={`font-bold ${
-                r.signal === "Buy"
-                  ? "text-green-400"
-                  : r.signal === "Sell"
-                  ? "text-red-400"
-                  : "text-yellow-400"
-              }`}
-            >
-              {r.signal}
-            </span>
-            <span className="text-gray-400">
-              RSI {Math.round(r.rsi)} | AI {r.aiScore}
-            </span>
-          </div>
+          <Link
+            key={i}
+            href={`/analyze/${r.symbol}`}
+            className="bg-[#111827] hover:bg-[#1f2937] transition p-3 rounded-xl border border-white/5 flex items-center gap-3"
+          >
+            {/* โลโก้บริษัท (favicon style) */}
+            <img
+              src={`https://finnhub.io/api/logo?symbol=${r.symbol}`}
+              alt={r.symbol}
+              className="w-8 h-8 rounded-md bg-white/10"
+              onError={(e) => (e.target.style.display = "none")}
+            />
+
+            {/* ข้อมูลหุ้นแนวตั้ง */}
+            <div className="flex-1">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-white text-sm">{r.symbol}</span>
+                <span
+                  className={`font-bold text-xs ${
+                    r.signal === "Buy"
+                      ? "text-green-400"
+                      : r.signal === "Sell"
+                      ? "text-red-400"
+                      : "text-yellow-400"
+                  }`}
+                >
+                  {r.signal}
+                </span>
+              </div>
+
+              <div className="text-[11px] text-gray-400 mt-1 flex justify-between">
+                <span>💵 Price: ${r.last}</span>
+                <span>📊 RSI: {Math.round(r.rsi)}</span>
+                <span>🤖 AI: {Math.round(r.aiScore)}%</span>
+              </div>
+            </div>
+          </Link>
         ))}
       </div>
 
-      {/* Logs Section */}
-      <section className="mt-5">
+      {/* 🧠 Logs Section */}
+      <section className="mt-6">
         <div className="flex justify-between items-center mb-1">
           <span className="text-emerald-400 text-xs">🧠 Logs</span>
           <button
@@ -121,4 +144,4 @@ export default function Scanner() {
       </section>
     </main>
   );
-                          }
+        }
