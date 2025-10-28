@@ -1,5 +1,5 @@
 // ✅ AI Super Scanner — Smart-Batch v∞.36
-import { analyzeAI } from "../../lib/aiAnalyzer.js";
+import { analyzeAI } from "../../utils/aiCore.js";
 
 export default async function handler(req, res) {
   const batch = parseInt(req.query.batch || "1");
