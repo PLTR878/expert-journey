@@ -1,4 +1,4 @@
-// ✅ OriginX AI Super Scanner — v∞.41 (Full Market + Auto Merge + CSV Export)
+// ✅ OriginX AI Super Scanner — v∞.42 (Full Market + AI Ranking Top 20)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -13,7 +13,7 @@ export default function Home() {
   const [showLogs, setShowLogs] = useState(false);
   const [batch, setBatch] = useState(1);
   const [totalBatches, setTotalBatches] = useState(1);
-  const [maxPerBatch, setMaxPerBatch] = useState(50); // ✅ ให้ตรงกับ API
+  const [maxPerBatch, setMaxPerBatch] = useState(50);
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-60), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -46,7 +46,6 @@ export default function Home() {
       const j = await res.json();
       const list = j.results || [];
       setFutureDiscovery(list);
-      localStorage.setItem("futureDiscovery", JSON.stringify(list));
       addLog(`✅ Loaded ${list.length} discovery stocks`);
     } catch (err) {
       addLog(`⚠️ Discovery failed: ${err.message}`);
@@ -55,13 +54,12 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดจำนวน batch ทั้งหมดจาก /api/symbols
+  // ✅ เตรียมจำนวน batch
   async function prepareScanner() {
     try {
       addLog("📦 Preparing symbol list...");
       const res = await fetch("/api/symbols");
       const j = await res.json();
-
       const total = j.total || 7000;
       const batches = Math.ceil(total / maxPerBatch);
       setTotalBatches(batches);
@@ -77,53 +75,45 @@ export default function Home() {
       addLog(`🚀 Running batch ${batchNo}/${totalBatches}...`);
       const res = await fetch(`/api/market-scan?batch=${batchNo}`, { cache: "no-store" });
       const data = await res.json();
-      if (data?.results?.length) {
-        setScannerResults((p) => [...p, ...data.results]);
-        addLog(`✅ Batch ${batchNo} done (${data.results.length} stocks)`);
-      } else addLog(`⚠️ Batch ${batchNo} returned no results`);
+      return data?.results || [];
     } catch (err) {
       addLog(`❌ Batch ${batchNo} error: ${err.message}`);
+      return [];
     }
   }
 
-  // ✅ Auto Scan ทั้งตลาด
+  // ✅ สแกนทั้งตลาด + คัด Top 20 หุ้น AI มั่นใจที่สุด
   async function runFullScanner() {
     setLoading(true);
     setScannerResults([]);
     await prepareScanner();
 
+    let allResults = [];
+
     for (let i = 1; i <= totalBatches; i++) {
       setBatch(i);
-      await runSingleBatch(i);
-      await new Promise((r) => setTimeout(r, 1000)); // หน่วง 1 วิ ป้องกัน timeout
+      const results = await runSingleBatch(i);
+      allResults.push(...results);
+      addLog(`✅ Batch ${i} done (${results.length} stocks)`);
+      await new Promise((r) => setTimeout(r, 1000)); // ป้องกัน block
     }
 
-    addLog("🏁 Market Scan completed ✅");
+    // ✅ คัดเฉพาะหุ้น BUY ที่คะแนน AI สูงสุด 20 ตัว
+    const topPicks = allResults
+      .filter((r) => r.signal === "Buy")
+      .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
+      .slice(0, 20);
+
+    setScannerResults(topPicks);
+    addLog(`🏁 Scan Completed | Showing Top ${topPicks.length} AI Picks ✅`);
     setLoading(false);
   }
 
-  // ✅ Export CSV (ผลรวมทั้งหมด)
-  function exportCSV() {
-    if (scannerResults.length === 0) return alert("ไม่มีข้อมูลให้บันทึก");
-    const headers = "Symbol,RSI,Signal,AI Score\n";
-    const rows = scannerResults
-      .map((r) => `${r.symbol},${r.rsi},${r.signal},${r.aiScore}`)
-      .join("\n");
-    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "OriginX_AI_Scanner.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  // ✅ เริ่มต้นโหลดข้อมูลหุ้นต้นน้ำ
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ Render หน้าแต่ละส่วน
+  // ✅ หน้า UI
   const renderPage = () => {
     if (active === "favorites")
       return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -149,36 +139,23 @@ export default function Home() {
       return (
         <section className="p-4">
           <h2 className="text-xl font-bold text-center mb-3 text-emerald-400">
-            🚀 AI Super Scanner (Full Market)
+            🚀 AI Super Scanner (Top 20 Picks)
           </h2>
 
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={runFullScanner}
-              disabled={loading}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-bold transition"
-            >
-              {loading
-                ? `⏳ Scanning... (Batch ${batch}/${totalBatches})`
-                : "🔍 Run Full Market Scan"}
-            </button>
-
-            <button
-              onClick={exportCSV}
-              className="bg-[#1f2937] hover:bg-[#374151] text-emerald-400 font-bold px-3 py-2 rounded-lg border border-emerald-500/40 transition"
-            >
-              📥 Export CSV
-            </button>
-          </div>
+          <button
+            onClick={runFullScanner}
+            disabled={loading}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-bold transition mb-4"
+          >
+            {loading
+              ? `⏳ Scanning... (Batch ${batch}/${totalBatches})`
+              : "🔍 Run Full Market Scan"}
+          </button>
 
           {scannerResults.length > 0 ? (
             <>
               <div className="text-xs text-gray-400 mb-2">
-                Total: {scannerResults.length} stocks (
-                {
-                  scannerResults.filter((x) => x.signal === "Buy").length
-                }{" "}
-                BUY signals)
+                Showing Top {scannerResults.length} AI Picks (BUY only)
               </div>
 
               <div className="flex flex-col divide-y divide-gray-800/60">
@@ -205,7 +182,7 @@ export default function Home() {
             </>
           ) : (
             <p className="text-center text-gray-500 italic">
-              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกนตลาดทั้งหมด
+              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกน AI Top 20 Picks
             </p>
           )}
         </section>
@@ -221,7 +198,6 @@ export default function Home() {
     return null;
   };
 
-  // ✅ UI หลัก
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
@@ -265,4 +241,4 @@ export default function Home() {
       </nav>
     </main>
   );
-      }
+}
