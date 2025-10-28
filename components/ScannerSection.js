@@ -1,4 +1,4 @@
-// ✅ /components/ScannerSection.js — OriginX Scanner Section
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.53 Unified UI)
 import { useState } from "react";
 import Link from "next/link";
 
@@ -8,7 +8,7 @@ export default function ScannerSection() {
   const [logs, setLogs] = useState([]);
 
   const addLog = (msg) =>
-    setLogs((p) => [...p.slice(-40), `${new Date().toLocaleTimeString()} ${msg}`]);
+    setLogs((p) => [...p.slice(-60), `${new Date().toLocaleTimeString()} ${msg}`]);
 
   async function runScan() {
     setLoading(true);
@@ -26,70 +26,97 @@ export default function ScannerSection() {
   }
 
   return (
-    <section className="bg-[#0b1220] p-4 rounded-2xl border border-white/10 text-white">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-lg font-bold text-emerald-400">
-          🚀 AI Super Scanner (Full Market)
-        </h2>
+    <main className="min-h-screen bg-[#0b1220] text-white pb-20">
+      {/* 🧠 Header */}
+      <div className="text-center pt-6 pb-3">
+        <h1 className="text-2xl font-bold text-emerald-400 mb-1">
+          🚀 OriginX AI Super Scanner
+        </h1>
+        <p className="text-gray-400 text-sm">(Full Market Analysis)</p>
+      </div>
+
+      {/* 🔍 Run Scan Button */}
+      <div className="max-w-sm mx-auto px-4 mb-4">
         <button
           onClick={runScan}
           disabled={loading}
-          className="bg-emerald-500 hover:bg-emerald-600 text-xs px-3 py-1 rounded-lg font-semibold transition"
+          className="w-full bg-emerald-500 hover:bg-emerald-600 py-2.5 rounded-xl font-bold transition text-white shadow-md"
         >
-          {loading ? "⏳ Scanning..." : "🔍 Run Scan"}
+          {loading ? "⏳ Scanning..." : "🔍 Run Full Market Scan"}
         </button>
       </div>
 
-      {results.length > 0 ? (
-        <div className="grid grid-cols-1 gap-2">
-          {results.map((r, i) => (
-            <Link
-              key={i}
-              href={`/analyze/${r.symbol}`}
-              className="flex items-center gap-3 p-3 bg-[#111827] hover:bg-[#1f2937] border border-white/5 rounded-xl transition"
-            >
-              <img
-                src={`https://finnhub.io/api/logo?symbol=${r.symbol}`}
-                alt={r.symbol}
-                className="w-8 h-8 rounded-md bg-white/10"
-                onError={(e) => (e.target.style.display = 'none')}
-              />
-              <div className="flex-1">
-                <div className="flex justify-between">
-                  <span className="font-bold text-white text-sm">{r.symbol}</span>
-                  <span
-                    className={`font-bold text-xs ${
-                      r.signal === "Buy"
-                        ? "text-green-400"
-                        : r.signal === "Sell"
-                        ? "text-red-400"
-                        : "text-yellow-400"
-                    }`}
-                  >
-                    {r.signal}
-                  </span>
-                </div>
-                <div className="text-[11px] text-gray-400 flex justify-between mt-1">
-                  <span>💵 ${r.last}</span>
-                  <span>📊 RSI {Math.round(r.rsi)}</span>
-                  <span>🤖 {Math.round(r.aiScore)}%</span>
-                </div>
-              </div>
-            </Link>
+      {/* ✅ Results */}
+      <div className="max-w-3xl mx-auto px-3">
+        {results.length > 0 ? (
+          <>
+            <div className="text-xs text-gray-400 text-center mb-2">
+              ✅ Showing Top {results.length} AI Picks
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              {results.map((r, i) => (
+                <Link
+                  key={i}
+                  href={`/analyze/${r.symbol}`}
+                  className="flex justify-between items-center bg-[#111827] hover:bg-[#1f2937] p-3 rounded-2xl border border-white/5 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white/10 rounded-md w-9 h-9 flex items-center justify-center text-[12px] font-bold text-white/80">
+                      {r.symbol[0]}
+                    </div>
+                    <div>
+                      <div className="font-bold text-white text-sm">{r.symbol}</div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">
+                        💵 ${r.last?.toFixed?.(2) ?? "-"} | 📊 RSI {Math.round(r.rsi) || "-"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div
+                      className={`font-bold text-xs ${
+                        r.signal === "Buy"
+                          ? "text-green-400"
+                          : r.signal === "Sell"
+                          ? "text-red-400"
+                          : "text-yellow-400"
+                      }`}
+                    >
+                      {r.signal}
+                    </div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">
+                      🤖 {Math.round(r.aiScore)}%
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-gray-500 text-sm text-center py-10">
+            {loading ? "กำลังสแกนตลาด..." : "กดปุ่มด้านบนเพื่อเริ่มสแกนทั้งตลาด"}
+          </p>
+        )}
+      </div>
+
+      {/* 🧠 Logs Section */}
+      <section className="mt-8 max-w-3xl mx-auto px-3">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-emerald-400 text-xs">🧠 Logs</span>
+          <button
+            onClick={() => setLogs([])}
+            className="text-xs text-gray-400 hover:text-white"
+          >
+            Clear
+          </button>
+        </div>
+        <div className="bg-black/30 border border-white/10 p-2 rounded-md text-xs text-gray-400 max-h-44 overflow-auto">
+          {logs.map((l, i) => (
+            <div key={i}>{l}</div>
           ))}
         </div>
-      ) : (
-        <p className="text-gray-500 text-sm text-center py-4">
-          {loading ? "กำลังสแกนตลาด..." : "กดปุ่มด้านบนเพื่อเริ่มสแกน"}
-        </p>
-      )}
-
-      {/* Logs */}
-      <div className="bg-black/30 mt-4 border border-white/10 rounded-md p-2 text-xs text-gray-400 max-h-36 overflow-auto">
-        {logs.map((l, i) => (
-          <div key={i}>{l}</div>
-        ))}
-      </div>
-    </section>
+      </section>
+    </main>
   );
-    }
+            }
