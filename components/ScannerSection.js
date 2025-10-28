@@ -1,4 +1,4 @@
-// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.56 Full Sync UI)
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.58 Pure Style)
 import { useState } from "react";
 import Link from "next/link";
 
@@ -10,23 +10,21 @@ export default function ScannerSection() {
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-80), `${new Date().toLocaleTimeString()} ${msg}`]);
 
-  // ✅ เริ่มสแกนตลาด
   async function runFullScan() {
     setLoading(true);
     setResults([]);
-    addLog("🚀 Starting Full Market Scan...");
+    addLog("🚀 Starting AI Market Scan...");
     try {
       const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const data = await res.json();
       setResults(data.results || []);
-      addLog(`✅ Found ${data.results?.length || 0} AI Picks`);
+      addLog(`✅ Found ${data.results?.length || 0} stocks`);
     } catch (e) {
       addLog(`❌ Error: ${e.message}`);
     }
     setLoading(false);
   }
 
-  // ✅ UI Layout — เหมือนหน้าแรก OriginX
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <div className="max-w-6xl mx-auto px-3 pt-3">
@@ -34,10 +32,9 @@ export default function ScannerSection() {
           {/* หัวข้อ + ปุ่ม */}
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-bold text-emerald-400">
-              🚀 OriginX AI Super Scanner (Full Market)
+              🚀 OriginX AI Super Scanner
             </h2>
 
-            {/* ปุ่มเล็กแต่หรู */}
             <button
               onClick={runFullScan}
               disabled={loading}
@@ -51,7 +48,7 @@ export default function ScannerSection() {
             </button>
           </div>
 
-          {/* แสดงผลสแกน */}
+          {/* รายการหุ้นแนวตั้ง */}
           {results.length > 0 ? (
             <>
               <div className="text-xs text-gray-400 mb-2 text-center">
@@ -63,9 +60,9 @@ export default function ScannerSection() {
                   <Link
                     key={i}
                     href={`/analyze/${r.symbol}`}
-                    className="flex items-center justify-between py-[10px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all rounded-lg"
+                    className="flex items-center justify-between py-[10px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
                   >
-                    {/* โลโก้บริษัท */}
+                    {/* โลโก้วงกลม + ชื่อหุ้น */}
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                         <img
@@ -74,12 +71,13 @@ export default function ScannerSection() {
                           className="w-full h-full object-cover rounded-full"
                           onError={(e) => {
                             e.target.style.display = "none";
-                            e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300'>
-                              <span class='text-black font-extrabold text-[11px] uppercase mt-[3px]'>${r.symbol}</span>
+                            e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
+                              <span class='text-black font-extrabold text-[11px] uppercase'>${r.symbol}</span>
                             </div>`;
                           }}
                         />
                       </div>
+
                       <div>
                         <span className="text-white hover:text-emerald-400 font-extrabold text-[15px]">
                           {r.symbol}
@@ -90,8 +88,8 @@ export default function ScannerSection() {
                       </div>
                     </div>
 
-                    {/* ข้อมูลราคา + RSI + AI */}
-                    <div className="text-right leading-tight font-mono min-w-[75px]">
+                    {/* ราคา / RSI / Signal / AI เป็นแนวตั้ง */}
+                    <div className="text-right leading-tight font-mono min-w-[70px]">
                       <div className="text-[15px] text-white font-black">
                         {r.last ? `$${r.last.toFixed(2)}` : "-"}
                       </div>
@@ -117,6 +115,9 @@ export default function ScannerSection() {
                       >
                         {r.signal || "-"}
                       </div>
+                      <div className="text-[12px] text-gray-400 font-semibold">
+                        AI {r.aiScore ? Math.round(r.aiScore) : 0}%
+                      </div>
                     </div>
                   </Link>
                 ))}
@@ -124,13 +125,11 @@ export default function ScannerSection() {
             </>
           ) : (
             <p className="text-center text-gray-500 italic py-5">
-              {loading
-                ? "⏳ กำลังสแกนตลาดทั้งหมด..."
-                : "กดปุ่ม 🔍 Scan เพื่อเริ่มการสแกนตลาด"}
+              {loading ? "⏳ กำลังสแกนตลาดทั้งหมด..." : "กดปุ่ม 🔍 Scan เพื่อเริ่มสแกนตลาด"}
             </p>
           )}
 
-          {/* 🧠 Logs */}
+          {/* Logs */}
           <section className="mt-8">
             <div className="flex justify-between items-center mb-1">
               <span className="text-emerald-400 text-xs">🧠 Logs</span>
@@ -151,4 +150,4 @@ export default function ScannerSection() {
       </div>
     </main>
   );
-                      }
+                            }
