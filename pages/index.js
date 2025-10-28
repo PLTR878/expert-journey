@@ -1,4 +1,4 @@
-// ✅ OriginX AI Super Scanner — V∞.35 (Full U.S. Market Mode)
+// ✅ OriginX AI Super Scanner — v∞.41 (Full Market + Auto Merge + CSV Export)
 import { useEffect, useState } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -13,6 +13,7 @@ export default function Home() {
   const [showLogs, setShowLogs] = useState(false);
   const [batch, setBatch] = useState(1);
   const [totalBatches, setTotalBatches] = useState(1);
+  const [maxPerBatch, setMaxPerBatch] = useState(50); // ✅ ให้ตรงกับ API
 
   const addLog = (msg) =>
     setLogs((p) => [...p.slice(-60), `${new Date().toLocaleTimeString()} ${msg}`]);
@@ -36,7 +37,7 @@ export default function Home() {
     }
   }, [favorites]);
 
-  // ✅ โหลดหุ้นต้นน้ำจาก visionary-batch
+  // ✅ โหลดหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -60,10 +61,11 @@ export default function Home() {
       addLog("📦 Preparing symbol list...");
       const res = await fetch("/api/symbols");
       const j = await res.json();
+
       const total = j.total || 7000;
-      const batches = Math.ceil(total / 100);
+      const batches = Math.ceil(total / maxPerBatch);
       setTotalBatches(batches);
-      addLog(`✅ Found ${total} symbols → ${batches} batches`);
+      addLog(`✅ Found ${total} symbols → ${batches} batches of ${maxPerBatch} each`);
     } catch (err) {
       addLog(`⚠️ Symbol list error: ${err.message}`);
     }
@@ -93,11 +95,27 @@ export default function Home() {
     for (let i = 1; i <= totalBatches; i++) {
       setBatch(i);
       await runSingleBatch(i);
-      await new Promise((r) => setTimeout(r, 1500)); // ⏳ หน่วงเพื่อไม่ให้ timeout
+      await new Promise((r) => setTimeout(r, 1000)); // หน่วง 1 วิ ป้องกัน timeout
     }
 
     addLog("🏁 Market Scan completed ✅");
     setLoading(false);
+  }
+
+  // ✅ Export CSV (ผลรวมทั้งหมด)
+  function exportCSV() {
+    if (scannerResults.length === 0) return alert("ไม่มีข้อมูลให้บันทึก");
+    const headers = "Symbol,RSI,Signal,AI Score\n";
+    const rows = scannerResults
+      .map((r) => `${r.symbol},${r.rsi},${r.signal},${r.aiScore}`)
+      .join("\n");
+    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "OriginX_AI_Scanner.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // ✅ เริ่มต้นโหลดข้อมูลหุ้นต้นน้ำ
@@ -108,12 +126,7 @@ export default function Home() {
   // ✅ Render หน้าแต่ละส่วน
   const renderPage = () => {
     if (active === "favorites")
-      return (
-        <Favorites
-          favorites={favorites}
-          setFavorites={setFavorites}
-        />
-      );
+      return <Favorites favorites={favorites} setFavorites={setFavorites} />;
 
     if (active === "market")
       return (
@@ -138,39 +151,61 @@ export default function Home() {
           <h2 className="text-xl font-bold text-center mb-3 text-emerald-400">
             🚀 AI Super Scanner (Full Market)
           </h2>
-          <button
-            onClick={runFullScanner}
-            disabled={loading}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg mb-4 font-bold transition"
-          >
-            {loading
-              ? `⏳ Scanning... (Batch ${batch}/${totalBatches})`
-              : "🔍 Run Full Market Scan"}
-          </button>
+
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={runFullScanner}
+              disabled={loading}
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-bold transition"
+            >
+              {loading
+                ? `⏳ Scanning... (Batch ${batch}/${totalBatches})`
+                : "🔍 Run Full Market Scan"}
+            </button>
+
+            <button
+              onClick={exportCSV}
+              className="bg-[#1f2937] hover:bg-[#374151] text-emerald-400 font-bold px-3 py-2 rounded-lg border border-emerald-500/40 transition"
+            >
+              📥 Export CSV
+            </button>
+          </div>
 
           {scannerResults.length > 0 ? (
-            <div className="flex flex-col divide-y divide-gray-800/60">
-              {scannerResults.map((r, i) => (
-                <div key={i} className="flex justify-between py-2 text-sm">
-                  <span className="font-bold text-white">{r.symbol}</span>
-                  <span
-                    className={`font-bold ${
-                      r.signal === "Buy"
-                        ? "text-green-400"
-                        : r.signal === "Sell"
-                        ? "text-red-400"
-                        : "text-yellow-400"
-                    }`}
-                  >
-                    {r.signal}
-                  </span>
-                  <span className="text-gray-400">{Math.round(r.rsi)}</span>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="text-xs text-gray-400 mb-2">
+                Total: {scannerResults.length} stocks (
+                {
+                  scannerResults.filter((x) => x.signal === "Buy").length
+                }{" "}
+                BUY signals)
+              </div>
+
+              <div className="flex flex-col divide-y divide-gray-800/60">
+                {scannerResults.map((r, i) => (
+                  <div key={i} className="flex justify-between py-2 text-sm">
+                    <span className="font-bold text-white">{r.symbol}</span>
+                    <span
+                      className={`font-bold ${
+                        r.signal === "Buy"
+                          ? "text-green-400"
+                          : r.signal === "Sell"
+                          ? "text-red-400"
+                          : "text-yellow-400"
+                      }`}
+                    >
+                      {r.signal}
+                    </span>
+                    <span className="text-gray-400">
+                      RSI: {Math.round(r.rsi)} | AI: {r.aiScore}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <p className="text-center text-gray-500 italic">
-              🔎 กดปุ่มด้านบนเพื่อเริ่มสแกนหุ้นทั้งตลาด
+              🔎 กด “Run Full Market Scan” เพื่อเริ่มการสแกนตลาดทั้งหมด
             </p>
           )}
         </section>
@@ -230,4 +265,4 @@ export default function Home() {
       </nav>
     </main>
   );
-  }
+      }
