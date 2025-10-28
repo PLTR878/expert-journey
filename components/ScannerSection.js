@@ -1,4 +1,4 @@
-// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.53 Unified UI)
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.55 Refined)
 import { useState } from "react";
 import Link from "next/link";
 
@@ -13,7 +13,7 @@ export default function ScannerSection() {
   async function runScan() {
     setLoading(true);
     setResults([]);
-    addLog("🚀 Starting AI Scan...");
+    addLog("🚀 Starting AI Market Scan...");
     try {
       const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const data = await res.json();
@@ -26,82 +26,96 @@ export default function ScannerSection() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white pb-20">
-      {/* 🧠 Header */}
-      <div className="text-center pt-6 pb-3">
-        <h1 className="text-2xl font-bold text-emerald-400 mb-1">
+    <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
+      {/* 🔰 Header */}
+      <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
+        <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
           🚀 OriginX AI Super Scanner
-        </h1>
-        <p className="text-gray-400 text-sm">(Full Market Analysis)</p>
-      </div>
+        </h2>
 
-      {/* 🔍 Run Scan Button */}
-      <div className="max-w-sm mx-auto px-4 mb-4">
+        {/* ปุ่มสแกนเล็ก เรียบหรู */}
         <button
           onClick={runScan}
           disabled={loading}
-          className="w-full bg-emerald-500 hover:bg-emerald-600 py-2.5 rounded-xl font-bold transition text-white shadow-md"
+          className="text-[12px] px-3 py-[5px] rounded-lg bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold shadow-md border border-emerald-400/40 transition-all"
         >
-          {loading ? "⏳ Scanning..." : "🔍 Run Full Market Scan"}
+          {loading ? "⏳ Scanning..." : "🔍 Scan"}
         </button>
       </div>
 
-      {/* ✅ Results */}
-      <div className="max-w-3xl mx-auto px-3">
+      {/* ✅ รายการหุ้น */}
+      <div className="flex flex-col divide-y divide-gray-800/50">
         {results.length > 0 ? (
-          <>
-            <div className="text-xs text-gray-400 text-center mb-2">
-              ✅ Showing Top {results.length} AI Picks
-            </div>
+          results.map((r, i) => (
+            <Link
+              key={i}
+              href={`/analyze/${r.symbol}`}
+              className="flex items-center justify-between py-[10px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all rounded-lg"
+            >
+              {/* โลโก้ + Symbol */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                  <img
+                    src={`https://logo.clearbit.com/${r.symbol.toLowerCase()}.com`}
+                    alt={r.symbol}
+                    className="w-full h-full object-cover rounded-full"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300'>
+                        <span class='text-black font-extrabold text-[11px] uppercase mt-[3px]'>${r.symbol}</span>
+                      </div>`;
+                    }}
+                  />
+                </div>
+                <div>
+                  <span className="text-white hover:text-emerald-400 font-extrabold text-[15px]">
+                    {r.symbol}
+                  </span>
+                  <div className="text-[11px] text-gray-400 font-medium truncate max-w-[160px] leading-snug">
+                    {r.companyName || "AI Discovery Candidate"}
+                  </div>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              {results.map((r, i) => (
-                <Link
-                  key={i}
-                  href={`/analyze/${r.symbol}`}
-                  className="flex justify-between items-center bg-[#111827] hover:bg-[#1f2937] p-3 rounded-2xl border border-white/5 transition"
+              {/* ราคา + RSI + AI */}
+              <div className="text-right leading-tight font-mono min-w-[75px]">
+                <div className="text-[15px] text-white font-black">
+                  {r.last ? `$${r.last.toFixed(2)}` : "-"}
+                </div>
+                <div
+                  className={`text-[13px] font-bold ${
+                    r.rsi > 70
+                      ? "text-red-400"
+                      : r.rsi < 40
+                      ? "text-blue-400"
+                      : "text-emerald-400"
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white/10 rounded-md w-9 h-9 flex items-center justify-center text-[12px] font-bold text-white/80">
-                      {r.symbol[0]}
-                    </div>
-                    <div>
-                      <div className="font-bold text-white text-sm">{r.symbol}</div>
-                      <div className="text-[11px] text-gray-400 mt-0.5">
-                        💵 ${r.last?.toFixed?.(2) ?? "-"} | 📊 RSI {Math.round(r.rsi) || "-"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div
-                      className={`font-bold text-xs ${
-                        r.signal === "Buy"
-                          ? "text-green-400"
-                          : r.signal === "Sell"
-                          ? "text-red-400"
-                          : "text-yellow-400"
-                      }`}
-                    >
-                      {r.signal}
-                    </div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">
-                      🤖 {Math.round(r.aiScore)}%
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </>
+                  RSI {r.rsi ? Math.round(r.rsi) : "-"}
+                </div>
+                <div
+                  className={`text-[13px] font-extrabold ${
+                    r.signal === "Buy"
+                      ? "text-green-400"
+                      : r.signal === "Sell"
+                      ? "text-red-400"
+                      : "text-yellow-400"
+                  }`}
+                >
+                  {r.signal || "-"}
+                </div>
+              </div>
+            </Link>
+          ))
         ) : (
-          <p className="text-gray-500 text-sm text-center py-10">
-            {loading ? "กำลังสแกนตลาด..." : "กดปุ่มด้านบนเพื่อเริ่มสแกนทั้งตลาด"}
-          </p>
+          <div className="py-6 text-center text-gray-500 italic">
+            {loading ? "กำลังสแกนตลาด..." : "กดปุ่ม 🔍 Scan เพื่อเริ่มการสแกนตลาดทั้งหมด"}
+          </div>
         )}
       </div>
 
       {/* 🧠 Logs Section */}
-      <section className="mt-8 max-w-3xl mx-auto px-3">
+      <section className="mt-8 px-2 sm:px-3">
         <div className="flex justify-between items-center mb-1">
           <span className="text-emerald-400 text-xs">🧠 Logs</span>
           <button
@@ -117,6 +131,6 @@ export default function ScannerSection() {
           ))}
         </div>
       </section>
-    </main>
+    </section>
   );
-            }
+                }
