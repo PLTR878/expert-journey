@@ -1,4 +1,4 @@
-// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.58 Pure Style)
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.59 Refined: Logo+AI mini+RSI removed)
 import { useState } from "react";
 import Link from "next/link";
 
@@ -62,7 +62,7 @@ export default function ScannerSection() {
                     href={`/analyze/${r.symbol}`}
                     className="flex items-center justify-between py-[10px] px-[4px] sm:px-3 hover:bg-[#111827]/40 transition-all"
                   >
-                    {/* โลโก้วงกลม + ชื่อหุ้น */}
+                    {/* โลโก้บริษัทจริง */}
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
                         <img
@@ -70,10 +70,17 @@ export default function ScannerSection() {
                           alt={r.symbol}
                           className="w-full h-full object-cover rounded-full"
                           onError={(e) => {
-                            e.target.style.display = "none";
-                            e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
-                              <span class='text-black font-extrabold text-[11px] uppercase'>${r.symbol}</span>
-                            </div>`;
+                            // fallback → Finnhub → ชื่อย่อ
+                            e.target.onerror = null;
+                            e.target.src = `https://finnhub.io/api/logo?symbol=${r.symbol}`;
+                            setTimeout(() => {
+                              if (!e.target.complete || e.target.naturalWidth === 0) {
+                                e.target.style.display = "none";
+                                e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
+                                  <span class='text-black font-extrabold text-[11px] uppercase'>${r.symbol}</span>
+                                </div>`;
+                              }
+                            }, 700);
                           }}
                         />
                       </div>
@@ -88,7 +95,7 @@ export default function ScannerSection() {
                       </div>
                     </div>
 
-                    {/* ราคา / RSI / Signal / AI เป็นแนวตั้ง */}
+                    {/* ราคา / RSI / Signal / AI */}
                     <div className="text-right leading-tight font-mono min-w-[70px]">
                       <div className="text-[15px] text-white font-black">
                         {r.last ? `$${r.last.toFixed(2)}` : "-"}
@@ -102,7 +109,7 @@ export default function ScannerSection() {
                             : "text-emerald-400"
                         }`}
                       >
-                        RSI {r.rsi ? Math.round(r.rsi) : "-"}
+                        {r.rsi ? Math.round(r.rsi) : "-"}
                       </div>
                       <div
                         className={`text-[13px] font-extrabold ${
@@ -115,7 +122,7 @@ export default function ScannerSection() {
                       >
                         {r.signal || "-"}
                       </div>
-                      <div className="text-[12px] text-gray-400 font-semibold">
+                      <div className="text-[10px] text-gray-400 font-semibold scale-90">
                         AI {r.aiScore ? Math.round(r.aiScore) : 0}%
                       </div>
                     </div>
