@@ -7,15 +7,25 @@ export default function ReisterPae({ go }) {
 
   function handleRegister(e) {
     e.preventDefault();
-    if (password !== confirm) return alert("รหัสผ่านไม่ตรงกัน");
 
-    localStorage.setItem(
-      "mockUser",
-      JSON.stringify({ email, password, createdAt: Date.now() })
-    );
-    localStorage.setItem("paid", "false");
+    // ✅ ตรวจสอบรหัสผ่านให้ตรงกัน
+    if (password !== confirm) {
+      alert("รหัสผ่านไม่ตรงกัน");
+      return;
+    }
 
-    go("vip");
+    // ✅ บันทึกข้อมูลผู้ใช้จำลองไว้ใน localStorage
+    const newUser = {
+      email,
+      password,
+      createdAt: new Date().toISOString(),
+    };
+    localStorage.setItem("mockUser", JSON.stringify(newUser));
+    localStorage.setItem("paid", "false"); // ยังไม่ได้ VIP
+
+    // ✅ เด้งไปหน้า Login
+    if (go) go("login");
+    else window.location.reload();
   }
 
   return (
@@ -34,6 +44,7 @@ export default function ReisterPae({ go }) {
             className="bg-[#0b1220] border border-gray-700 rounded-lg px-3 py-2 text-sm"
             required
           />
+
           <input
             type="password"
             value={password}
@@ -42,6 +53,7 @@ export default function ReisterPae({ go }) {
             className="bg-[#0b1220] border border-gray-700 rounded-lg px-3 py-2 text-sm"
             required
           />
+
           <input
             type="password"
             value={confirm}
@@ -50,6 +62,7 @@ export default function ReisterPae({ go }) {
             className="bg-[#0b1220] border border-gray-700 rounded-lg px-3 py-2 text-sm"
             required
           />
+
           <button
             type="submit"
             className="bg-emerald-500 hover:bg-emerald-600 py-2 rounded-lg font-bold text-[15px] transition-all"
@@ -61,7 +74,7 @@ export default function ReisterPae({ go }) {
         <p className="text-center text-sm text-gray-400 mt-4">
           มีบัญชีอยู่แล้ว?{" "}
           <span
-            onClick={() => go("login")}
+            onClick={() => go && go("login")}
             className="text-emerald-400 font-semibold cursor-pointer hover:text-emerald-300"
           >
             เข้าสู่ระบบ
@@ -70,4 +83,4 @@ export default function ReisterPae({ go }) {
       </div>
     </main>
   );
-              }
+    }
