@@ -1,12 +1,11 @@
-// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.72 Persistent + Compact UI)
+// ✅ /components/ScannerSection.js — OriginX AI Super Scanner (v∞.80 Lux Black Edition)
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function ScannerSection() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [batch, setBatch] = useState(1);
-  const [totalBatches, setTotalBatches] = useState(1);
+  const [progress, setProgress] = useState(0);
 
   // ✅ โหลดผลสแกนที่บันทึกไว้
   useEffect(() => {
@@ -25,7 +24,6 @@ export default function ScannerSection() {
     const total = j.total || 7000;
     const perBatch = 300;
     const batches = Math.ceil(total / perBatch);
-    setTotalBatches(batches);
     return batches;
   }
 
@@ -45,15 +43,17 @@ export default function ScannerSection() {
   // ✅ สแกนเต็มตลาด และบันทึกถาวร
   async function runFullScan() {
     setLoading(true);
+    setProgress(0);
     setResults([]);
+
     const batches = await prepareScanner();
     let allResults = [];
     const delay = 200;
 
     for (let i = 1; i <= batches; i++) {
-      setBatch(i);
       const r = await runSingleBatch(i);
       if (r?.length) allResults.push(...r);
+      setProgress(Math.round((i / batches) * 100));
       await new Promise((res) => setTimeout(res, delay));
     }
 
@@ -65,43 +65,53 @@ export default function ScannerSection() {
     setResults(top);
     localStorage.setItem("aiScanResults", JSON.stringify(top)); // ✅ บันทึกถาวร
     setLoading(false);
+    setProgress(100);
   }
 
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white pb-16">
+    <main className="min-h-screen bg-[#0b0f17] text-white pb-16">
       <div className="max-w-6xl mx-auto px-3 pt-3">
         <section className="p-3">
-          {/* หัวข้อ + ปุ่ม */}
+          {/* หัวข้อ + ปุ่ม Scan */}
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-bold text-emerald-400 flex items-center gap-1">
               📡 OriginX AI Super Scanner
             </h2>
+
             <button
               onClick={runFullScan}
               disabled={loading}
-              className={`px-4 py-[6px] rounded-lg text-sm font-semibold border transition-all shadow-md ${
+              className={`px-4 py-[6px] rounded-lg text-sm font-semibold border transition-all shadow-sm ${
                 loading
-                  ? "bg-gray-700 border-gray-600 text-gray-400"
-                  : "bg-emerald-500/90 border-emerald-400/50 text-white hover:bg-emerald-500"
+                  ? "bg-[#1a1a1a] border-[#222] text-gray-400"
+                  : "bg-[#111] border-[#222] text-gray-200 hover:bg-[#181818]"
               }`}
             >
-              {loading
-                ? `⏳ Scanning... (${batch}/${totalBatches})`
-                : "🔍 Scan"}
+              {loading ? `⏳ Scanning ${progress}%` : "🔍 Scan"}
             </button>
           </div>
 
+          {/* แถบเปอร์เซ็นต์ */}
+          {loading && (
+            <div className="w-full h-[6px] bg-[#1a1a1a] rounded-full overflow-hidden mb-4">
+              <div
+                className="h-[6px] bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          )}
+
           {/* สถานะโหลด */}
           {loading && (
-            <p className="text-center text-gray-400 text-sm my-6">
-              ⏳ กำลังสแกนตลาดทั้งหมด...
+            <p className="text-center text-gray-400 text-sm mb-6">
+              ⏳ กำลังสแกนตลาดทั้งหมด... {progress}%
             </p>
           )}
 
           {/* รายการหุ้น */}
           {!loading && results.length > 0 ? (
             <>
-              <div className="text-xs text-gray-400 mb-2 text-center">
+              <div className="text-xs text-gray-500 mb-2 text-center">
                 ✅ Showing Top {results.length} AI Picks (Saved)
               </div>
               <div className="flex flex-col divide-y divide-gray-800/50">
@@ -109,11 +119,11 @@ export default function ScannerSection() {
                   <Link
                     key={i}
                     href={`/analyze/${r.symbol}`}
-                    className="flex justify-between items-center py-[8px] hover:bg-[#111827]/40 transition-all"
+                    className="flex justify-between items-center py-[8px] hover:bg-[#10141f]/60 transition-all"
                   >
                     {/* โลโก้ + ชื่อหุ้น */}
                     <div className="flex items-center gap-2 min-w-[40%]">
-                      <div className="w-8 h-8 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#0e0e0e] border border-[#222] flex items-center justify-center overflow-hidden">
                         <img
                           src={`https://logo.clearbit.com/${r.symbol.toLowerCase()}.com`}
                           alt={r.symbol}
@@ -127,7 +137,7 @@ export default function ScannerSection() {
                                 e.target.naturalWidth === 0
                               ) {
                                 e.target.style.display = "none";
-                                e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
+                                e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full'>
                                   <span class='text-black font-extrabold text-[10px] uppercase'>${r.symbol}</span>
                                 </div>`;
                               }
@@ -146,7 +156,7 @@ export default function ScannerSection() {
                     </div>
 
                     {/* ขวา: ราคา / RSI / สัญญาณ / AI */}
-                    <div className="text-right font-mono leading-tight space-y-[2px] min-w-[70px]">
+                    <div className="text-right font-mono leading-tight min-w-[70px]">
                       <div className="text-[14px] font-black text-white">
                         {r.last ? `$${r.last.toFixed(2)}` : "-"}
                       </div>
@@ -172,7 +182,7 @@ export default function ScannerSection() {
                       >
                         {r.signal || "-"}
                       </div>
-                      <div className="text-[9px] text-gray-400 scale-75">
+                      <div className="text-[12px] text-gray-400 font-semibold">
                         AI {r.aiScore ? Math.round(r.aiScore) : 0}%
                       </div>
                     </div>
@@ -191,4 +201,4 @@ export default function ScannerSection() {
       </div>
     </main>
   );
-            }
+                }
