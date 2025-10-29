@@ -1,42 +1,43 @@
 export default function VipReister({ go }) {
-  const setPaid = (val) => {
-    localStorage.setItem("paid", val ? "true" : "false");
+  const handleConfirm = () => {
+    localStorage.setItem("paid", "true");
+    go("market"); // ไปหน้า OriginX หลังสมัคร VIP
+  };
+
+  const handleTrial = () => {
+    localStorage.setItem("paid", "true");
+    go("market");
   };
 
   return (
-    <main className="min-h-screen flex justify-center items-center bg-[#0b1220] text-white px-6">
-      <div className="w-full max-w-md bg-[#141b2d] rounded-2xl p-6 shadow-lg border border-gray-800 text-center">
-        <h1 className="text-2xl font-extrabold text-emerald-400 mb-3">💎 สมัครแบบพรีเมียม</h1>
-        <p className="text-gray-400 mb-6 text-sm leading-relaxed">
-          ปลดล็อก OriginX เต็มระบบ: AI Discovery, Quant Scanner, News Pro และฟีเจอร์ใหม่ก่อนใคร
+    <main className="min-h-screen flex flex-col justify-center items-center bg-[#0b1220] text-white">
+      <div className="bg-[#111827] p-6 rounded-2xl w-full max-w-xs shadow-xl text-center">
+        <h1 className="text-emerald-400 text-[20px] font-extrabold mb-2">
+          💎 สมัครแบบพรีเมียม
+        </h1>
+        <p className="text-gray-300 text-[13px] mb-5">
+          ปลดล็อก OriginX เต็มระบบ: AI Discovery, Quant Scanner, News Pro  
+          และฟีเจอร์ใหม่ก่อนใคร
         </p>
 
         <button
-          className="w-full bg-emerald-500 hover:bg-emerald-600 py-3 rounded-xl font-extrabold text-black mb-3"
-          onClick={() => {
-            alert("💳 (เดโม่) ยืนยันการชำระสำเร็จ");
-            setPaid(true);
-            go("market");
-          }}
+          onClick={handleConfirm}
+          className="bg-emerald-500 hover:bg-emerald-600 py-2 w-full rounded-lg font-bold text-[15px] mb-3"
         >
           ยืนยันสมัคร (฿299/เดือน)
         </button>
 
         <button
-          className="w-full bg-[#1e293b] hover:bg-[#273447] py-3 rounded-xl font-extrabold text-white"
-          onClick={() => {
-            alert("เข้าสู่โหมดทดลองใช้งาน");
-            setPaid(false);
-            go("market");
-          }}
+          onClick={handleTrial}
+          className="bg-gray-700 hover:bg-gray-600 py-2 w-full rounded-lg font-bold text-[15px]"
         >
           เข้าฟรีโหมดทดลอง
         </button>
 
-        <p className="text-gray-500 text-xs mt-5">
+        <p className="text-gray-500 text-xs mt-4">
           คุณสามารถย้ายแผน/ยกเลิกได้ทุกเวลาในหน้า Settings
         </p>
       </div>
     </main>
   );
-            }
+}
