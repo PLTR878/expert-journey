@@ -9,13 +9,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-[18px] font-semibold text-emerald-400 text-center mt-2 mb-3">
-        ⚙️ การตั้งค่า (Settings)
-      </h1>
+    <div className="p-5 text-white min-h-screen bg-[#0b1220]">
+      <h1 className="text-lg font-semibold mb-4">⚙️ การตั้งค่า</h1>
 
-      <div className="bg-[#141b2d] border border-gray-800 rounded-2xl p-4 shadow-md shadow-black/30">
-        <h2 className="text-gray-300 mb-2">👤 บัญชีของคุณ</h2>
+      <div className="bg-[#141b2d] rounded-2xl p-4 mb-4">
+        <h2 className="text-gray-300 mb-1">👤 บัญชีของคุณ</h2>
         {session ? (
           <>
             <p className="text-sm text-gray-400">{session.user.email}</p>
@@ -28,22 +26,22 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <div className="bg-[#141b2d] border border-gray-800 rounded-2xl p-4 shadow-md shadow-black/30">
-        <h2 className="text-gray-300 mb-2">🔄 การทำงานของระบบ</h2>
-        <p className="text-sm text-gray-400">• Auto Refresh: เปิด</p>
-        <p className="text-sm text-gray-400">• AI Discovery Batch: Enabled</p>
+      <div className="bg-[#141b2d] rounded-2xl p-4 mb-4">
+        <h2 className="text-gray-300 mb-1">🔄 การทำงานของระบบ</h2>
+        <p className="text-sm text-gray-400">Auto Refresh: เปิด</p>
+        <p className="text-sm text-gray-400">AI Discovery Batch: Enabled</p>
       </div>
 
       <button
         onClick={handleLogout}
-        className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-semibold shadow-md shadow-red-900/30"
+        className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl mt-6 font-semibold"
       >
         🚪 ออกจากระบบ
       </button>
 
-      <p className="text-xs text-gray-500 text-center mt-6">
+      <p className="text-xs text-gray-500 text-center mt-4">
         Visionary V∞.35 — Powered by OriginX AI
       </p>
     </div>
   );
-          }
+}
