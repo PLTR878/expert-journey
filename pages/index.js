@@ -1,4 +1,3 @@
-// ✅ OriginX — Full Auth Flow (Register → Login → VIP → App)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -9,14 +8,15 @@ import ReisterPae from "../components/ReisterPae";
 import VipReister from "../components/VipReister";
 
 export default function Home() {
-  const [active, setActive] = useState("register"); // เริ่มที่สมัครสมาชิก
+  // --- state ---
+  const [active, setActive] = useState("register");
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // โหลดสถานะสมาชิก
+  // --- โหลดสถานะ ---
   useEffect(() => {
     const u = localStorage.getItem("mockUser");
     const p = localStorage.getItem("paid") === "true";
@@ -24,7 +24,7 @@ export default function Home() {
     setPaid(p);
   }, []);
 
-  // โหลดข้อมูลหุ้นต้นน้ำ
+  // --- โหลด discovery ---
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -42,42 +42,32 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // โหลด Favorites จาก LocalStorage
+  // --- favorites ---
   useEffect(() => {
-    try {
-      const fav = localStorage.getItem("favorites");
-      if (fav) setFavorites(JSON.parse(fav));
-    } catch (e) {
-      console.error("Load favorites error:", e);
-    }
+    const fav = localStorage.getItem("favorites");
+    if (fav) setFavorites(JSON.parse(fav));
   }, []);
-
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ฟังก์ชันเปลี่ยนหน้า
+  // --- เปลี่ยนหน้า ---
   const go = (tab) => {
     setActive(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ถ้ายังไม่ล็อกอินหรือสมัคร → ให้เข้าหน้า login/register เท่านั้น
+  // --- Logic ---
   const isLocked = !user;
 
   const renderPage = () => {
-    // 🔒 ① ยังไม่สมัคร/ล็อกอิน
     if (isLocked) {
       if (active === "login") return <LoinPaex go={go} />;
       return <ReisterPae go={go} />;
     }
 
-    // 🔐 ② สมัครแล้วแต่ยังไม่ VIP
-    if (!paid) {
-      return <VipReister go={go} />;
-    }
+    if (!paid) return <VipReister go={go} />;
 
-    // ✅ ③ ผ่านแล้ว — เข้าแอปจริง
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -90,9 +80,7 @@ export default function Home() {
             favorites={favorites}
             toggleFavorite={(sym) =>
               setFavorites((prev) =>
-                prev.includes(sym)
-                  ? prev.filter((x) => x !== sym)
-                  : [...prev, sym]
+                prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
               )
             }
           />
@@ -106,11 +94,11 @@ export default function Home() {
     }
   };
 
+  // --- UI ---
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Bottom Nav (เฉพาะเมื่อเป็นสมาชิก VIP แล้วเท่านั้น) */}
       {!isLocked && paid && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
           {[
@@ -135,4 +123,4 @@ export default function Home() {
       )}
     </main>
   );
-    }
+  }
