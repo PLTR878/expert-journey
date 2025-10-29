@@ -21,9 +21,7 @@ export default function ScannerSection() {
 
   async function runSingleBatch(batchNo) {
     try {
-      const res = await fetch(`/api/visionary-batch?batch=${batchNo}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/visionary-batch?batch=${batchNo}`, { cache: "no-store" });
       const j = await res.json();
       return j?.results || [];
     } catch {
@@ -60,36 +58,23 @@ export default function ScannerSection() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
       <div className="max-w-6xl mx-auto px-3 pt-2 relative">
-        {/* มุมบน: ชื่อระบบ + ปุ่ม SCAN */}
-        <div className="flex justify-between items-center mb-3 relative">
-          <h1 className="text-[20px] font-extrabold text-white tracking-wide">
+        {/* หัวข้อ + ปุ่ม SCAN */}
+        <div className="flex justify-between items-center mb-2 relative">
+          <h1 className="text-[19px] font-extrabold text-white tracking-wide">
             Quant Terminal
           </h1>
 
           <button
             onClick={runFullScan}
             disabled={loading}
-            className={`absolute right-0 top-0 px-5 py-[8px] rounded-md text-[14px] font-extrabold border border-gray-600 bg-transparent hover:bg-[#1f2937]/40 transition-all shadow-sm ${
+            className={`absolute right-0 top-0 px-5 py-[6px] rounded-md text-[13px] font-extrabold border border-gray-600 bg-transparent hover:bg-[#1f2937]/40 transition-all ${
               loading ? "text-gray-500" : "text-white hover:text-emerald-400"
             }`}
-            style={{ minWidth: "95px" }}
+            style={{ minWidth: "88px" }}
           >
             {loading ? `${progress}%` : "SCAN"}
           </button>
         </div>
-
-        {/* เส้นโปร่งใสบาง ๆ ใต้หัวข้อ */}
-        <div className="w-full h-[1px] bg-white/10 mb-4" />
-
-        {/* Progress bar */}
-        {loading && (
-          <div className="w-full h-[3px] bg-white/10 rounded-full mb-4 overflow-hidden">
-            <div
-              className="h-[3px] bg-emerald-400/70 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        )}
 
         {/* รายการหุ้น */}
         <section className="p-1">
@@ -99,11 +84,11 @@ export default function ScannerSection() {
                 <Link
                   key={i}
                   href={`/analyze/${r.symbol}`}
-                  className="flex justify-between items-center py-[12px] hover:bg-[#111827]/30 transition-all"
+                  className="flex justify-between items-center py-[10px] hover:bg-[#111827]/30 transition-all"
                 >
                   {/* ซ้าย: โลโก้ + ชื่อหุ้น */}
-                  <div className="flex items-center gap-3 min-w-[35%]">
-                    <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-[#0b0f17] border border-gray-700 shrink-0">
+                  <div className="flex items-center gap-2 min-w-[35%]">
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-[#0b0f17] border border-gray-700 shrink-0">
                       <img
                         src={`https://logo.clearbit.com/${r.symbol.toLowerCase()}.com`}
                         alt={r.symbol}
@@ -115,7 +100,7 @@ export default function ScannerSection() {
                             if (!e.target.complete || e.target.naturalWidth === 0) {
                               e.target.style.display = "none";
                               e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
-                                <span class='text-black font-extrabold text-[11px] uppercase'>${r.symbol}</span>
+                                <span class='text-black font-extrabold text-[9px] uppercase'>${r.symbol}</span>
                               </div>`;
                             }
                           }, 600);
@@ -123,22 +108,22 @@ export default function ScannerSection() {
                       />
                     </div>
                     <div className="leading-tight">
-                      <div className="font-extrabold text-[15px] text-white tracking-tight">
+                      <div className="font-extrabold text-[13.5px] text-white">
                         {r.symbol}
                       </div>
-                      <div className="text-[12px] text-gray-400">
+                      <div className="text-[11px] text-gray-400">
                         {r.companyName || "AI Discovery"}
                       </div>
                     </div>
                   </div>
 
                   {/* ขวา: ราคา / RSI / Signal / AI */}
-                  <div className="text-right font-mono leading-tight min-w-[80px] space-y-[3px]">
-                    <div className="text-[15px] font-extrabold text-white">
+                  <div className="text-right font-mono leading-tight min-w-[75px] space-y-[2px]">
+                    <div className="text-[14px] font-extrabold text-white">
                       {r.last ? `$${r.last.toFixed(2)}` : "-"}
                     </div>
                     <div
-                      className={`text-[13px] font-bold ${
+                      className={`text-[12px] font-bold ${
                         r.rsi > 70
                           ? "text-red-400"
                           : r.rsi < 40
@@ -149,7 +134,7 @@ export default function ScannerSection() {
                       {r.rsi ? Math.round(r.rsi) : "-"}
                     </div>
                     <div
-                      className={`text-[13px] font-extrabold ${
+                      className={`text-[12px] font-extrabold ${
                         r.signal === "Buy"
                           ? "text-green-400"
                           : r.signal === "Sell"
@@ -159,7 +144,7 @@ export default function ScannerSection() {
                     >
                       {r.signal || "-"}
                     </div>
-                    <div className="text-[10px] text-gray-400 font-semibold">
+                    <div className="text-[9px] text-gray-400 font-semibold">
                       AI {r.aiScore ? Math.round(r.aiScore) : 0}%
                     </div>
                   </div>
@@ -177,4 +162,4 @@ export default function ScannerSection() {
       </div>
     </main>
   );
-}
+              }
