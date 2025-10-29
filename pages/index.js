@@ -1,4 +1,4 @@
-// ✅ OriginX — Fully Linked Version (ScannerSection Connected + Stable + No Logs + Clean Nav)
+// ✅ OriginX — Fully Linked Version (ScannerSection Connected + Stable + Floating Nav)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -76,13 +76,13 @@ export default function Home() {
     return null;
   };
 
-  // ✅ Layout หลัก (ไม่มี Logs และไม่มีอีโมจิ)
+  // ✅ Layout หลัก (ไม่มี Logs + Nav ใหม่)
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white pb-16">
+    <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Bottom Navigation — Clean Professional */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0b1220] border-t border-white/5 flex justify-around text-gray-400 text-[12px] font-extrabold tracking-wide uppercase">
+      {/* ✅ Bottom Navigation — Floating, Larger, Clean */}
+      <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold tracking-wide uppercase py-3 shadow-lg shadow-black/30">
         {[
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
@@ -92,9 +92,9 @@ export default function Home() {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`py-2 transition-all ${
+            className={`transition-all px-2 ${
               active === t.id
-                ? "text-emerald-400 border-t-2 border-emerald-400"
+                ? "text-emerald-400 border-b-2 border-emerald-400 pb-1"
                 : "text-gray-400"
             }`}
           >
@@ -104,4 +104,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+            }
