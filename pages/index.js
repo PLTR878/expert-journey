@@ -1,3 +1,4 @@
+// ✅ OriginX — Full Auth Flow (Register → Login → VIP → App)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -8,7 +9,7 @@ import ReisterPae from "../components/ReisterPae";
 import VipReister from "../components/VipReister";
 
 export default function Home() {
-  // --- state ---
+  // --- State ---
   const [active, setActive] = useState("register");
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
@@ -16,7 +17,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // --- โหลดสถานะ ---
+  // --- โหลดสถานะผู้ใช้ ---
   useEffect(() => {
     const u = localStorage.getItem("mockUser");
     const p = localStorage.getItem("paid") === "true";
@@ -24,7 +25,19 @@ export default function Home() {
     setPaid(p);
   }, []);
 
-  // --- โหลด discovery ---
+  // --- sync เมื่อ localStorage เปลี่ยน ---
+  useEffect(() => {
+    const syncStorage = () => {
+      const u = localStorage.getItem("mockUser");
+      const p = localStorage.getItem("paid") === "true";
+      setUser(u ? JSON.parse(u) : null);
+      setPaid(p);
+    };
+    window.addEventListener("storage", syncStorage);
+    return () => window.removeEventListener("storage", syncStorage);
+  }, []);
+
+  // --- โหลดข้อมูลหุ้นต้นน้ำ ---
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -42,7 +55,7 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // --- favorites ---
+  // --- Favorites ---
   useEffect(() => {
     const fav = localStorage.getItem("favorites");
     if (fav) setFavorites(JSON.parse(fav));
@@ -60,14 +73,19 @@ export default function Home() {
   // --- Logic ---
   const isLocked = !user;
 
+  // --- Render หน้า ---
   const renderPage = () => {
+    // 🔒 ยังไม่สมัคร/ล็อกอิน
     if (isLocked) {
-      if (active === "login") return <LoinPaex go={go} />;
-      return <ReisterPae go={go} />;
+      if (active === "login")
+        return <LoinPaex go={go} setUser={setUser} setPaid={setPaid} />;
+      return <ReisterPae go={go} setUser={setUser} />;
     }
 
-    if (!paid) return <VipReister go={go} />;
+    // 🔐 ยังไม่ VIP
+    if (!paid) return <VipReister go={go} setPaid={setPaid} />;
 
+    // ✅ เป็นสมาชิกเต็มแล้ว
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -80,7 +98,9 @@ export default function Home() {
             favorites={favorites}
             toggleFavorite={(sym) =>
               setFavorites((prev) =>
-                prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
+                prev.includes(sym)
+                  ? prev.filter((x) => x !== sym)
+                  : [...prev, sym]
               )
             }
           />
@@ -99,6 +119,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
+      {/* ✅ แสดง Nav เฉพาะเมื่อเป็นสมาชิก VIP */}
       {!isLocked && paid && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
           {[
