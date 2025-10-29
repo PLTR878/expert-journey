@@ -1,11 +1,19 @@
 export default function VipReister({ go }) {
-  const handleConfirm = () => {
+  const confirmVip = () => {
+    // ✅ บันทึกสถานะ VIP ลง localStorage
     localStorage.setItem("paid", "true");
-    go("market"); // ไปหน้า OriginX หลังสมัคร VIP
+
+    // ✅ รีเฟรชสถานะ แล้วเข้า OriginX
+    window.location.reload();
+    go("market");
   };
 
-  const handleTrial = () => {
+  const trialMode = () => {
+    // ✅ ทดลองใช้ฟรีก็ให้สิทธิ์เข้าเหมือน VIP
     localStorage.setItem("paid", "true");
+
+    // ✅ รีเฟรชสถานะ แล้วเข้า OriginX
+    window.location.reload();
     go("market");
   };
 
@@ -16,19 +24,19 @@ export default function VipReister({ go }) {
           💎 สมัครแบบพรีเมียม
         </h1>
         <p className="text-gray-300 text-[13px] mb-5">
-          ปลดล็อก OriginX เต็มระบบ: AI Discovery, Quant Scanner, News Pro  
+          ปลดล็อก OriginX เต็มระบบ: AI Discovery, Quant Scanner, News Pro<br />
           และฟีเจอร์ใหม่ก่อนใคร
         </p>
 
         <button
-          onClick={handleConfirm}
+          onClick={confirmVip}
           className="bg-emerald-500 hover:bg-emerald-600 py-2 w-full rounded-lg font-bold text-[15px] mb-3"
         >
           ยืนยันสมัคร (฿299/เดือน)
         </button>
 
         <button
-          onClick={handleTrial}
+          onClick={trialMode}
           className="bg-gray-700 hover:bg-gray-600 py-2 w-full rounded-lg font-bold text-[15px]"
         >
           เข้าฟรีโหมดทดลอง
