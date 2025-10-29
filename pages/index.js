@@ -16,30 +16,22 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // โหลดสถานะผู้ใช้จาก localStorage
+  // ✅ โหลดสถานะผู้ใช้ (จำล็อกอิน)
   useEffect(() => {
-    const loggedIn = localStorage.getItem("loggedIn") === "true";
-    const u = localStorage.getItem("mockUser");
-    const p = localStorage.getItem("paid") === "true";
-    if (loggedIn && u) {
-      setUser(JSON.parse(u));
-      setPaid(p);
+    try {
+      const storedUser = localStorage.getItem("mockUser");
+      const loggedIn = localStorage.getItem("loggedIn") === "true";
+      const paidStatus = localStorage.getItem("paid") === "true";
+      if (storedUser && loggedIn) {
+        setUser(JSON.parse(storedUser));
+        setPaid(paidStatus);
+      }
+    } catch (err) {
+      console.error("Load user state error:", err);
     }
   }, []);
 
-  // sync เมื่อ localStorage เปลี่ยน
-  useEffect(() => {
-    const syncStorage = () => {
-      const u = localStorage.getItem("mockUser");
-      const p = localStorage.getItem("paid") === "true";
-      setUser(u ? JSON.parse(u) : null);
-      setPaid(p);
-    };
-    window.addEventListener("storage", syncStorage);
-    return () => window.removeEventListener("storage", syncStorage);
-  }, []);
-
-  // โหลดข้อมูลหุ้นต้นน้ำ
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -57,11 +49,12 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // favorites
+  // ✅ โหลด favorites
   useEffect(() => {
     const fav = localStorage.getItem("favorites");
     if (fav) setFavorites(JSON.parse(fav));
   }, []);
+
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
@@ -75,9 +68,8 @@ export default function Home() {
 
   const renderPage = () => {
     if (isLocked) {
-      if (active === "login")
-        return <LoinPaex go={go} setUser={setUser} setPaid={setPaid} />;
-      return <ReisterPae go={go} setUser={setUser} />;
+      if (active === "login") return <LoinPaex go={go} setUser={setUser} setPaid={setPaid} />;
+      return <ReisterPae go={go} />;
     }
 
     if (!paid) return <VipReister go={go} setPaid={setPaid} />;
@@ -104,7 +96,7 @@ export default function Home() {
       case "scan":
         return <ScannerSection />;
       case "settings":
-        return <SettinMenu />;
+        return <SettinMenu setUser={setUser} setPaid={setPaid} go={go} />;
       default:
         return <MarketSection />;
     }
@@ -138,4 +130,4 @@ export default function Home() {
       )}
     </main>
   );
-        }
+    }
