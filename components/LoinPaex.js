@@ -7,16 +7,28 @@ export default function LoinPaex({ go }) {
   function handleLogin(e) {
     e.preventDefault();
 
-    // ✅ บันทึกข้อมูลผู้ใช้ลง localStorage
-    localStorage.setItem(
-      "mockUser",
-      JSON.stringify({ email, password, createdAt: Date.now() })
-    );
-    // ยังไม่จ่าย VIP
-    localStorage.setItem("paid", "false");
+    // ✅ ดึงข้อมูลผู้ใช้จาก localStorage
+    const stored = localStorage.getItem("mockUser");
+    if (!stored) {
+      alert("ยังไม่มีบัญชีผู้ใช้นี้ กรุณาสมัครสมาชิกก่อน");
+      go("register");
+      return;
+    }
 
-    // ✅ เด้งไปหน้า VIP
-    go("vip");
+    const user = JSON.parse(stored);
+
+    // ✅ ตรวจสอบอีเมล + รหัสผ่าน
+    if (user.email === email && user.password === password) {
+      alert("เข้าสู่ระบบสำเร็จ ✅");
+
+      // ✅ ตั้งสถานะผู้ใช้ในระบบ
+      localStorage.setItem("loggedIn", "true");
+
+      // ✅ เปลี่ยนไปหน้าสมัคร VIP
+      go("vip"); // ← ตรงนี้สำคัญมาก
+    } else {
+      alert("อีเมลหรือรหัสผ่านไม่ถูกต้อง ❌");
+    }
   }
 
   return (
@@ -43,6 +55,7 @@ export default function LoinPaex({ go }) {
             className="bg-[#0b1220] border border-gray-700 rounded-lg px-3 py-2 text-sm"
             required
           />
+
           <button
             type="submit"
             className="bg-emerald-500 hover:bg-emerald-600 py-2 rounded-lg font-bold text-[15px] transition-all"
@@ -54,7 +67,7 @@ export default function LoinPaex({ go }) {
         <p className="text-center text-sm text-gray-400 mt-4">
           ยังไม่มีบัญชี?{" "}
           <span
-            onClick={() => go("register")}
+            onClick={() => go && go("register")}
             className="text-emerald-400 font-semibold cursor-pointer hover:text-emerald-300"
           >
             สมัครสมาชิก
@@ -63,4 +76,4 @@ export default function LoinPaex({ go }) {
       </div>
     </main>
   );
-    }
+              }
