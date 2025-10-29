@@ -1,8 +1,9 @@
-// ✅ OriginX — Fully Linked Version (ScannerSection Connected + Stable + Floating Nav)
+// ✅ OriginX — Fully Linked Version (Settings Connected + Stable + Floating Nav)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
+import SettingsSection from "../components/SettingsSection"; // 👈 เพิ่มตรงนี้
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -66,12 +67,8 @@ export default function Home() {
 
     if (active === "scan") return <ScannerSection />;
 
-    if (active === "trade")
-      return (
-        <div className="text-center py-20 text-gray-400 italic">
-          AI Trade — Coming soon...
-        </div>
-      );
+    // 👇 เปลี่ยนจาก AI Trade เป็น SettingsSection
+    if (active === "trade") return <SettingsSection />;
 
     return null;
   };
@@ -87,7 +84,7 @@ export default function Home() {
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
-          { id: "trade", label: "AI Trade" },
+          { id: "trade", label: "Settings" }, // 👈 เปลี่ยนชื่อแท็บ
         ].map((t) => (
           <button
             key={t.id}
@@ -104,4 +101,4 @@ export default function Home() {
       </nav>
     </main>
   );
-            }
+      }
