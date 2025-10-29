@@ -1,4 +1,4 @@
-// ✅ OriginX — Locked Access Version (ต้อง Login/Register ก่อนใช้งาน)
+// ✅ OriginX — Full Auth Flow (Register → Login → VIP → App)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -63,21 +63,21 @@ export default function Home() {
   };
 
   // ถ้ายังไม่ล็อกอินหรือสมัคร → ให้เข้าหน้า login/register เท่านั้น
-  const isLocked = !user; // ยังไม่ได้สมัครหรือ login
+  const isLocked = !user;
 
   const renderPage = () => {
-    // 🔒 ถ้ายังไม่สมัคร/ล็อกอิน
+    // 🔒 ① ยังไม่สมัคร/ล็อกอิน
     if (isLocked) {
       if (active === "login") return <LoinPaex go={go} />;
       return <ReisterPae go={go} />;
     }
 
-    // ✅ สมัครแล้ว แต่ยังไม่จ่าย (ต้อง VIP ก่อน)
+    // 🔐 ② สมัครแล้วแต่ยังไม่ VIP
     if (!paid) {
       return <VipReister go={go} />;
     }
 
-    // ✅ ผ่านแล้ว — ใช้งานจริง
+    // ✅ ③ ผ่านแล้ว — เข้าแอปจริง
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -110,7 +110,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Bottom Navigation */}
+      {/* ✅ Bottom Nav (เฉพาะเมื่อเป็นสมาชิก VIP แล้วเท่านั้น) */}
       {!isLocked && paid && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
           {[
@@ -135,4 +135,4 @@ export default function Home() {
       )}
     </main>
   );
-  }
+    }
