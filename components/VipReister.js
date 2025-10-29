@@ -1,40 +1,37 @@
-export default function VipReister({ go, setPaid }) {
-  const confirmVip = () => {
-    localStorage.setItem("paid", "true");
-    setPaid(true);
-    alert("🎉 สมัคร VIP สำเร็จ!");
+// components/VipReister.js
+import { setPaidStatus } from "../utils/authStore";
+
+export default function VipReister({ go, onPaid }) {
+  const confirmPaid = () => {
+    setPaidStatus(true);
+    onPaid?.();           // แจ้ง parent
+    alert("ยืนยันสมัคร VIP สำเร็จ ✅");
+    go("market");
+  };
+
+  const freeTrial = () => {
+    setPaidStatus(true);  // เดโม: ให้ผ่านเหมือนชำระแล้ว
+    onPaid?.();
+    alert("เข้าฟรีโหมดทดลอง ✅");
     go("market");
   };
 
   return (
-    <main className="min-h-screen flex flex-col justify-center items-center bg-[#0b1220] text-white">
-      <div className="bg-[#111827] p-6 rounded-2xl w-full max-w-xs text-center shadow-xl">
+    <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-[#0f172a] p-6 rounded-2xl border border-white/10 text-center">
         <h1 className="text-emerald-400 font-extrabold text-xl mb-3">💎 สมัครแบบพรีเมียม</h1>
-        <p className="text-sm text-gray-300 mb-6">
-          ปลดล็อก OriginX เต็มระบบ: AI Discovery, Quant Scanner, News Pro และฟีเจอร์ใหม่ก่อนใคร
+        <p className="text-gray-300 text-sm mb-4">
+          ปลดล็อก OriginX เต็มระบบ: AI Discovery, Quant Scanner, News Pro
         </p>
-
-        <button onClick={confirmVip}
-          className="bg-emerald-500 hover:bg-emerald-600 w-full py-2 rounded-lg font-bold mb-3">
+        <button onClick={confirmPaid}
+          className="w-full mb-3 bg-emerald-500 text-black font-extrabold py-2 rounded-xl">
           ยืนยันสมัคร (฿299/เดือน)
         </button>
-
-        <button
-          onClick={() => {
-            alert("เข้าสู่โหมดทดลองใช้งานฟรี ✅");
-            setPaid(true);
-            localStorage.setItem("paid", "true");
-            go("market");
-          }}
-          className="bg-gray-600 hover:bg-gray-500 w-full py-2 rounded-lg font-bold"
-        >
+        <button onClick={freeTrial}
+          className="w-full bg-gray-700 text-white font-extrabold py-2 rounded-xl">
           เข้าฟรีโหมดทดลอง
         </button>
-
-        <p className="text-xs text-gray-400 mt-3">
-          คุณสามารถยกเลิกหรือเปลี่ยนแผนได้ทุกเวลาในหน้า Settings
-        </p>
       </div>
-    </main>
+    </div>
   );
 }
