@@ -1,19 +1,41 @@
-// ✅ OriginX — Fully Linked Version (LoinPaex + ReisterPae + SettinMenu Connected)
+// ✅ OriginX — V∞.33 (Reister → VIP → App) | Tabs + Hash Routing
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
-import SettinMenu from "../components/SettinMenu"; // ✅ ตั้งค่า
-import LoinPaex from "../components/LoinPaex"; // ✅ ล็อกอิน
-import ReisterPae from "../components/ReisterPae"; // ✅ สมัครสมาชิก
+
+// ⚠️ ชื่อไฟล์ใหม่ ไม่มีตัว g
+import SettinMenu from "../components/SettinMenu";
+import LoinPaex from "../components/LoinPaex";
+import ReisterPae from "../components/ReisterPae";
+import VipReister from "../components/VipReister";
 
 export default function Home() {
-  const [active, setActive] = useState("market");
+  // ถ้ายังไม่จ่าย/ไม่ยืนยัน → เริ่มที่ register, ถ้าจ่ายแล้ว → market
+  const initialTab =
+    typeof window !== "undefined" && localStorage.getItem("paid") === "true"
+      ? "market"
+      : "register";
+
+  const [active, setActive] = useState(initialTab);
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
+  // === Hash Router แบบง่าย (เช่น #login, #vip) ===
+  useEffect(() => {
+    const applyHash = () => {
+      const h = (window.location.hash || "").replace("#", "");
+      if (!h) return;
+      const allow = ["favorites", "market", "scan", "login", "register", "vip", "settings"];
+      if (allow.includes(h)) setActive(h);
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
+
+  // === โหลดหุ้นต้นน้ำ ===
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -26,12 +48,11 @@ export default function Home() {
       setLoading(false);
     }
   }
-
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ โหลด Favorites จาก LocalStorage
+  // === Favorites LocalStorage ===
   useEffect(() => {
     try {
       const fav = localStorage.getItem("favorites");
@@ -40,12 +61,19 @@ export default function Home() {
       console.error("Load favorites error:", e);
     }
   }, []);
-
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ✅ แสดงหน้าแต่ละแท็บ
+  // === เปลี่ยนแท็บ + sync hash ===
+  const go = (tab) => {
+    setActive(tab);
+    if (typeof window !== "undefined") {
+      window.location.hash = `#${tab}`;
+    }
+  };
+
+  // === หน้าหลักแต่ละแท็บ ===
   const renderPage = () => {
     switch (active) {
       case "favorites":
@@ -60,9 +88,7 @@ export default function Home() {
             favorites={favorites}
             toggleFavorite={(sym) =>
               setFavorites((prev) =>
-                prev.includes(sym)
-                  ? prev.filter((x) => x !== sym)
-                  : [...prev, sym]
+                prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
               )
             }
           />
@@ -71,21 +97,26 @@ export default function Home() {
       case "scan":
         return <ScannerSection />;
 
+      // ✅ สมัคร → ส่งต่อไป VIP
+      case "register":
+        return <ReisterPae go={go} />;
+
+      // ✅ ล็อกอิน (เดโม่) → ถ้ายังไม่ paid ให้ส่งไป VIP
+      case "login":
+        return <LoinPaex go={go} />;
+
+      // ✅ VIP (ชำระ/ยืนยัน) → ตั้ง paid=true แล้วเข้า App
+      case "vip":
+        return <VipReister go={go} />;
+
       case "settings":
         return <SettinMenu />;
-
-      case "login":
-        return <LoinPaex />;
-
-      case "register":
-        return <ReisterPae />;
 
       default:
         return null;
     }
   };
 
-  // ✅ Layout หลัก (มีแท็บครบทุกหน้า)
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
@@ -102,7 +133,7 @@ export default function Home() {
         ].map((t) => (
           <button
             key={t.id}
-            onClick={() => setActive(t.id)}
+            onClick={() => go(t.id)}
             className={`transition-all px-1 ${
               active === t.id
                 ? "text-emerald-400 border-b-2 border-emerald-400 pb-1"
@@ -115,4 +146,4 @@ export default function Home() {
       </nav>
     </main>
   );
-          }
+            }
