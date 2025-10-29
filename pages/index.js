@@ -1,9 +1,11 @@
-// ✅ OriginX — Fully Linked Version (SettinMenu Connected + Stable + Floating Nav)
+// ✅ OriginX — Fully Linked Version (LoinPaex + ReisterPae + SettinMenu Connected)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
-import SettinMenu from "../components/SettinMenu"; // ✅ ใช้ชื่อใหม่ ไม่มี g
+import SettinMenu from "../components/SettinMenu"; // ✅ ตั้งค่า
+import LoinPaex from "../components/LoinPaex"; // ✅ ล็อกอิน
+import ReisterPae from "../components/ReisterPae"; // ✅ สมัครสมาชิก
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -11,7 +13,7 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // โหลดข้อมูลหุ้นต้นน้ำ
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -29,7 +31,7 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // โหลด Favorites จาก LocalStorage
+  // ✅ โหลด Favorites จาก LocalStorage
   useEffect(() => {
     try {
       const fav = localStorage.getItem("favorites");
@@ -45,50 +47,63 @@ export default function Home() {
 
   // ✅ แสดงหน้าแต่ละแท็บ
   const renderPage = () => {
-    if (active === "favorites")
-      return <Favorites favorites={favorites} setFavorites={setFavorites} />;
+    switch (active) {
+      case "favorites":
+        return <Favorites favorites={favorites} setFavorites={setFavorites} />;
 
-    if (active === "market")
-      return (
-        <MarketSection
-          title="OriginX (AI Discovery)"
-          loading={loading}
-          rows={futureDiscovery}
-          favorites={favorites}
-          toggleFavorite={(sym) =>
-            setFavorites((prev) =>
-              prev.includes(sym)
-                ? prev.filter((x) => x !== sym)
-                : [...prev, sym]
-            )
-          }
-        />
-      );
+      case "market":
+        return (
+          <MarketSection
+            title="OriginX (AI Discovery)"
+            loading={loading}
+            rows={futureDiscovery}
+            favorites={favorites}
+            toggleFavorite={(sym) =>
+              setFavorites((prev) =>
+                prev.includes(sym)
+                  ? prev.filter((x) => x !== sym)
+                  : [...prev, sym]
+              )
+            }
+          />
+        );
 
-    if (active === "scan") return <ScannerSection />;
+      case "scan":
+        return <ScannerSection />;
 
-    if (active === "settings") return <SettinMenu />; // ✅ ใช้ชื่อใหม่
+      case "settings":
+        return <SettinMenu />;
 
-    return null;
+      case "login":
+        return <LoinPaex />;
+
+      case "register":
+        return <ReisterPae />;
+
+      default:
+        return null;
+    }
   };
 
-  // ✅ Layout หลัก (Nav ลอย + มีแท็บ Settings)
+  // ✅ Layout หลัก (มีแท็บครบทุกหน้า)
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
       {/* ✅ Floating Bottom Nav */}
-      <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold tracking-wide uppercase py-3 shadow-lg shadow-black/30">
+      <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12.5px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
         {[
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
+          { id: "login", label: "Login" },
+          { id: "register", label: "Register" },
           { id: "settings", label: "Settings" },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`transition-all px-2 ${
+            className={`transition-all px-1 ${
               active === t.id
                 ? "text-emerald-400 border-b-2 border-emerald-400 pb-1"
                 : "text-gray-400"
@@ -100,4 +115,4 @@ export default function Home() {
       </nav>
     </main>
   );
-        }
+          }
