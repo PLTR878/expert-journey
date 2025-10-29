@@ -2,88 +2,70 @@ import { useState } from "react";
 
 export default function ReisterPae({ go }) {
   const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-  const [cf, setCf] = useState("");
-  const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
 
-  const onReister = async (e) => {
+  function handleRegister(e) {
     e.preventDefault();
-    if (pw !== cf) {
-      setMsg("❌ รหัสผ่านไม่ตรงกัน");
-      return;
-    }
-    setBusy(true);
-    setMsg("");
-    try {
-      // mock register
-      await new Promise((r) => setTimeout(r, 700));
-      localStorage.setItem("mockUser", JSON.stringify({ email }));
-      setMsg("✅ สมัครสำเร็จ กำลังย้ายไปหน้า VIP...");
-      setTimeout(() => {
-        if (go) go("vip");
-        else window.location.hash = "#vip";
-      }, 900);
-    } catch (e) {
-      setMsg("❌ สมัครไม่สำเร็จ");
-    } finally {
-      setBusy(false);
-    }
-  };
+    if (password !== confirm) return alert("รหัสผ่านไม่ตรงกัน");
+
+    localStorage.setItem(
+      "mockUser",
+      JSON.stringify({ email, password, createdAt: Date.now() })
+    );
+    localStorage.setItem("paid", "false");
+
+    go("vip");
+  }
 
   return (
-    <main className="min-h-screen flex justify-center items-center bg-[#0b1220]">
-      <div className="w-full max-w-md bg-[#141b2d] rounded-2xl p-6 shadow-lg border border-gray-800 text-white">
-        <h1 className="text-2xl font-extrabold text-emerald-400 text-center mb-5">
+    <main className="min-h-screen flex flex-col justify-center items-center bg-[#0b1220] text-white">
+      <div className="bg-[#111827] p-6 rounded-2xl w-full max-w-xs shadow-xl">
+        <h1 className="text-center text-emerald-400 font-extrabold text-xl mb-5">
           🧭 สมัครสมาชิก
         </h1>
 
-        <form onSubmit={onReister} className="space-y-4">
+        <form onSubmit={handleRegister} className="flex flex-col gap-3">
           <input
             type="email"
-            placeholder="อีเมล"
-            className="w-full bg-[#0f172a] border border-gray-700 rounded-xl p-3 text-sm"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="อีเมล"
+            className="bg-[#0b1220] border border-gray-700 rounded-lg px-3 py-2 text-sm"
             required
           />
           <input
             type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="รหัสผ่าน"
-            className="w-full bg-[#0f172a] border border-gray-700 rounded-xl p-3 text-sm"
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
+            className="bg-[#0b1220] border border-gray-700 rounded-lg px-3 py-2 text-sm"
             required
           />
           <input
             type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
             placeholder="ยืนยันรหัสผ่าน"
-            className="w-full bg-[#0f172a] border border-gray-700 rounded-xl p-3 text-sm"
-            value={cf}
-            onChange={(e) => setCf(e.target.value)}
+            className="bg-[#0b1220] border border-gray-700 rounded-lg px-3 py-2 text-sm"
             required
           />
-
-          {msg && (
-            <p className={`text-sm text-center ${msg.includes("✅") ? "text-emerald-400" : "text-red-400"}`}>
-              {msg}
-            </p>
-          )}
-
           <button
             type="submit"
-            disabled={busy}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 py-2 rounded-xl font-extrabold text-black"
+            className="bg-emerald-500 hover:bg-emerald-600 py-2 rounded-lg font-bold text-[15px] transition-all"
           >
-            {busy ? "กำลังสมัคร..." : "สมัครสมาชิก"}
+            สมัครสมาชิก
           </button>
         </form>
 
-        <p className="text-sm text-gray-400 text-center mt-4">
+        <p className="text-center text-sm text-gray-400 mt-4">
           มีบัญชีอยู่แล้ว?{" "}
-          <button onClick={() => go("login")} className="text-emerald-400 hover:underline">
+          <span
+            onClick={() => go("login")}
+            className="text-emerald-400 font-semibold cursor-pointer hover:text-emerald-300"
+          >
             เข้าสู่ระบบ
-          </button>
+          </span>
         </p>
       </div>
     </main>
