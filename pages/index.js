@@ -1,9 +1,9 @@
-// ✅ OriginX — Fully Linked Version (Settings Connected + Stable + Floating Nav)
+// ✅ OriginX — Fully Linked Version (SettinMenu Connected + Stable + Floating Nav)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
-import SettingsPage from "../components/SettingsPage"; // ✅ ใช้ SettingsPage ตัวใหม่
+import SettinMenu from "../components/SettinMenu"; // ✅ ใช้ชื่อใหม่ ไม่มี g
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -11,7 +11,7 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
+  // โหลดข้อมูลหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -29,7 +29,7 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // ✅ โหลด Favorites จาก LocalStorage
+  // โหลด Favorites จาก LocalStorage
   useEffect(() => {
     try {
       const fav = localStorage.getItem("favorites");
@@ -67,24 +67,23 @@ export default function Home() {
 
     if (active === "scan") return <ScannerSection />;
 
-    // ✅ SettingsPage มาแทน AI Trade
-    if (active === "settings") return <SettingsPage />;
+    if (active === "settings") return <SettinMenu />; // ✅ ใช้ชื่อใหม่
 
     return null;
   };
 
-  // ✅ Layout หลัก (มี Settings เป็นแท็บที่ 4)
+  // ✅ Layout หลัก (Nav ลอย + มีแท็บ Settings)
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Bottom Navigation — Floating, Larger, Clean */}
+      {/* ✅ Floating Bottom Nav */}
       <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold tracking-wide uppercase py-3 shadow-lg shadow-black/30">
         {[
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
-          { id: "settings", label: "Settings" }, // ✅ เปลี่ยนจาก AI Trade เป็น Settings
+          { id: "settings", label: "Settings" },
         ].map((t) => (
           <button
             key={t.id}
@@ -101,4 +100,4 @@ export default function Home() {
       </nav>
     </main>
   );
-  }
+        }
