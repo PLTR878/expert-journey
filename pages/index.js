@@ -1,41 +1,30 @@
-// ✅ OriginX — V∞.33 (Reister → VIP → App) | Tabs + Hash Routing
+// ✅ OriginX — Locked Access Version (ต้อง Login/Register ก่อนใช้งาน)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
-
-// ⚠️ ชื่อไฟล์ใหม่ ไม่มีตัว g
 import SettinMenu from "../components/SettinMenu";
 import LoinPaex from "../components/LoinPaex";
 import ReisterPae from "../components/ReisterPae";
 import VipReister from "../components/VipReister";
 
 export default function Home() {
-  // ถ้ายังไม่จ่าย/ไม่ยืนยัน → เริ่มที่ register, ถ้าจ่ายแล้ว → market
-  const initialTab =
-    typeof window !== "undefined" && localStorage.getItem("paid") === "true"
-      ? "market"
-      : "register";
-
-  const [active, setActive] = useState(initialTab);
+  const [active, setActive] = useState("register"); // เริ่มที่สมัครสมาชิก
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [paid, setPaid] = useState(false);
 
-  // === Hash Router แบบง่าย (เช่น #login, #vip) ===
+  // โหลดสถานะสมาชิก
   useEffect(() => {
-    const applyHash = () => {
-      const h = (window.location.hash || "").replace("#", "");
-      if (!h) return;
-      const allow = ["favorites", "market", "scan", "login", "register", "vip", "settings"];
-      if (allow.includes(h)) setActive(h);
-    };
-    applyHash();
-    window.addEventListener("hashchange", applyHash);
-    return () => window.removeEventListener("hashchange", applyHash);
+    const u = localStorage.getItem("mockUser");
+    const p = localStorage.getItem("paid") === "true";
+    if (u) setUser(JSON.parse(u));
+    setPaid(p);
   }, []);
 
-  // === โหลดหุ้นต้นน้ำ ===
+  // โหลดข้อมูลหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -48,11 +37,12 @@ export default function Home() {
       setLoading(false);
     }
   }
+
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // === Favorites LocalStorage ===
+  // โหลด Favorites จาก LocalStorage
   useEffect(() => {
     try {
       const fav = localStorage.getItem("favorites");
@@ -61,24 +51,36 @@ export default function Home() {
       console.error("Load favorites error:", e);
     }
   }, []);
+
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // === เปลี่ยนแท็บ + sync hash ===
+  // ฟังก์ชันเปลี่ยนหน้า
   const go = (tab) => {
     setActive(tab);
-    if (typeof window !== "undefined") {
-      window.location.hash = `#${tab}`;
-    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // === หน้าหลักแต่ละแท็บ ===
+  // ถ้ายังไม่ล็อกอินหรือสมัคร → ให้เข้าหน้า login/register เท่านั้น
+  const isLocked = !user; // ยังไม่ได้สมัครหรือ login
+
   const renderPage = () => {
+    // 🔒 ถ้ายังไม่สมัคร/ล็อกอิน
+    if (isLocked) {
+      if (active === "login") return <LoinPaex go={go} />;
+      return <ReisterPae go={go} />;
+    }
+
+    // ✅ สมัครแล้ว แต่ยังไม่จ่าย (ต้อง VIP ก่อน)
+    if (!paid) {
+      return <VipReister go={go} />;
+    }
+
+    // ✅ ผ่านแล้ว — ใช้งานจริง
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
-
       case "market":
         return (
           <MarketSection
@@ -88,32 +90,19 @@ export default function Home() {
             favorites={favorites}
             toggleFavorite={(sym) =>
               setFavorites((prev) =>
-                prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
+                prev.includes(sym)
+                  ? prev.filter((x) => x !== sym)
+                  : [...prev, sym]
               )
             }
           />
         );
-
       case "scan":
         return <ScannerSection />;
-
-      // ✅ สมัคร → ส่งต่อไป VIP
-      case "register":
-        return <ReisterPae go={go} />;
-
-      // ✅ ล็อกอิน (เดโม่) → ถ้ายังไม่ paid ให้ส่งไป VIP
-      case "login":
-        return <LoinPaex go={go} />;
-
-      // ✅ VIP (ชำระ/ยืนยัน) → ตั้ง paid=true แล้วเข้า App
-      case "vip":
-        return <VipReister go={go} />;
-
       case "settings":
         return <SettinMenu />;
-
       default:
-        return null;
+        return <MarketSection />;
     }
   };
 
@@ -121,29 +110,29 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Floating Bottom Nav */}
-      <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12.5px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
-        {[
-          { id: "favorites", label: "Favorites" },
-          { id: "market", label: "OriginX" },
-          { id: "scan", label: "Scanner" },
-          { id: "login", label: "Login" },
-          { id: "register", label: "Register" },
-          { id: "settings", label: "Settings" },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => go(t.id)}
-            className={`transition-all px-1 ${
-              active === t.id
-                ? "text-emerald-400 border-b-2 border-emerald-400 pb-1"
-                : "text-gray-400"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      {/* ✅ Bottom Navigation */}
+      {!isLocked && paid && (
+        <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
+          {[
+            { id: "favorites", label: "Favorites" },
+            { id: "market", label: "OriginX" },
+            { id: "scan", label: "Scanner" },
+            { id: "settings", label: "Settings" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => go(t.id)}
+              className={`transition-all px-2 ${
+                active === t.id
+                  ? "text-emerald-400 border-b-2 border-emerald-400 pb-1"
+                  : "text-gray-400"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      )}
     </main>
   );
-            }
+  }
