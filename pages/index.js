@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
-import SettingsSection from "../components/SettingsSection"; // ✅ หน้าใหม่แทน AI Trade
+import SettingsPage from "../components/SettingsPage"; // ✅ ใช้ชื่อใหม่
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -67,13 +67,12 @@ export default function Home() {
 
     if (active === "scan") return <ScannerSection />;
 
-    // ✅ แทนที่ AI Trade เดิมด้วย SettingsSection ใหม่
-    if (active === "settings") return <SettingsSection />;
+    if (active === "settings") return <SettingsPage />; // ✅ ใช้หน้าใหม่
 
     return null;
   };
 
-  // ✅ Layout หลัก (มี Settings เป็นแท็บที่ 4)
+  // ✅ Layout หลัก (เพิ่ม Settings เป็นแท็บที่ 4)
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
@@ -84,7 +83,7 @@ export default function Home() {
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
-          { id: "settings", label: "Settings" }, // ✅ เปลี่ยนจาก AI Trade
+          { id: "settings", label: "Settings" }, // ✅ เปลี่ยนชื่อแท็บ
         ].map((t) => (
           <button
             key={t.id}
