@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
-import SettingsSection from "../components/SettingsSection"; // 👈 เพิ่มตรงนี้
+import SettingsSection from "../components/SettingsSection"; // ✅ หน้าใหม่แทน AI Trade
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -11,7 +11,7 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // โหลดข้อมูลหุ้นต้นน้ำ
+  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -29,7 +29,7 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // โหลด Favorites จาก LocalStorage
+  // ✅ โหลด Favorites จาก LocalStorage
   useEffect(() => {
     try {
       const fav = localStorage.getItem("favorites");
@@ -67,13 +67,13 @@ export default function Home() {
 
     if (active === "scan") return <ScannerSection />;
 
-    // 👇 เปลี่ยนจาก AI Trade เป็น SettingsSection
-    if (active === "trade") return <SettingsSection />;
+    // ✅ แทนที่ AI Trade เดิมด้วย SettingsSection ใหม่
+    if (active === "settings") return <SettingsSection />;
 
     return null;
   };
 
-  // ✅ Layout หลัก (ไม่มี Logs + Nav ใหม่)
+  // ✅ Layout หลัก (มี Settings เป็นแท็บที่ 4)
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
@@ -84,7 +84,7 @@ export default function Home() {
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
-          { id: "trade", label: "Settings" }, // 👈 เปลี่ยนชื่อแท็บ
+          { id: "settings", label: "Settings" }, // ✅ เปลี่ยนจาก AI Trade
         ].map((t) => (
           <button
             key={t.id}
@@ -101,4 +101,4 @@ export default function Home() {
       </nav>
     </main>
   );
-      }
+    }
