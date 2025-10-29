@@ -1,43 +1,44 @@
 import { useState } from "react";
-import Link from "next/link";
 
-export default function ReisterPae() {
+export default function ReisterPae({ go }) {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [pw, setPw] = useState("");
+  const [cf, setCf] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const handleRegister = async (e) => {
+  const onReister = async (e) => {
     e.preventDefault();
-    if (password !== confirm) {
-      setMessage("❌ รหัสผ่านไม่ตรงกัน");
+    if (pw !== cf) {
+      setMsg("❌ รหัสผ่านไม่ตรงกัน");
       return;
     }
-
-    setLoading(true);
-    setMessage("");
-
+    setBusy(true);
+    setMsg("");
     try {
-      // จำลองการสมัคร (ภายหลังสามารถเชื่อม Firebase / API ได้)
-      await new Promise((res) => setTimeout(res, 800));
+      // mock register
+      await new Promise((r) => setTimeout(r, 700));
       localStorage.setItem("mockUser", JSON.stringify({ email }));
-      setMessage("✅ สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
-    } catch (err) {
-      setMessage("❌ เกิดข้อผิดพลาดในการสมัคร");
+      setMsg("✅ สมัครสำเร็จ กำลังย้ายไปหน้า VIP...");
+      setTimeout(() => {
+        if (go) go("vip");
+        else window.location.hash = "#vip";
+      }, 900);
+    } catch (e) {
+      setMsg("❌ สมัครไม่สำเร็จ");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex flex-col justify-center items-center bg-[#0b1220] text-white px-6">
-      <div className="w-full max-w-md bg-[#141b2d] rounded-2xl p-6 shadow-lg border border-gray-800">
-        <h1 className="text-2xl font-extrabold text-center text-emerald-400 mb-5">
+    <main className="min-h-screen flex justify-center items-center bg-[#0b1220]">
+      <div className="w-full max-w-md bg-[#141b2d] rounded-2xl p-6 shadow-lg border border-gray-800 text-white">
+        <h1 className="text-2xl font-extrabold text-emerald-400 text-center mb-5">
           🧭 สมัครสมาชิก
         </h1>
 
-        <form onSubmit={handleRegister} className="space-y-4">
+        <form onSubmit={onReister} className="space-y-4">
           <input
             type="email"
             placeholder="อีเมล"
@@ -46,51 +47,45 @@ export default function ReisterPae() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-
           <input
             type="password"
             placeholder="รหัสผ่าน"
             className="w-full bg-[#0f172a] border border-gray-700 rounded-xl p-3 text-sm"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
             required
           />
-
           <input
             type="password"
             placeholder="ยืนยันรหัสผ่าน"
             className="w-full bg-[#0f172a] border border-gray-700 rounded-xl p-3 text-sm"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            value={cf}
+            onChange={(e) => setCf(e.target.value)}
             required
           />
 
-          {message && (
-            <p
-              className={`text-sm text-center ${
-                message.includes("✅") ? "text-emerald-400" : "text-red-400"
-              }`}
-            >
-              {message}
+          {msg && (
+            <p className={`text-sm text-center ${msg.includes("✅") ? "text-emerald-400" : "text-red-400"}`}>
+              {msg}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={busy}
             className="w-full bg-emerald-500 hover:bg-emerald-600 py-2 rounded-xl font-extrabold text-black"
           >
-            {loading ? "กำลังสมัคร..." : "สมัครสมาชิก"}
+            {busy ? "กำลังสมัคร..." : "สมัครสมาชิก"}
           </button>
         </form>
 
         <p className="text-sm text-gray-400 text-center mt-4">
           มีบัญชีอยู่แล้ว?{" "}
-          <Link href="/login" className="text-emerald-400 hover:underline">
+          <button onClick={() => go("login")} className="text-emerald-400 hover:underline">
             เข้าสู่ระบบ
-          </Link>
+          </button>
         </p>
       </div>
     </main>
   );
-    }
+              }
