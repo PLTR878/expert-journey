@@ -9,13 +9,12 @@ export default function SettingsSection() {
   };
 
   return (
-    <div className="p-4 text-white min-h-screen bg-[#0b1220]">
-      <h1 className="text-xl font-semibold mb-4 text-emerald-400">
-        ⚙️ การตั้งค่า
+    <div className="space-y-4">
+      <h1 className="text-[18px] font-semibold text-emerald-400 text-center mt-2 mb-3">
+        ⚙️ การตั้งค่า (Settings)
       </h1>
 
-      {/* กล่องข้อมูลผู้ใช้ */}
-      <div className="bg-[#141b2d] rounded-2xl p-4 mb-4 border border-gray-800">
+      <div className="bg-[#141b2d] border border-gray-800 rounded-2xl p-4 shadow-md shadow-black/30">
         <h2 className="text-gray-300 mb-2">👤 บัญชีของคุณ</h2>
         {session ? (
           <>
@@ -29,17 +28,22 @@ export default function SettingsSection() {
         )}
       </div>
 
-      {/* ปุ่มออกจากระบบ */}
+      <div className="bg-[#141b2d] border border-gray-800 rounded-2xl p-4 shadow-md shadow-black/30">
+        <h2 className="text-gray-300 mb-2">🔄 การทำงานของระบบ</h2>
+        <p className="text-sm text-gray-400">• Auto Refresh: เปิด</p>
+        <p className="text-sm text-gray-400">• AI Discovery Batch: Enabled</p>
+      </div>
+
       <button
         onClick={handleLogout}
-        className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl mt-2 font-semibold"
+        className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-semibold shadow-md shadow-red-900/30"
       >
         🚪 ออกจากระบบ
       </button>
 
       <p className="text-xs text-gray-500 text-center mt-6">
-        Visionary V∞.33 — Powered by OriginX AI
+        Visionary V∞.34 — Powered by OriginX AI
       </p>
     </div>
   );
-      }
+}
