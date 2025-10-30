@@ -1,57 +1,74 @@
-// ✅ /components/LoinPaex.js — เข้าสู่ระบบ (Firebase)
+// ✅ /components/LoinPaex.js — Login Page (Firebase Auth)
 import { useState } from "react";
-import { auth } from "../lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
-export default function LoinPaex() {
+export default function LoinPaex({ go, onAuth }) {
   const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
+
     try {
-      const userCred = await signInWithEmailAndPassword(auth, email, pass);
-      const user = userCred.user;
-      alert("🎉 เข้าสู่ระบบสำเร็จ: " + user.email);
-      localStorage.setItem("user", JSON.stringify({ email: user.email, uid: user.uid }));
-      window.location.href = "/"; // เปลี่ยนหน้าไปหน้าแรกหลังล็อกอิน
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      onAuth(userCred.user);
     } catch (err) {
-      alert("❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      setError("❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      console.error("Login error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white flex flex-col justify-center items-center px-6">
-      <h1 className="text-2xl font-bold text-emerald-400 mb-6">เข้าสู่ระบบ OriginX</h1>
-      <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4">
+    <div className="min-h-screen flex flex-col justify-center items-center bg-[#0b1220] text-white px-5">
+      <h1 className="text-2xl font-extrabold text-emerald-400 mb-6">
+        🔐 OriginX Login
+      </h1>
+
+      <form onSubmit={handleLogin} className="space-y-4 w-full max-w-sm">
         <input
           type="email"
-          placeholder="อีเมล"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full p-3 bg-[#141b2d] rounded-lg outline-none"
+          className="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
         <input
           type="password"
-          placeholder="รหัสผ่าน"
-          value={pass}
-          onChange={(e) => setPass(e.target.value)}
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full p-3 bg-[#141b2d] rounded-lg outline-none"
+          className="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
+
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 rounded-lg"
+          className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-3 rounded-xl transition-all"
         >
           {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </button>
       </form>
+
+      <p className="mt-4 text-sm text-gray-400">
+        ยังไม่มีบัญชี?{" "}
+        <button
+          onClick={() => go("register")}
+          className="text-emerald-400 font-bold underline"
+        >
+          สมัครสมาชิก
+        </button>
+      </p>
     </div>
   );
             }
