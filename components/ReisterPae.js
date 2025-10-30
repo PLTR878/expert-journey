@@ -1,42 +1,66 @@
-// components/ReisterPae.js
+// ✅ /components/ReisterPae.js — สมัครสมาชิก (Firebase + Firestore)
 import { useState } from "react";
-import { addUser } from "../utils/authStore";
+import { auth, db } from "../lib/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
-export default function ReisterPae({ go }) {
+export default function ReisterPae() {
   const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-  const [pw2, setPw2] = useState("");
+  const [pass, setPass] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    if (!email || !pw) return alert("กรอกอีเมลและรหัสผ่าน");
-    if (pw !== pw2) return alert("รหัสผ่านไม่ตรงกัน");
+    setLoading(true);
     try {
-      addUser(email.trim(), pw);
-      alert("สมัครสมาชิกสำเร็จ ✅ โปรดเข้าสู่ระบบ");
-      go("login");                       // ขั้นตอนถัดไป: เข้าสู่ระบบ
-      window.scrollTo({ top: 0 });
+      // ✅ สมัครสมาชิกใน Firebase Authentication
+      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+      const user = userCred.user;
+
+      // ✅ บันทึกข้อมูลผู้ใช้ลง Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        createdAt: new Date().toISOString(),
+      });
+
+      alert("✅ สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
+      setEmail("");
+      setPass("");
     } catch (err) {
-      if (err.message === "EXISTS") alert("อีเมลนี้มีบัญชีอยู่แล้ว");
-      else alert("สมัครสมาชิกไม่สำเร็จ");
+      alert("❌ เกิดข้อผิดพลาด: " + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <form onSubmit={handleRegister} className="w-full max-w-md bg-[#0f172a] p-6 rounded-2xl border border-white/10">
-        <h1 className="text-emerald-400 font-extrabold text-xl mb-4">🧭 สมัครสมาชิก</h1>
-        <input className="w-full mb-3 px-3 py-2 rounded-lg bg-[#111827] border border-gray-700"
-               placeholder="อีเมล" type="email" value={email} onChange={e=>setEmail(e.target.value)} />
-        <input className="w-full mb-3 px-3 py-2 rounded-lg bg-[#111827] border border-gray-700"
-               placeholder="รหัสผ่าน" type="password" value={pw} onChange={e=>setPw(e.target.value)} />
-        <input className="w-full mb-4 px-3 py-2 rounded-lg bg-[#111827] border border-gray-700"
-               placeholder="ยืนยันรหัสผ่าน" type="password" value={pw2} onChange={e=>setPw2(e.target.value)} />
-        <button className="w-full bg-emerald-500 text-black font-extrabold py-2 rounded-xl">สมัครสมาชิก</button>
-        <div className="text-center text-sm mt-3 text-gray-400">
-          มีบัญชีอยู่แล้ว? <button type="button" className="text-emerald-400" onClick={()=>go("login")}>เข้าสู่ระบบ</button>
-        </div>
+    <div className="min-h-screen bg-[#0b1220] text-white flex flex-col justify-center items-center px-6">
+      <h1 className="text-2xl font-bold text-emerald-400 mb-6">สมัครสมาชิก OriginX</h1>
+      <form onSubmit={handleRegister} className="w-full max-w-sm space-y-4">
+        <input
+          type="email"
+          placeholder="อีเมล"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full p-3 bg-[#141b2d] rounded-lg outline-none"
+        />
+        <input
+          type="password"
+          placeholder="รหัสผ่าน"
+          value={pass}
+          onChange={(e) => setPass(e.target.value)}
+          required
+          className="w-full p-3 bg-[#141b2d] rounded-lg outline-none"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 rounded-lg"
+        >
+          {loading ? "กำลังสมัคร..." : "สมัครสมาชิก"}
+        </button>
       </form>
     </div>
   );
-                                                      }
+    }
