@@ -1,7 +1,7 @@
-// ✅ components/SettinMenu.js
-import { logoutUser } from "../lib/Firebase";
+// ✅ /components/SettinMenuX.js — หน้าออกจากระบบ
+import { logoutUser } from "../lib/FirebaseX";
 
-export default function SettinMenu({ go }) {
+export default function SettinMenuX() {
   const handleLogout = async () => {
     await logoutUser();
     window.location.reload();
