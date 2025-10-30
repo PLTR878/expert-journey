@@ -1,8 +1,8 @@
-// ✅ components/ReisterPae.js
+// ✅ /components/ReisterPageX.js — หน้าสมัครสมาชิก
 import { useState } from "react";
-import { registerUser } from "../lib/Firebase";
+import { registerUser } from "../lib/FirebaseX";
 
-export default function ReisterPae({ go, onAuth }) {
+export default function ReisterPageX({ go, onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function ReisterPae({ go, onAuth }) {
 
   return (
     <div className="text-center mt-20">
-      <h2 className="text-xl font-bold mb-3 text-emerald-400">สมัครสมาชิก</h2>
+      <h2 className="text-xl font-bold text-emerald-400 mb-3">สมัครสมาชิก</h2>
       <form onSubmit={handleRegister} className="flex flex-col gap-3 max-w-xs mx-auto">
         <input
           type="email"
@@ -58,4 +58,4 @@ export default function ReisterPae({ go, onAuth }) {
       </p>
     </div>
   );
-}
+    }
