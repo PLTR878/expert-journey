@@ -1,66 +1,75 @@
-// ✅ /components/ReisterPae.js — สมัครสมาชิก (Firebase + Firestore)
+// ✅ /components/ReisterPae.js — Register Page (Firebase Auth)
 import { useState } from "react";
-import { auth, db } from "../lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { auth } from "../lib/firebase";
 
-export default function ReisterPae() {
+export default function ReisterPae({ go }) {
   const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
+
     try {
-      // ✅ สมัครสมาชิกใน Firebase Authentication
-      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-      const user = userCred.user;
-
-      // ✅ บันทึกข้อมูลผู้ใช้ลง Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        createdAt: new Date().toISOString(),
-      });
-
+      await createUserWithEmailAndPassword(auth, email, password);
       alert("✅ สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
-      setEmail("");
-      setPass("");
+      go("login");
     } catch (err) {
-      alert("❌ เกิดข้อผิดพลาด: " + err.message);
+      console.error("Register error:", err);
+      setError("❌ ไม่สามารถสมัครสมาชิกได้");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white flex flex-col justify-center items-center px-6">
-      <h1 className="text-2xl font-bold text-emerald-400 mb-6">สมัครสมาชิก OriginX</h1>
-      <form onSubmit={handleRegister} className="w-full max-w-sm space-y-4">
+    <div className="min-h-screen flex flex-col justify-center items-center bg-[#0b1220] text-white px-5">
+      <h1 className="text-2xl font-extrabold text-emerald-400 mb-6">
+        🧾 สมัครสมาชิก OriginX
+      </h1>
+
+      <form onSubmit={handleRegister} className="space-y-4 w-full max-w-sm">
         <input
           type="email"
-          placeholder="อีเมล"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full p-3 bg-[#141b2d] rounded-lg outline-none"
+          className="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
         <input
           type="password"
-          placeholder="รหัสผ่าน"
-          value={pass}
-          onChange={(e) => setPass(e.target.value)}
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full p-3 bg-[#141b2d] rounded-lg outline-none"
+          className="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
+
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 rounded-lg"
+          className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-3 rounded-xl transition-all"
         >
           {loading ? "กำลังสมัคร..." : "สมัครสมาชิก"}
         </button>
       </form>
+
+      <p className="mt-4 text-sm text-gray-400">
+        มีบัญชีอยู่แล้ว?{" "}
+        <button
+          onClick={() => go("login")}
+          className="text-emerald-400 font-bold underline"
+        >
+          เข้าสู่ระบบ
+        </button>
+      </p>
     </div>
   );
-    }
+}
