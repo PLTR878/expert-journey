@@ -7,7 +7,12 @@ import SettinMenu from "../components/SettinMenu";
 import LoinPaex from "../components/LoinPaex";
 import ReisterPae from "../components/ReisterPae";
 import VipReister from "../components/VipReister";
-import { getCurrentUser, getPaidStatus } from "../utils/authStore";
+import {
+  getCurrentUser,
+  getPaidStatus,
+  getUserData,
+  setUserData,
+} from "../utils/authStore";
 
 export default function Home() {
   const [active, setActive] = useState("register");
@@ -18,13 +23,15 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // โหลด auth จาก localStorage ตอน mount
+  // โหลด user ตอนเริ่ม
   useEffect(() => {
-    setUser(getCurrentUser());
+    const u = getCurrentUser();
+    setUser(u);
     setPaid(getPaidStatus());
+    if (u) setFavorites(getUserData(u, "favorites", []));
   }, []);
 
-  // โหลด discovery
+  // โหลดข้อมูลตลาด
   useEffect(() => {
     (async () => {
       try {
@@ -38,14 +45,10 @@ export default function Home() {
     })();
   }, []);
 
-  // favorites
+  // เมื่อ favorites เปลี่ยน → บันทึกลง localStorage ตาม user
   useEffect(() => {
-    const fav = localStorage.getItem("favorites");
-    if (fav) setFavorites(JSON.parse(fav));
-  }, []);
-  useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
+    if (user) setUserData(user, "favorites", favorites);
+  }, [favorites, user]);
 
   const go = (tab) => {
     setActive(tab);
@@ -55,15 +58,12 @@ export default function Home() {
   const isLocked = !user;
 
   const renderPage = () => {
-    // ① ยังไม่ล็อกอิน → สมัคร/ล็อกอินเท่านั้น
     if (isLocked) {
       if (active === "login") return <LoinPaex go={go} onAuth={(u) => { setUser(u); go("vip"); }} />;
       return <ReisterPae go={go} />;
     }
-    // ② ล็อกอินแล้ว แต่ยังไม่เป็น VIP → หน้า VIP
     if (!paid) return <VipReister go={go} onPaid={() => { setPaid(true); go("market"); }} />;
 
-    // ③ เป็น VIP แล้ว → เข้าแอป
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -94,7 +94,6 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* แสดง Nav เฉพาะเมื่อเป็นสมาชิก VIP แล้ว */}
       {!isLocked && paid && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
           {[
@@ -119,4 +118,4 @@ export default function Home() {
       )}
     </main>
   );
-                                                              }
+              }
