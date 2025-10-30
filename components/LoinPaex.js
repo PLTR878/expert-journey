@@ -1,74 +1,61 @@
-// ✅ /components/LoinPaex.js — Login Page (Firebase Auth)
+// ✅ components/LoinPaex.js
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { loginUser } from "../lib/Firebase";
 
 export default function LoinPaex({ go, onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+  async function handleLogin(e) {
     e.preventDefault();
     setLoading(true);
-    setError("");
-
     try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      onAuth(userCred.user);
+      const user = await loginUser(email, password);
+      onAuth(user);
     } catch (err) {
       setError("❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-      console.error("Login error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-[#0b1220] text-white px-5">
-      <h1 className="text-2xl font-extrabold text-emerald-400 mb-6">
-        🔐 OriginX Login
-      </h1>
-
-      <form onSubmit={handleLogin} className="space-y-4 w-full max-w-sm">
+    <div className="text-center mt-20">
+      <h2 className="text-xl font-bold mb-3 text-emerald-400">เข้าสู่ระบบ</h2>
+      <form onSubmit={handleLogin} className="flex flex-col gap-3 max-w-xs mx-auto">
         <input
           type="email"
-          placeholder="Email"
+          placeholder="อีเมล"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          className="bg-gray-800 px-4 py-2 rounded text-white"
           required
-          className="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
         <input
           type="password"
-          placeholder="Password"
+          placeholder="รหัสผ่าน"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          className="bg-gray-800 px-4 py-2 rounded text-white"
           required
-          className="w-full p-3 bg-gray-800 rounded-xl border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
-
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-3 rounded-xl transition-all"
+          className="bg-emerald-500 hover:bg-emerald-600 py-2 rounded font-bold"
         >
           {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </button>
       </form>
-
-      <p className="mt-4 text-sm text-gray-400">
+      {error && <p className="text-red-500 mt-2">{error}</p>}
+      <p className="mt-4 text-sm">
         ยังไม่มีบัญชี?{" "}
-        <button
-          onClick={() => go("register")}
-          className="text-emerald-400 font-bold underline"
-        >
+        <button onClick={() => go("register")} className="text-emerald-400 underline">
           สมัครสมาชิก
         </button>
       </p>
     </div>
   );
-            }
+        }
