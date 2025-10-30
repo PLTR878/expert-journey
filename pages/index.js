@@ -1,40 +1,38 @@
-// ✅ OriginX — Stable Multi-User VIP (FirebaseX Connected + Final Version)
+// ✅ OriginX — Stable Multi-User VIP Persistence (Final Version)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSection from "../components/ScannerSection";
-import SettinMenuX from "../components/SettinMenuX";
-import LoinPageX from "../components/LoinPageX";
-import ReisterPageX from "../components/ReisterPageX";
+import SettinMenu from "../components/SettinMenu";
+import LoinPaex from "../components/LoinPaex";
+import ReisterPae from "../components/ReisterPae";
 import VipReister from "../components/VipReister";
-import { auth, db, observeUser } from "../lib/FirebaseX"; // ✅ ใช้ FirebaseX ใหม่แทนระบบจำลองเดิม
-import { getDoc, doc, setDoc } from "firebase/firestore";
+import { getCurrentUser, getUserData, setUserData } from "../utils/authStore";
 
 export default function Home() {
-  const [active, setActive] = useState("login");
+  const [active, setActive] = useState("register");
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // ✅ โหลดสถานะผู้ใช้ Firebase ตอนเริ่ม
+  // ✅ โหลดสถานะตอนเริ่ม (จำ VIP ต่อ user)
   useEffect(() => {
-    const unsubscribe = observeUser(async (u) => {
-      setUser(u);
-      if (u) {
-        // โหลดสถานะ VIP จาก Firestore
-        const ref = doc(db, "users", u.uid);
-        const snap = await getDoc(ref);
-        const data = snap.exists() ? snap.data() : {};
-        setPaid(data?.vip === true);
-        setFavorites(data?.favorites || []);
-        setActive(data?.vip ? "market" : "vip");
-      } else {
-        setActive("login");
-      }
-    });
-    return () => unsubscribe();
+    const u = getCurrentUser();
+    setUser(u);
+
+    if (u && u.email) {
+      const paidKey = "userPaid_" + u.email;
+      const paidStatus = localStorage.getItem(paidKey) === "true";
+      setPaid(paidStatus);
+
+      const fav = getUserData(u, "favorites", []);
+      setFavorites(fav);
+      setActive(paidStatus ? "market" : "vip");
+    } else {
+      setActive("register");
+    }
   }, []);
 
   // ✅ โหลดข้อมูลหุ้นต้นน้ำ
@@ -50,20 +48,13 @@ export default function Home() {
       setLoading(false);
     }
   }
-
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ บันทึก favorites แยกต่อ user ลง Firestore
+  // ✅ บันทึก favorites แยกต่อ user
   useEffect(() => {
-    async function saveFavs() {
-      if (user && user.uid) {
-        const ref = doc(db, "users", user.uid);
-        await setDoc(ref, { favorites }, { merge: true });
-      }
-    }
-    saveFavs();
+    if (user) setUserData(user, "favorites", favorites);
   }, [favorites, user]);
 
   // ✅ เปลี่ยนหน้า
@@ -75,26 +66,41 @@ export default function Home() {
   // ✅ เมื่อ login / register สำเร็จ
   const handleAuth = (u) => {
     setUser(u);
-    go("vip");
+    const paidKey = "userPaid_" + u.email;
+    const paidStatus = localStorage.getItem(paidKey) === "true";
+    setPaid(paidStatus);
+
+    const fav = getUserData(u, "favorites", []);
+    setFavorites(fav);
+    go(paidStatus ? "market" : "vip");
   };
 
   // ✅ เมื่อสมัคร VIP สำเร็จ
-  const handlePaid = async () => {
-    if (!user || !user.uid) return;
-    const ref = doc(db, "users", user.uid);
-    await setDoc(ref, { vip: true }, { merge: true });
+  const handlePaid = () => {
+    if (!user || !user.email) return;
+    const paidKey = "userPaid_" + user.email;
+    localStorage.setItem(paidKey, "true");
     setPaid(true);
     go("market");
   };
 
+  // ✅ ตรวจซ้ำทุกครั้งที่ user เปลี่ยน
+  useEffect(() => {
+    if (user && user.email) {
+      const paidKey = "userPaid_" + user.email;
+      const paidStatus = localStorage.getItem(paidKey) === "true";
+      if (paidStatus) setPaid(true);
+    }
+  }, [user]);
+
   // ✅ Render หน้า
   const renderPage = () => {
     if (!user) {
-      if (active === "login") return <LoinPageX go={go} onAuth={handleAuth} />;
-      return <ReisterPageX go={go} onAuth={handleAuth} />;
+      if (active === "login") return <LoinPaex go={go} onAuth={handleAuth} />;
+      return <ReisterPae go={go} />;
     }
 
-    // ถ้ายังไม่ได้ VIP → หน้า VIP Register
+    // ถ้ายังไม่ได้ VIP ให้ไปหน้าสมัครพรีเมียม
     if (!paid && active === "vip") {
       return <VipReister go={go} onPaid={handlePaid} />;
     }
@@ -121,13 +127,12 @@ export default function Home() {
       case "scan":
         return <ScannerSection />;
       case "settings":
-        return <SettinMenuX />;
+        return <SettinMenu />;
       default:
         return <MarketSection />;
     }
   };
 
-  // ✅ Layout
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
@@ -157,4 +162,4 @@ export default function Home() {
       )}
     </main>
   );
-          }
+    }
