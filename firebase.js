@@ -1,4 +1,4 @@
-// ✅ /lib/firebase.js — Firebase Core (พร้อมใช้จริง)
+// ✅ /lib/firebase.js — ตัวใหม่พร้อมใช้งานแน่นอน
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -10,16 +10,16 @@ const firebaseConfig = {
   storageBucket: "originx-5636e.firebasestorage.app",
   messagingSenderId: "677130339175",
   appId: "1:677130339175:web:4ec184ef3dfda483eee5c2",
-  measurementId: "G-6JN72D7BLS",
+  measurementId: "G-6JN72D7BLS"
 };
 
 // 🔹 เริ่มต้น Firebase
 const app = initializeApp(firebaseConfig);
 
-// 🔹 ใช้สำหรับ Login / Register
+// 🔹 ใช้สำหรับ login / register
 export const auth = getAuth(app);
 
-// 🔹 ใช้บันทึกข้อมูลใน Database (เช่น favorites)
+// 🔹 ใช้สำหรับบันทึกข้อมูลใน Firestore
 export const db = getFirestore(app);
 
 export default app;
