@@ -24,11 +24,28 @@ export function getCurrentUser() {
   return raw ? JSON.parse(raw) : null;
 }
 export function signOut() {
-  localStorage.removeItem(CURRENT_KEY); // อย่าลบ USERS_KEY
+  localStorage.removeItem(CURRENT_KEY);
 }
 export function setPaidStatus(val) {
   localStorage.setItem(PAID_KEY, val ? "true" : "false");
 }
 export function getPaidStatus() {
   return localStorage.getItem(PAID_KEY) === "true";
-  }
+}
+
+// 🧩 เก็บข้อมูลแยกตาม user
+export function userKey(user, key) {
+  if (!user || !user.email) return null;
+  const safe = encodeURIComponent(user.email);
+  return `${key}_${safe}`;
+}
+export function getUserData(user, key, fallback = []) {
+  const k = userKey(user, key);
+  if (!k) return fallback;
+  try { return JSON.parse(localStorage.getItem(k) || JSON.stringify(fallback)); }
+  catch { return fallback; }
+}
+export function setUserData(user, key, value) {
+  const k = userKey(user, key);
+  if (k) localStorage.setItem(k, JSON.stringify(value));
+}
