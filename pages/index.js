@@ -1,4 +1,4 @@
-// ✅ OriginX — Smart Auth Flow (Register → Login → Market if VIP)
+// ✅ OriginX — Stable Auth Flow + Persistent VIP Status
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -7,7 +7,6 @@ import SettinMenu from "../components/SettinMenu";
 import LoinPaex from "../components/LoinPaex";
 import ReisterPae from "../components/ReisterPae";
 import VipReister from "../components/VipReister";
-
 import {
   getCurrentUser,
   getPaidStatus,
@@ -21,28 +20,26 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // โหลดสถานะตอนเริ่ม
+  // ✅ โหลดสถานะตอนเริ่ม
   useEffect(() => {
     const u = getCurrentUser();
-    setUser(u);
     const p = getPaidStatus();
+    setUser(u);
     setPaid(p);
 
     if (u) {
       const fav = getUserData(u, "favorites", []);
       setFavorites(fav);
-      // ✅ ถ้าผู้ใช้เคยสมัครแล้ว เข้า Market เลย
       setActive(p ? "market" : "vip");
     } else {
       setActive("register");
     }
   }, []);
 
-  // โหลดข้อมูลหุ้นต้นน้ำ
+  // ✅ โหลดข้อมูลต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -59,50 +56,52 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // บันทึก Favorites แยกตาม user
+  // ✅ บันทึก Favorites แยกตาม user
   useEffect(() => {
     if (user) setUserData(user, "favorites", favorites);
   }, [favorites, user]);
 
-  // ฟังก์ชันเปลี่ยนหน้า
+  // ✅ ฟังก์ชันเปลี่ยนหน้า
   const go = (tab) => {
     setActive(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ เมื่อสมัคร/เข้าสู่ระบบสำเร็จ
+  // ✅ เมื่อล็อกอิน / สมัครสำเร็จ
   const handleAuth = (u) => {
     setUser(u);
     const p = getPaidStatus();
     setPaid(p);
     const fav = getUserData(u, "favorites", []);
     setFavorites(fav);
-    // ถ้า VIP แล้ว ไป Market ทันที
     go(p ? "market" : "vip");
   };
 
-  // ✅ หลังจากกดสมัคร VIP แล้ว
+  // ✅ สมัคร VIP แล้ว
   const handlePaid = () => {
     setPaidStatus(true);
     setPaid(true);
-    go("market"); // ไปหน้า Market โดยตรง
+    go("market");
   };
 
-  const isLocked = !user;
+  // ✅ เช็กซ้ำทุกครั้งเมื่อ user เปลี่ยน (กันดีเลย์)
+  useEffect(() => {
+    if (user && getPaidStatus()) {
+      setPaid(true);
+    }
+  }, [user]);
 
+  // ✅ แสดงแต่ละหน้า
   const renderPage = () => {
-    // ยังไม่ได้ล็อกอิน → แสดง login/register เท่านั้น
-    if (isLocked) {
+    if (!user) {
       if (active === "login") return <LoinPaex go={go} onAuth={handleAuth} />;
       return <ReisterPae go={go} />;
     }
 
-    // ถ้ายังไม่ได้ VIP → แสดงสมัครครั้งเดียว
     if (!paid && active === "vip") {
       return <VipReister go={go} onPaid={handlePaid} />;
     }
 
-    // เข้าหน้า app ได้
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -135,8 +134,8 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Bottom Nav เฉพาะเมื่อ VIP แล้วเท่านั้น */}
-      {!isLocked && paid && (
+      {/* ✅ Bottom Nav เฉพาะ VIP */}
+      {user && paid && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
           {[
             { id: "favorites", label: "Favorites" },
@@ -160,4 +159,4 @@ export default function Home() {
       )}
     </main>
   );
-      }
+        }
