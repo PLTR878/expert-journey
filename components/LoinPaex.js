@@ -1,12 +1,12 @@
-// ✅ components/LoinPaex.js
+// ✅ /components/LoinPageX.js — หน้าเข้าสู่ระบบ
 import { useState } from "react";
-import { loginUser } from "../lib/Firebase";
+import { loginUser } from "../lib/FirebaseX";
 
-export default function LoinPaex({ go, onAuth }) {
+export default function LoinPageX({ go, onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -23,7 +23,7 @@ export default function LoinPaex({ go, onAuth }) {
 
   return (
     <div className="text-center mt-20">
-      <h2 className="text-xl font-bold mb-3 text-emerald-400">เข้าสู่ระบบ</h2>
+      <h2 className="text-xl font-bold text-emerald-400 mb-3">เข้าสู่ระบบ</h2>
       <form onSubmit={handleLogin} className="flex flex-col gap-3 max-w-xs mx-auto">
         <input
           type="email"
@@ -58,4 +58,4 @@ export default function LoinPaex({ go, onAuth }) {
       </p>
     </div>
   );
-        }
+}
