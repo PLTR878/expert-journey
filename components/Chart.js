@@ -24,7 +24,6 @@ export default function Chart({ candles = [], markers = [] }) {
       rightPriceScale: { borderColor: "rgba(255,255,255,0.2)" },
     });
 
-    // ✅ แท่งราคา
     const candleSeries = chart.addCandlestickSeries({
       upColor: "#22c55e",
       downColor: "#ef4444",
@@ -43,7 +42,6 @@ export default function Chart({ candles = [], markers = [] }) {
       }))
     );
 
-    // ✅ คำนวณ EMA20 / EMA50 / EMA200
     const ema = (data, period) => {
       const k = 2 / (period + 1);
       let emaArr = [];
@@ -64,7 +62,6 @@ export default function Chart({ candles = [], markers = [] }) {
     ema50.setData(ema(candles, 50));
     ema200.setData(ema(candles, 200));
 
-    // ✅ Markers (BUY / SELL / HOLD)
     if (markers?.length) {
       candleSeries.setMarkers(markers);
     }
