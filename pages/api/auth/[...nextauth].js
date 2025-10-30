@@ -38,4 +38,5 @@ export default NextAuth({
   },
 
   secret: "originx_super_secret_key",
-});
+}
+                       );
