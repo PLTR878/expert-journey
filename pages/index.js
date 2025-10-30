@@ -1,4 +1,4 @@
-// ✅ OriginX — Stable Auth Flow + Persistent VIP Status
+// ✅ OriginX — Final Fix: Persistent VIP Across Reloads
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -23,17 +23,18 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // ✅ โหลดสถานะตอนเริ่ม
+  // ✅ โหลดสถานะ user + VIP ทุกครั้งที่เข้าเว็บ
   useEffect(() => {
     const u = getCurrentUser();
-    const p = getPaidStatus();
+    const paidLocal = localStorage.getItem("paidStatus") === "true";
+
     setUser(u);
-    setPaid(p);
+    setPaid(paidLocal);
 
     if (u) {
       const fav = getUserData(u, "favorites", []);
       setFavorites(fav);
-      setActive(p ? "market" : "vip");
+      setActive(paidLocal ? "market" : "vip");
     } else {
       setActive("register");
     }
@@ -52,52 +53,53 @@ export default function Home() {
       setLoading(false);
     }
   }
+
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ บันทึก Favorites แยกตาม user
+  // ✅ บันทึก favorites แยกตาม user
   useEffect(() => {
     if (user) setUserData(user, "favorites", favorites);
   }, [favorites, user]);
 
-  // ✅ ฟังก์ชันเปลี่ยนหน้า
+  // ✅ เปลี่ยนหน้า
   const go = (tab) => {
     setActive(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ เมื่อล็อกอิน / สมัครสำเร็จ
+  // ✅ เมื่อล็อกอินหรือสมัครสมาชิกสำเร็จ
   const handleAuth = (u) => {
     setUser(u);
-    const p = getPaidStatus();
-    setPaid(p);
+    const paidLocal = localStorage.getItem("paidStatus") === "true";
+    setPaid(paidLocal);
     const fav = getUserData(u, "favorites", []);
     setFavorites(fav);
-    go(p ? "market" : "vip");
+    go(paidLocal ? "market" : "vip");
   };
 
-  // ✅ สมัคร VIP แล้ว
+  // ✅ สมัคร VIP แล้ว (จำสถานะลง localStorage)
   const handlePaid = () => {
-    setPaidStatus(true);
+    localStorage.setItem("paidStatus", "true");
     setPaid(true);
     go("market");
   };
 
-  // ✅ เช็กซ้ำทุกครั้งเมื่อ user เปลี่ยน (กันดีเลย์)
+  // ✅ ป้องกัน bug reload แล้ว paid=false
   useEffect(() => {
-    if (user && getPaidStatus()) {
-      setPaid(true);
-    }
-  }, [user]);
+    const paidCheck = localStorage.getItem("paidStatus") === "true";
+    if (paidCheck && !paid) setPaid(true);
+  }, [paid]);
 
-  // ✅ แสดงแต่ละหน้า
+  // ✅ Render Page
   const renderPage = () => {
     if (!user) {
       if (active === "login") return <LoinPaex go={go} onAuth={handleAuth} />;
       return <ReisterPae go={go} />;
     }
 
+    // ถ้าเป็น VIP แล้ว ไม่ให้กลับมาหน้า VipRegister อีก
     if (!paid && active === "vip") {
       return <VipReister go={go} onPaid={handlePaid} />;
     }
@@ -134,7 +136,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Bottom Nav เฉพาะ VIP */}
+      {/* ✅ แสดง Bottom Nav เฉพาะ VIP */}
       {user && paid && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
           {[
