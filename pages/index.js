@@ -1,8 +1,7 @@
-// ✅ OriginX — Stable Multi-User VIP Persistence (Final Version)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
-import ScannerSection from "../components/ScannerSection";
+import ScannerSwitcher from "../components/ScannerSwitcher"; // ✅ ใช้ตัวใหม่แทน
 import SettinMenu from "../components/SettinMenu";
 import LoinPaex from "../components/LoinPaex";
 import ReisterPae from "../components/ReisterPae";
@@ -17,7 +16,6 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [paid, setPaid] = useState(false);
 
-  // ✅ โหลดสถานะตอนเริ่ม (จำ VIP ต่อ user)
   useEffect(() => {
     const u = getCurrentUser();
     setUser(u);
@@ -35,7 +33,6 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -52,18 +49,15 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // ✅ บันทึก favorites แยกต่อ user
   useEffect(() => {
     if (user) setUserData(user, "favorites", favorites);
   }, [favorites, user]);
 
-  // ✅ เปลี่ยนหน้า
   const go = (tab) => {
     setActive(tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ เมื่อ login / register สำเร็จ
   const handleAuth = (u) => {
     setUser(u);
     const paidKey = "userPaid_" + u.email;
@@ -75,7 +69,6 @@ export default function Home() {
     go(paidStatus ? "market" : "vip");
   };
 
-  // ✅ เมื่อสมัคร VIP สำเร็จ
   const handlePaid = () => {
     if (!user || !user.email) return;
     const paidKey = "userPaid_" + user.email;
@@ -84,26 +77,13 @@ export default function Home() {
     go("market");
   };
 
-  // ✅ ตรวจซ้ำทุกครั้งที่ user เปลี่ยน
-  useEffect(() => {
-    if (user && user.email) {
-      const paidKey = "userPaid_" + user.email;
-      const paidStatus = localStorage.getItem(paidKey) === "true";
-      if (paidStatus) setPaid(true);
-    }
-  }, [user]);
-
-  // ✅ Render หน้า
   const renderPage = () => {
     if (!user) {
       if (active === "login") return <LoinPaex go={go} onAuth={handleAuth} />;
       return <ReisterPae go={go} />;
     }
 
-    // ถ้ายังไม่ได้ VIP ให้ไปหน้าสมัครพรีเมียม
-    if (!paid && active === "vip") {
-      return <VipReister go={go} onPaid={handlePaid} />;
-    }
+    if (!paid && active === "vip") return <VipReister go={go} onPaid={handlePaid} />;
 
     switch (active) {
       case "favorites":
@@ -125,7 +105,7 @@ export default function Home() {
           />
         );
       case "scan":
-        return <ScannerSection />;
+        return <ScannerSwitcher />; // ✅ ใช้ตัวใหม่แทน ScannerSection เดิม
       case "settings":
         return <SettinMenu />;
       default:
@@ -137,7 +117,6 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Bottom Nav เฉพาะ VIP */}
       {user && paid && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
           {[
@@ -162,4 +141,4 @@ export default function Home() {
       )}
     </main>
   );
-  }
+        }
