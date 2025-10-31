@@ -1,165 +1,146 @@
+// ✅ components/ScannerSection.js — ใช้ API เดิม แต่เพิ่มโหมด OptionX (Reversal)
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function ScannerSection() {
+  const [mode, setMode] = useState("originx"); // originx หรือ optionx
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("aiScanResults");
-    if (saved) setResults(JSON.parse(saved));
-  }, []);
-
-  async function prepareScanner() {
-    const res = await fetch("/api/symbols");
-    const j = await res.json();
-    const total = j.total || 7000;
-    const perBatch = 300;
-    return Math.ceil(total / perBatch);
-  }
-
-  async function runSingleBatch(batchNo) {
+  // โหลดข้อมูลจาก API เดิม
+  async function loadData() {
     try {
-      const res = await fetch(`/api/visionary-batch?batch=${batchNo}`, { cache: "no-store" });
+      setLoading(true);
+      setProgress(0);
+      const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const j = await res.json();
-      return j?.results || [];
-    } catch {
-      return [];
+
+      let data = j.results || [];
+
+      // ✅ ถ้าโหมด OptionX — แปลงข้อมูลให้เป็นแบบ Call / Put
+      if (mode === "optionx") {
+        data = data.map((x) => {
+          const rsi = x.rsi || 50;
+          const signal =
+            rsi < 40
+              ? "CALL"
+              : rsi > 70
+              ? "PUT"
+              : "NEUTRAL";
+          const aiScore = Math.round((x.aiScore || 50) * (signal === "NEUTRAL" ? 0.8 : 1));
+          return {
+            ...x,
+            signal,
+            aiScore,
+          };
+        });
+      }
+
+      setResults(data);
+      setProgress(100);
+    } catch (e) {
+      console.error("load error:", e);
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function runFullScan() {
-    setLoading(true);
-    setProgress(0);
-    setResults([]);
-    const batches = await prepareScanner();
-    let all = [];
-    const delay = 200;
-
-    for (let i = 1; i <= batches; i++) {
-      const r = await runSingleBatch(i);
-      if (r?.length) all.push(...r);
-      setProgress(Math.round((i / batches) * 100));
-      await new Promise((res) => setTimeout(res, delay));
-    }
-
-    const top = all
-      .filter((x) => x.signal === "Buy")
-      .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
-      .slice(0, 20);
-
-    setResults(top);
-    localStorage.setItem("aiScanResults", JSON.stringify(top));
-    setLoading(false);
-    setProgress(100);
-  }
+  useEffect(() => {
+    loadData();
+  }, [mode]);
 
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      <div className="max-w-6xl mx-auto px-3 pt-2 relative">
-        {/* หัวข้อ + ปุ่ม SCAN */}
-        <div className="flex justify-between items-center mb-2 relative">
-          <h1 className="text-[19px] font-extrabold text-white tracking-wide">
-            Quant Terminal
+      <div className="max-w-6xl mx-auto px-3 pt-2">
+        {/* หัวข้อและปุ่มสลับโหมด */}
+        <div className="flex justify-between items-center mb-3">
+          <h1 className="text-[18px] font-extrabold text-emerald-400 tracking-wide">
+            {mode === "originx"
+              ? "🧠 OriginX (AI Discovery)"
+              : "💹 OptionX (Reversal Mode)"}
           </h1>
 
           <button
-            onClick={runFullScan}
+            onClick={() => setMode(mode === "originx" ? "optionx" : "originx")}
+            className="border border-emerald-400 text-emerald-300 bg-[#111827]/40 px-3 py-[6px] rounded-lg text-sm font-bold hover:bg-emerald-500/20 transition"
+          >
+            {mode === "originx"
+              ? "Switch → OptionX"
+              : "Switch → OriginX"}
+          </button>
+        </div>
+
+        {/* ปุ่ม SCAN */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={loadData}
             disabled={loading}
-            className={`absolute right-0 top-0 px-5 py-[6px] rounded-md text-[13px] font-extrabold border border-gray-600 bg-transparent hover:bg-[#1f2937]/40 transition-all ${
-              loading ? "text-gray-500" : "text-white hover:text-emerald-400"
+            className={`px-6 py-[6px] rounded-md border border-gray-500 bg-transparent text-sm font-extrabold ${
+              loading
+                ? "text-gray-500 cursor-wait"
+                : "text-white hover:text-emerald-400 hover:bg-[#1f2937]/40"
             }`}
-            style={{ minWidth: "88px" }}
           >
             {loading ? `${progress}%` : "SCAN"}
           </button>
         </div>
 
-        {/* รายการหุ้น */}
-        <section className="p-1">
-          {results.length > 0 ? (
-            <div className="flex flex-col divide-y divide-gray-800/50">
+        {/* ตารางผลลัพธ์ */}
+        <div className="p-1">
+          {results.length === 0 && !loading && (
+            <p className="text-center text-gray-500 italic py-10">
+              กด “SCAN” เพื่อเริ่มการสแกน {mode === "originx" ? "หุ้นต้นน้ำ" : "สัญญาณ OptionX"}
+            </p>
+          )}
+
+          {results.length > 0 && (
+            <div className="flex flex-col divide-y divide-gray-800/40">
               {results.map((r, i) => (
                 <Link
                   key={i}
                   href={`/analyze/${r.symbol}`}
-                  className="flex justify-between items-center py-[10px] hover:bg-[#111827]/30 transition-all"
+                  className="flex justify-between items-center py-2 hover:bg-[#111827]/30 transition"
                 >
-                  {/* ซ้าย: โลโก้ + ชื่อหุ้น */}
-                  <div className="flex items-center gap-2 min-w-[35%]">
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-[#0b0f17] border border-gray-700 shrink-0">
-                      <img
-                        src={`https://logo.clearbit.com/${r.symbol.toLowerCase()}.com`}
-                        alt={r.symbol}
-                        className="w-full h-full object-cover rounded-full"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = `https://finnhub.io/api/logo?symbol=${r.symbol}`;
-                          setTimeout(() => {
-                            if (!e.target.complete || e.target.naturalWidth === 0) {
-                              e.target.style.display = "none";
-                              e.target.parentElement.innerHTML = `<div class='w-full h-full bg-white flex items-center justify-center rounded-full border border-gray-300'>
-                                <span class='text-black font-extrabold text-[9px] uppercase'>${r.symbol}</span>
-                              </div>`;
-                            }
-                          }, 600);
-                        }}
-                      />
+                  {/* ซ้าย */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[#0b0f17] border border-gray-700 text-[11px] font-bold text-gray-300">
+                      {r.symbol}
                     </div>
-                    <div className="leading-tight">
-                      <div className="font-extrabold text-[13.5px] text-white">
-                        {r.symbol}
-                      </div>
+                    <div>
+                      <div className="font-bold text-[13.5px]">{r.symbol}</div>
                       <div className="text-[11px] text-gray-400">
-                        {r.companyName || "AI Discovery"}
+                        {r.companyName || "AI Signal"}
                       </div>
                     </div>
                   </div>
 
-                  {/* ขวา: ราคา / RSI / Signal / AI */}
-                  <div className="text-right font-mono leading-tight min-w-[75px] space-y-[2px]">
-                    <div className="text-[14px] font-extrabold text-white">
+                  {/* ขวา */}
+                  <div className="text-right font-mono text-[12px] leading-tight space-y-[2px]">
+                    <div className="text-[13px] font-bold text-white">
                       {r.last ? `$${r.last.toFixed(2)}` : "-"}
                     </div>
                     <div
-                      className={`text-[12px] font-bold ${
-                        r.rsi > 70
-                          ? "text-red-400"
-                          : r.rsi < 40
-                          ? "text-blue-400"
-                          : "text-emerald-400"
-                      }`}
-                    >
-                      {r.rsi ? Math.round(r.rsi) : "-"}
-                    </div>
-                    <div
-                      className={`text-[12px] font-extrabold ${
-                        r.signal === "Buy"
+                      className={`font-bold ${
+                        r.signal === "BUY" || r.signal === "CALL"
                           ? "text-green-400"
-                          : r.signal === "Sell"
+                          : r.signal === "SELL" || r.signal === "PUT"
                           ? "text-red-400"
                           : "text-yellow-400"
                       }`}
                     >
                       {r.signal || "-"}
                     </div>
-                    <div className="text-[9px] text-gray-400 font-semibold">
-                      AI {r.aiScore ? Math.round(r.aiScore) : 0}%
+                    <div className="text-gray-400 text-[10px]">
+                      AI {r.aiScore || 0}%
                     </div>
                   </div>
                 </Link>
               ))}
             </div>
-          ) : (
-            !loading && (
-              <p className="text-center text-gray-500 italic py-6">
-                กด “SCAN” เพื่อเริ่มการสแกนตลาด
-              </p>
-            )
           )}
-        </section>
+        </div>
       </div>
     </main>
   );
-        }
+    }
