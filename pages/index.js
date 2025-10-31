@@ -1,4 +1,4 @@
-// ✅ /pages/index.js — Visionary Home (Simplified Mode, No Auth/VIP)
+// ✅ /pages/index.js — Visionary Home (Simplified Mode + Remember Last Tab)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -10,6 +10,17 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // ✅ โหลดแท็บล่าสุดจาก localStorage
+  useEffect(() => {
+    const savedTab = localStorage.getItem("lastActiveTab");
+    if (savedTab) setActive(savedTab);
+  }, []);
+
+  // ✅ จำแท็บล่าสุดทุกครั้งที่เปลี่ยน
+  useEffect(() => {
+    localStorage.setItem("lastActiveTab", active);
+  }, [active]);
 
   // ✅ โหลดข้อมูลหุ้นต้นน้ำ
   async function loadDiscovery() {
@@ -48,12 +59,14 @@ export default function Home() {
     }
   }, [favorites]);
 
+  // ✅ ฟังก์ชันเปลี่ยนแท็บ
   const go = (tab) => {
     setActive(tab);
+    localStorage.setItem("lastActiveTab", tab); // จำแท็บล่าสุด
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ เรนเดอร์หน้าแต่ละส่วน
+  // ✅ แสดงแต่ละหน้า
   const renderPage = () => {
     switch (active) {
       case "favorites":
