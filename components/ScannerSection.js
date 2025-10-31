@@ -1,32 +1,41 @@
-// ✅ components/ScannerSection.js — OriginX + OptionX (Switch Mode)
-import { useState } from "react";
+// ✅ components/ScannerSection.js — สแกนทั้งตลาด + โหมดสลับ OriginX / OptionX
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import OptionXSection from "./OptionXSection";
 
 export default function ScannerSection() {
-  const [mode, setMode] = useState("originx");
+  const [mode, setMode] = useState("originx"); // 🧠 OriginX หรือ 💹 OptionX
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  async function loadOriginX() {
+  // ✅ โหลดข้อมูลสแกนทั้งตลาด (แบบเดิม)
+  async function loadMarket() {
     try {
       setLoading(true);
       const res = await fetch("/api/visionary-batch?batch=1", { cache: "no-store" });
       const j = await res.json();
       setResults(j.results || []);
     } catch (e) {
-      console.error("load error:", e);
+      console.error("Load error:", e);
     } finally {
       setLoading(false);
     }
   }
 
+  useEffect(() => {
+    loadMarket();
+  }, []);
+
   return (
     <main className="min-h-screen bg-[#0b1220] text-white pb-16">
-      <div className="max-w-6xl mx-auto px-3 pt-2">
+      <div className="max-w-6xl mx-auto px-3 pt-3">
+
+        {/* 🔘 หัวข้อ + ปุ่มสลับโหมด */}
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-[18px] font-extrabold text-emerald-400 tracking-wide">
-            {mode === "originx" ? "🧠 OriginX (AI Discovery)" : "💹 OptionX (AI Reversal)"}
+            {mode === "originx"
+              ? "🧠 OriginX — AI Stock Scanner"
+              : "💹 OptionX — AI Reversal & Option Signal"}
           </h1>
 
           <button
@@ -37,14 +46,15 @@ export default function ScannerSection() {
           </button>
         </div>
 
-        {/* ✅ โหมด OptionX */}
+        {/* 🔄 แสดงตามโหมด */}
         {mode === "optionx" ? (
-          <OptionXSection />
+          <OptionXSection /> // โหมด OptionX (AI ออปชัน)
         ) : (
           <>
+            {/* ปุ่ม SCAN */}
             <div className="flex justify-end mb-4">
               <button
-                onClick={loadOriginX}
+                onClick={loadMarket}
                 disabled={loading}
                 className={`px-6 py-[6px] rounded-md border border-gray-500 bg-transparent text-sm font-extrabold ${
                   loading
@@ -52,15 +62,15 @@ export default function ScannerSection() {
                     : "text-white hover:text-emerald-400 hover:bg-[#1f2937]/40"
                 }`}
               >
-                {loading ? "Loading..." : "SCAN"}
+                {loading ? "Scanning..." : "SCAN"}
               </button>
             </div>
 
-            {/* ตาราง OriginX */}
+            {/* ตารางผลลัพธ์ OriginX */}
             <div className="divide-y divide-gray-800/40">
               {results.length === 0 && !loading && (
                 <p className="text-center text-gray-500 italic py-10">
-                  กด “SCAN” เพื่อเริ่มสแกนหุ้นต้นน้ำ (OriginX)
+                  กด “SCAN” เพื่อเริ่มสแกนตลาด (OriginX)
                 </p>
               )}
 
@@ -80,7 +90,9 @@ export default function ScannerSection() {
                     </div>
                   </div>
                   <div className="text-right font-mono text-[12px] leading-tight space-y-[2px]">
-                    <div className="text-[13px] font-bold text-white">${r.last?.toFixed(2) || "-"}</div>
+                    <div className="text-[13px] font-bold text-white">
+                      ${r.last?.toFixed(2) || "-"}
+                    </div>
                     <div
                       className={`font-bold ${
                         r.signal === "BUY"
@@ -104,4 +116,4 @@ export default function ScannerSection() {
       </div>
     </main>
   );
-                    }
+              }
