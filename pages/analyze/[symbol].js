@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Hybrid: Infinite Core + Core + Scanner + News + AI Zone)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Hybrid + Dual Signal System)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -101,6 +101,9 @@ export default function Analyze() {
         {/* SIGNAL */}
         <AISignalSection ind={core} sig={sig} price={price} scanner={scanner} />
 
+        {/* ✅ NEW: Dual System Summary */}
+        <AITradeSummary core={core} scanner={scanner} />
+
         {/* ข่าว */}
         <MarketNews news={news} />
       </div>
@@ -167,64 +170,90 @@ function AISignalSection({ ind, sig, price, scanner }) {
           <Info label="📋 Reason" value={scanner?.reason || ind?.trend || sig.reason} className="col-span-2" />
         </div>
       </div>
+    </section>
+  );
+}
 
-      {/* ✅ AI Entry Zone */}
-      <div className="bg-[#0f172a] rounded-2xl border border-white/10 p-4 mt-4">
-        <h3 className="text-lg font-semibold text-emerald-400 mb-2">🎯 AI Entry Zone</h3>
-        <div className="text-sm font-semibold text-gray-300">
-          {(() => {
-            const rsi = ind?.rsi ?? 0;
-            const ai = sig.action;
-            const low = (price * 0.98).toFixed(2);
-            const high = (price * 1.02).toFixed(2);
-            if (!rsi) return "⏳ Loading data...";
-            if (ai === "Buy" && rsi >= 45 && rsi <= 60)
-              return `🟢 โซนเข้าซื้อแนะนำ (${low} - ${high}) | RSI ${rsi.toFixed(1)}`;
-            if (rsi > 60 && rsi <= 70) return "🟡 ถือรอดูแรงซื้อต่อเนื่อง";
-            if (rsi > 70) return "🔴 Overbought — อย่าเพิ่งเข้า!";
-            if (rsi < 40) return "🔵 Oversold — รอการกลับตัว";
-            return "⚪ รอสัญญาณยืนยันเพิ่มเติม";
-          })()}
+function AITradeSummary({ core, scanner }) {
+  const data = core || {};
+  const price = data.lastClose ?? 0;
+  const rsi = data.rsi ?? 0;
+  const ema20 = data.ema20 ?? 0;
+  const ema50 = data.ema50 ?? 0;
+  const conf = scanner?.confidence ?? 50;
+
+  const getSignal = (type) => {
+    if (type === "stock") {
+      if (rsi > 60 && price > ema20 && conf >= 60) return "Buy";
+      if (rsi < 40 && price < ema50) return "Sell";
+      return "Hold";
+    } else if (type === "option") {
+      if (rsi > 55 && price > ema20 && conf >= 65) return "Buy";
+      if (rsi < 40) return "Sell";
+      return "Hold";
+    }
+    return "Hold";
+  };
+
+  const stockSig = getSignal("stock");
+  const optionSig = getSignal("option");
+
+  const summaryText =
+    stockSig === "Buy" && optionSig === "Buy"
+      ? "✅ หุ้นและออปชั่นเข้าได้พร้อมกัน (Momentum แข็งแรง)"
+      : stockSig === "Buy" && optionSig === "Hold"
+      ? "⚡ เข้าได้เฉพาะหุ้นธรรมดา (Option ยังรอจังหวะ)"
+      : stockSig === "Hold" && optionSig === "Buy"
+      ? "⚠️ Option เข้าได้ก่อน หุ้นยังไม่ยืนยัน"
+      : stockSig === "Sell" && optionSig === "Sell"
+      ? "❌ ไม่ควรเข้า ทั้งหุ้นและ Option อยู่ในขาลง"
+      : "⏸ รอสัญญาณยืนยันเพิ่มเติม";
+
+  return (
+    <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-5 shadow-inner space-y-4">
+      <h2 className="text-lg font-semibold text-emerald-400">🧠 AI Dual Signal Summary</h2>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="border border-emerald-400/30 rounded-lg p-3">
+          <h3 className="font-bold text-white mb-1">หุ้นธรรมดา (Stock)</h3>
+          <p
+            className={`text-lg font-extrabold ${
+              stockSig === "Buy"
+                ? "text-green-400"
+                : stockSig === "Sell"
+                ? "text-red-400"
+                : "text-yellow-400"
+            }`}
+          >
+            {stockSig}
+          </p>
         </div>
 
-        {/* RSI Bar */}
-        <div className="mt-3 h-2 w-full bg-[#1e293b] rounded-full overflow-hidden">
-          <div
-            className="h-2 rounded-full transition-all duration-500"
-            style={{
-              width: `${Math.min(Math.max(ind?.rsi ?? 0, 0), 100)}%`,
-              background:
-                ind?.rsi < 40
-                  ? "#3b82f6"
-                  : ind?.rsi <= 60
-                  ? "#22c55e"
-                  : ind?.rsi <= 70
-                  ? "#eab308"
-                  : "#ef4444",
-            }}
-          />
-        </div>
-        <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>30</span>
-          <span>50</span>
-          <span>70</span>
+        <div className="border border-pink-400/30 rounded-lg p-3">
+          <h3 className="font-bold text-white mb-1">ออปชั่น (Option)</h3>
+          <p
+            className={`text-lg font-extrabold ${
+              optionSig === "Buy"
+                ? "text-green-400"
+                : optionSig === "Sell"
+                ? "text-red-400"
+                : "text-yellow-400"
+            }`}
+          >
+            {optionSig}
+          </p>
         </div>
       </div>
 
-      {/* Technical Overview */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Technical Overview</h2>
-        {!ind ? (
-          <div className="text-sm text-gray-400">Loading data...</div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <Info label="Last Close" value={`$${fmt(ind.lastClose)}`} />
-            <Info label="RSI (14)" value={fmt(ind.rsi, 1)} />
-            <Info label="EMA 20" value={fmt(ind.ema20)} />
-            <Info label="EMA 50" value={fmt(ind.ema50)} />
-            <Info label="EMA 200" value={fmt(ind.ema200)} />
-          </div>
-        )}
+      <p className="text-sm text-gray-300">{summaryText}</p>
+
+      <div className="flex justify-around mt-3">
+        <button className="px-4 py-2 bg-green-500/20 border border-green-400 rounded-lg font-bold hover:bg-green-600/30">
+          ซื้อหุ้น (Stock)
+        </button>
+        <button className="px-4 py-2 bg-pink-500/20 border border-pink-400 rounded-lg font-bold hover:bg-pink-600/30">
+          ซื้อออปชั่น (Option)
+        </button>
       </div>
     </section>
   );
@@ -250,4 +279,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-                }
+      }
