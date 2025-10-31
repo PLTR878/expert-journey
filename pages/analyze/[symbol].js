@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option Mode + Compact + Supreme AI)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option Mode + Compact + Supreme AI + Back Fix)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -7,7 +7,7 @@ const Chart = dynamic(() => import("../../components/Chart.js"), { ssr: false })
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : "-");
 
 export default function Analyze() {
-  const { query, push } = useRouter();
+  const { query } = useRouter();
   const symbol = (query.symbol || "").toString().toUpperCase();
   const [core, setCore] = useState(null);
   const [scanner, setScanner] = useState(null);
@@ -79,7 +79,7 @@ export default function Analyze() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <button
-            onClick={() => push("/")}
+            onClick={() => window.history.back()} // ✅ กลับหน้าเดิมจริง ๆ
             className="text-sm bg-white/5 px-3 py-1 rounded border border-white/10 hover:bg-emerald-500/10"
           >
             ← ย้อนกลับ
@@ -143,7 +143,7 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   return { action: "Hold", confidence: 0.5, reason: "สัญญาณเป็นกลาง" };
 }
 
-// ✅ เพิ่มสูตร Supreme สำหรับ Option
+// ✅ Supreme Option AI (แม่นสุดในจักรวาล)
 function computeOptionSupreme({ lastClose, ema20, ema50, ema200, rsi, volume, prevVolume, trend = "Neutral", aiConf = 60 }) {
   if (![lastClose, ema20, ema50, ema200, rsi].every(Number.isFinite))
     return { action: "Hold", confidence: 60, reason: "ข้อมูลไม่ครบ" };
@@ -202,7 +202,6 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
 
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4 space-y-4 shadow-inner">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-base font-semibold">AI {mode === "option" ? "Option" : "Trade"} Signal</h2>
         <span className={`font-bold ${
@@ -212,7 +211,6 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </span>
       </div>
 
-      {/* Info */}
       <div className="grid grid-cols-2 gap-2 text-sm">
         <Info label="🎯 Target" value={`$${fmt(target, 2)}`} />
         <Info label="🤖 Confidence" value={`${fmt(conf, 0)}%`} />
