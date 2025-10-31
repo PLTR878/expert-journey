@@ -6,7 +6,7 @@ export default function OptionXSection() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // ✅ โหลดผลเก่าจาก localStorage
+  // ✅ โหลดผลเก่า
   useEffect(() => {
     const saved = localStorage.getItem("optionScanResults");
     if (saved) setResults(JSON.parse(saved));
@@ -47,18 +47,25 @@ export default function OptionXSection() {
       await new Promise((res) => setTimeout(res, delay));
     }
 
-    const top = all
-      .map((x) => ({
-        ...x,
-        optionSignal: x.rsi < 35 ? "CALL" : x.rsi > 70 ? "PUT" : "HOLD",
-      }))
-      .filter((x) => x.aiScore > 60)
+    // ✅ วิเคราะห์ใหม่สำหรับ OptionX
+    const analyzed = all
+      .map((x) => {
+        let signal = "HOLD";
+        if (x.rsi < 35 && x.aiScore > 60) signal = "CALL";
+        else if (x.rsi > 70 && x.aiScore > 60) signal = "PUT";
+
+        return {
+          ...x,
+          optionSignal: signal,
+        };
+      })
+      .filter((x) => x.last && x.aiScore > 50)
       .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
-      .slice(0, 20);
+      .slice(0, 25);
 
     // ✅ บันทึกถาวร
-    localStorage.setItem("optionScanResults", JSON.stringify(top));
-    setResults(top);
+    localStorage.setItem("optionScanResults", JSON.stringify(analyzed));
+    setResults(analyzed);
     setLoading(false);
     setProgress(100);
   }
@@ -74,9 +81,7 @@ export default function OptionXSection() {
             onClick={runFullScan}
             disabled={loading}
             className={`absolute right-0 top-0 px-5 py-[6px] rounded-md text-[13px] font-extrabold border border-gray-600 bg-transparent hover:bg-[#1f2937]/40 transition-all ${
-              loading
-                ? "text-gray-500"
-                : "text-white hover:text-pink-400"
+              loading ? "text-gray-500" : "text-white hover:text-pink-400"
             }`}
             style={{ minWidth: "88px" }}
           >
@@ -84,6 +89,7 @@ export default function OptionXSection() {
           </button>
         </div>
 
+        {/* แสดงผล */}
         <section className="p-1">
           {results.length > 0 ? (
             <div className="flex flex-col divide-y divide-gray-800/50">
@@ -93,7 +99,7 @@ export default function OptionXSection() {
                   href={`/analyze/${r.symbol}`}
                   className="flex justify-between items-center py-[10px] hover:bg-[#111827]/30 transition-all"
                 >
-                  {/* ✅ โลโก้แน่นอน */}
+                  {/* โลโก้แน่นอน */}
                   <div className="flex items-center gap-2 min-w-[35%]">
                     <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-[#0b0f17] border border-gray-700 shrink-0">
                       <img
@@ -124,6 +130,7 @@ export default function OptionXSection() {
                     </div>
                   </div>
 
+                  {/* ขวา: ราคา / Option Signal / AI */}
                   <div className="text-right font-mono leading-tight min-w-[75px] space-y-[2px]">
                     <div className="text-[14px] font-extrabold text-white">
                       {r.last ? `$${r.last.toFixed(2)}` : "-"}
@@ -157,4 +164,4 @@ export default function OptionXSection() {
       </div>
     </main>
   );
-}
+      }
