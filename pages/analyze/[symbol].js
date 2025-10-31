@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option Mode + Compact UI)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option Mode + Compact + Supreme AI)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -143,6 +143,31 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   return { action: "Hold", confidence: 0.5, reason: "สัญญาณเป็นกลาง" };
 }
 
+// ✅ เพิ่มสูตร Supreme สำหรับ Option
+function computeOptionSupreme({ lastClose, ema20, ema50, ema200, rsi, volume, prevVolume, trend = "Neutral", aiConf = 60 }) {
+  if (![lastClose, ema20, ema50, ema200, rsi].every(Number.isFinite))
+    return { action: "Hold", confidence: 60, reason: "ข้อมูลไม่ครบ" };
+
+  let score = 0;
+  if (lastClose > ema20) score++;
+  if (ema20 > ema50) score++;
+  if (ema50 > ema200) score += 0.5;
+  if (rsi > 55) score++; else if (rsi < 45) score--;
+  if (Number.isFinite(volume) && Number.isFinite(prevVolume)) {
+    if (volume > prevVolume * 1.25) score += 1;
+    else if (volume < prevVolume * 0.8) score -= 0.5;
+  }
+  if (trend === "Uptrend") score += 1;
+  else if (trend === "Downtrend") score -= 1;
+  if (Number.isFinite(aiConf)) score += (aiConf - 50) / 25;
+
+  if (score >= 3.5) return { action: "Buy", confidence: 95, reason: "แรงซื้อมหาศาล ยืนยันขาขึ้น" };
+  if (score >= 2.0) return { action: "Buy", confidence: 85, reason: "แนวโน้มขาขึ้นแข็งแรง" };
+  if (score <= -2) return { action: "Sell", confidence: 90, reason: "แรงขายกดดันหนัก" };
+  if (score <= -1) return { action: "Sell", confidence: 70, reason: "แนวโน้มอ่อนแรง" };
+  return { action: "Hold", confidence: 60, reason: "รอการยืนยันเพิ่มเติม" };
+}
+
 // ===== COMPONENTS =====
 function Info({ label, value }) {
   return (
@@ -154,42 +179,48 @@ function Info({ label, value }) {
 }
 
 function AISignalSection({ ind, sig, price, scanner, mode }) {
-  const conf = scanner?.confidence ?? sig.confidence * 100;
-  const target = scanner?.targetPrice ?? price * 1.08;
+  const baseConf = scanner?.confidence ?? sig.confidence * 100;
+  const baseTarget = scanner?.targetPrice ?? price * 1.08;
   const rsi = ind?.rsi ?? 0;
 
-  const action =
-    mode === "option"
-      ? rsi > 55 && conf >= 65
-        ? "Buy"
-        : rsi < 40
-        ? "Sell"
-        : "Hold"
-      : sig.action;
+  const optSig = computeOptionSupreme({
+    lastClose: ind?.lastClose,
+    ema20: ind?.ema20,
+    ema50: ind?.ema50,
+    ema200: ind?.ema200,
+    rsi,
+    volume: ind?.chart?.volume?.at(-1),
+    prevVolume: ind?.chart?.volume?.at(-2),
+    trend: ind?.trend,
+    aiConf: baseConf,
+  });
+
+  const action = mode === "option" ? optSig.action : sig.action;
+  const conf = mode === "option" ? optSig.confidence : baseConf;
+  const reason = mode === "option" ? optSig.reason : (scanner?.reason || sig.reason);
+  const target = baseTarget;
 
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4 space-y-4 shadow-inner">
-      {/* Signal header */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-base font-semibold">AI {mode === "option" ? "Option" : "Trade"} Signal</h2>
-        <span
-          className={`font-bold ${
-            action === "Buy" ? "text-green-400" : action === "Sell" ? "text-red-400" : "text-yellow-300"
-          }`}
-        >
+        <span className={`font-bold ${
+          action === "Buy" ? "text-green-400" : action === "Sell" ? "text-red-400" : "text-yellow-300"
+        }`}>
           {action}
         </span>
       </div>
 
-      {/* Compact Info */}
+      {/* Info */}
       <div className="grid grid-cols-2 gap-2 text-sm">
         <Info label="🎯 Target" value={`$${fmt(target, 2)}`} />
         <Info label="🤖 Confidence" value={`${fmt(conf, 0)}%`} />
-        <Info label="📋 Reason" value={scanner?.reason || sig.reason} />
+        <Info label="📋 Reason" value={reason} />
         <Info label="RSI (14)" value={fmt(rsi, 1)} />
       </div>
 
-      {/* AI Entry Zone */}
+      {/* Entry Zone */}
       <div className="bg-[#0f172a] rounded-xl border border-white/10 p-3 text-sm">
         <div className="text-emerald-400 font-semibold mb-1">🎯 AI Entry Zone</div>
         {rsi ? (
@@ -199,9 +230,7 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
             {rsi > 60 && rsi <= 70 && "🟡 ถือรอดูแรงซื้อต่อเนื่อง"}
             {rsi > 70 && "🔴 Overbought — อย่าเพิ่งเข้า"}
           </div>
-        ) : (
-          "⏳ Loading data..."
-        )}
+        ) : "⏳ Loading data..."}
         <div className="mt-2 h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
           <div
             className="h-1.5 rounded-full transition-all duration-500"
@@ -214,7 +243,7 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </div>
       </div>
 
-      {/* Technical Overview */}
+      {/* Tech Overview */}
       <div className="grid grid-cols-3 gap-2 text-sm">
         <Info label="Last" value={`$${fmt(ind?.lastClose)}`} />
         <Info label="EMA20" value={fmt(ind?.ema20)} />
@@ -245,4 +274,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-                                         }
+          }
