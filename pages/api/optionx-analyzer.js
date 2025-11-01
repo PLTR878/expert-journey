@@ -1,81 +1,29 @@
-// ✅ OptionX Analyzer API — v∞.1 (Stable + Real Option AI)
+// /pages/api/optionx-analyzer.js
 export default async function handler(req, res) {
   const { symbol } = req.query;
   if (!symbol) return res.status(400).json({ error: "Missing symbol" });
-
   try {
-    const url = `https://query2.finance.yahoo.com/v7/finance/options/${symbol}`;
-    const r = await fetch(url);
+    const r = await fetch(`https://query2.finance.yahoo.com/v7/finance/options/${symbol}`);
     const j = await r.json();
     const chain = j?.optionChain?.result?.[0];
-    if (!chain) throw new Error("No option data found");
+    if (!chain) throw new Error("No option data");
+    const spot = chain.quote?.regularMarketPrice ?? 0;
+    const { calls = [], puts = [] } = chain.options?.[0] || {};
 
-    const spot = chain.quote?.regularMarketPrice || 0;
-    const options = chain.options?.[0] || {};
-    const calls = options.calls || [];
-    const puts = options.puts || [];
+    const pick = (arr, type) =>
+      arr.map(o => {
+         const strike = o.strike, last = o.lastPrice ?? 0;
+         const be = type==="CALL" ? strike + last : strike - last;
+         const roi = type==="CALL" ? ((be - spot)/Math.max(0.01,last))*100
+                                   : ((spot - be)/Math.max(0.01,last))*100;
+         const itm = type==="CALL" ? spot>strike : spot<strike;
+         const score = (itm?25:0) + (roi>50?25:roi>20?15:0) + (last<1?10:0);
+         return { strike, last:+last.toFixed(2), roi:Math.round(roi), itm, score };
+      }).sort((a,b)=>b.score-a.score).slice(0,5);
 
-    // === AI Filter ===
-    const analyze = (arr, type) => {
-      const filtered = arr
-        .map((o) => {
-          const strike = o.strike?.toFixed(2);
-          const last = o.lastPrice || 0;
-          const breakeven =
-            type === "CALL" ? (strike * 1 + last) : (strike * 1 - last);
-          const roi =
-            type === "CALL"
-              ? ((breakeven - spot) / last) * 100
-              : ((spot - breakeven) / last) * 100;
-          const itm =
-            type === "CALL" ? spot > strike : spot < strike;
-          const score =
-            (itm ? 20 : 0) +
-            (roi > 50 ? 30 : roi > 20 ? 15 : 0) +
-            (last < 1 ? 10 : 0);
-          return {
-            strike,
-            last,
-            breakeven: breakeven.toFixed(2),
-            roi: Math.round(roi),
-            itm,
-            score,
-          };
-        })
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-      return filtered;
-    };
-
-    const bestCalls = analyze(calls, "CALL");
-    const bestPuts = analyze(puts, "PUT");
-
-    const topCall = bestCalls[0];
-    const topPut = bestPuts[0];
-
-    // === AI Decision ===
-    let signal = "Hold";
-    let reason = "Neutral Market";
-    if (topCall?.roi > 40 && topCall?.itm) {
-      signal = "Buy Call";
-      reason = "AI expects upside momentum";
-    } else if (topPut?.roi > 40 && topPut?.itm) {
-      signal = "Buy Put";
-      reason = "AI expects downside momentum";
-    }
-
-    res.status(200).json({
-      symbol,
-      price: spot,
-      topCall,
-      topPut,
-      signal,
-      reason,
-      calls: bestCalls,
-      puts: bestPuts,
-      source: "OptionX Analyzer v∞.1 — Yahoo Finance",
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(200).json({ symbol, price:+spot.toFixed(2),
+      calls: pick(calls,"CALL"), puts: pick(puts,"PUT"), source:"OptionX v∞" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 }
