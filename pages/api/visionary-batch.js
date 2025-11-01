@@ -1,4 +1,4 @@
-// ✅ Visionary Batch Scanner — v∞.50 (Quantum Filter: Price $2–$65 + Vol + RSI + Trend + AI Score)
+// ✅ Visionary Batch Scanner — v∞.51 (Quantum Filter + Real Price Output + Stable for Vercel)
 export default async function handler(req, res) {
   const { batch = "1" } = req.query;
 
@@ -106,8 +106,10 @@ export default async function handler(req, res) {
         // 5) AI ต้องมั่นใจจริง
         if (aiScore < 80) continue;
 
+        // ✅ เพิ่ม field “price” ให้ OriginX Picks ใช้ได้
         results.push({
           symbol: s,
+          price: Number(last.toFixed(2)), // ✅ เพิ่มตรงนี้
           last: Number(last.toFixed(2)),
           rsi: Number(rsi.toFixed(1)),
           ema20: Number(ema20?.toFixed(2)),
@@ -142,4 +144,4 @@ export default async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-                          }
+    }
