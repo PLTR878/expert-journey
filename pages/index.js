@@ -1,8 +1,7 @@
-// ✅ /pages/index.js — Visionary Home (Simplified Mode + Remember Last Tab)
+// ✅ /pages/index.js — Visionary Home (Full Linked: OriginX + OptionX + AI Core)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
-import ScannerSwitcher from "../components/ScannerSwitcher";
 import SettinMenu from "../components/SettinMenu";
 
 export default function Home() {
@@ -10,6 +9,8 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [optionResult, setOptionResult] = useState(null);
+  const [scanSymbol, setScanSymbol] = useState("");
 
   // ✅ โหลดแท็บล่าสุดจาก localStorage
   useEffect(() => {
@@ -17,12 +18,12 @@ export default function Home() {
     if (savedTab) setActive(savedTab);
   }, []);
 
-  // ✅ จำแท็บล่าสุดทุกครั้งที่เปลี่ยน
+  // ✅ จำแท็บล่าสุด
   useEffect(() => {
     localStorage.setItem("lastActiveTab", active);
   }, [active]);
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ
+  // ✅ โหลดหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -36,45 +37,57 @@ export default function Home() {
     }
   }
 
-  useEffect(() => {
-    loadDiscovery();
-  }, []);
+  useEffect(() => { loadDiscovery(); }, []);
 
   // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("favorites");
-      if (saved) setFavorites(JSON.parse(saved));
-    } catch (e) {
-      console.error("❌ Load favorites error:", e);
-    }
+    const saved = localStorage.getItem("favorites");
+    if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
-  // ✅ บันทึก Favorites กลับเข้า localStorage
+  // ✅ บันทึก Favorites
   useEffect(() => {
-    try {
-      localStorage.setItem("favorites", JSON.stringify(favorites));
-    } catch (e) {
-      console.error("❌ Save favorites error:", e);
-    }
+    localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
+
+  // ✅ Scanner (OptionX + Visionary Core)
+  async function handleScan() {
+    if (!scanSymbol) return alert("⚠️ ใส่ชื่อหุ้นก่อน เช่น PLTR");
+    setLoading(true);
+    try {
+      // 1️⃣ เรียก Visionary Core (RSI / EMA / Trend)
+      const coreRes = await fetch(`/api/visionary-core?symbol=${scanSymbol}`);
+      const core = await coreRes.json();
+
+      // 2️⃣ เรียก OptionX Analyzer (Option Data)
+      const optRes = await fetch(`/api/optionx-analyzer?symbol=${scanSymbol}`);
+      const opt = await optRes.json();
+
+      setOptionResult({ core, opt });
+    } catch (e) {
+      alert("❌ Error: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // ✅ ฟังก์ชันเปลี่ยนแท็บ
   const go = (tab) => {
     setActive(tab);
-    localStorage.setItem("lastActiveTab", tab); // จำแท็บล่าสุด
+    localStorage.setItem("lastActiveTab", tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ แสดงแต่ละหน้า
+  // ✅ หน้าหลักแต่ละแท็บ
   const renderPage = () => {
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
+
       case "market":
         return (
           <MarketSection
-            title="OriginX (AI Discovery)"
+            title="🚀 OriginX (AI Discovery)"
             loading={loading}
             rows={futureDiscovery}
             favorites={favorites}
@@ -87,10 +100,64 @@ export default function Home() {
             }
           />
         );
+
       case "scan":
-        return <ScannerSwitcher />;
+        return (
+          <div className="p-4">
+            <h1 className="text-2xl font-bold text-emerald-400 mb-4">
+              🧠 AI Trade & Option Scanner
+            </h1>
+
+            <div className="flex gap-2 mb-4">
+              <input
+                className="bg-[#141a2b] p-2 rounded-md flex-1 outline-none text-white"
+                placeholder="เช่น PLTR, SOUN, RXRX..."
+                value={scanSymbol}
+                onChange={(e) => setScanSymbol(e.target.value.toUpperCase())}
+              />
+              <button
+                onClick={handleScan}
+                className="bg-emerald-500 hover:bg-emerald-600 px-4 rounded-md"
+              >
+                {loading ? "🔍 กำลังสแกน..." : "SCAN"}
+              </button>
+            </div>
+
+            {optionResult && (
+              <div className="bg-[#141a2b] p-4 rounded-lg">
+                <h2 className="text-lg text-emerald-400 mb-2">
+                  ผลลัพธ์ ({optionResult.core?.symbol})
+                </h2>
+                <p>ราคาหุ้น: ${optionResult.core?.lastClose}</p>
+                <p>RSI: {optionResult.core?.rsi}</p>
+                <p>แนวโน้ม: {optionResult.core?.trend}</p>
+                <p>สัญญาณ: {optionResult.core?.signal}</p>
+
+                <hr className="my-3 border-gray-600" />
+
+                <h3 className="text-pink-400 mb-2">Option Calls (Top)</h3>
+                {optionResult.opt?.calls?.map((o, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span>Strike {o.strike}</span>
+                    <span>${o.last} | ROI {o.roi}%</span>
+                  </div>
+                ))}
+
+                <h3 className="text-pink-400 mt-4 mb-2">Option Puts (Top)</h3>
+                {optionResult.opt?.puts?.map((o, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span>Strike {o.strike}</span>
+                    <span>${o.last} | ROI {o.roi}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
       case "settings":
         return <SettinMenu />;
+
       default:
         return <MarketSection />;
     }
@@ -124,4 +191,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+        }
