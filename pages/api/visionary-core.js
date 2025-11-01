@@ -1,102 +1,136 @@
-// ✅ /pages/api/visionary-core.js — AI Core (Stable Restore)
+// ✅ /pages/api/visionary-core.js — OriginX Self-Learning v∞.6
+import fs from "fs";
+import path from "path";
+
+const MEMORY_PATH = path.join(process.cwd(), "data", "ai-memory.json");
+
+// 🧠 โหลดไฟล์ความจำ (ถ้ายังไม่มีจะสร้างใหม่)
+function loadMemory() {
+  try {
+    if (!fs.existsSync(MEMORY_PATH)) fs.writeFileSync(MEMORY_PATH, JSON.stringify({}));
+    const raw = fs.readFileSync(MEMORY_PATH, "utf8");
+    return JSON.parse(raw || "{}");
+  } catch {
+    return {};
+  }
+}
+
+// 💾 บันทึกกลับ
+function saveMemory(data) {
+  try {
+    fs.writeFileSync(MEMORY_PATH, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error("❌ Save memory error:", e);
+  }
+}
+
 export default async function handler(req, res) {
   const { symbol } = req.query;
   if (!symbol) return res.status(400).json({ error: "Missing symbol" });
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
-    const response = await fetch(url);
-    const data = await response.json();
+    // --- โหลดความจำ AI ---
+    const memory = loadMemory();
+    const mem = memory[symbol] || { total: 0, correct: 0, lastPrice: null, lastSignal: "Hold" };
 
+    // --- ดึงข้อมูลจาก Yahoo ---
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
+    const r = await fetch(url);
+    const data = await r.json();
     const result = data?.chart?.result?.[0];
     if (!result) throw new Error("No data");
 
-    const timestamps = result.timestamp || [];
-    const quotes = result.indicators?.quote?.[0] || {};
-    const prices = quotes.close?.filter(Boolean) || [];
-    const lastClose = prices.at(-1) || 0;
-
-    // RSI
-    const calcRSI = (arr, period = 14) => {
-      if (arr.length < period + 1) return 50;
-      let gains = 0, losses = 0;
-      for (let i = arr.length - period; i < arr.length; i++) {
-        const diff = arr[i] - arr[i - 1];
-        if (diff > 0) gains += diff;
-        else losses -= diff;
-      }
-      const avgGain = gains / period;
-      const avgLoss = losses / period;
-      if (avgLoss === 0) return 100;
-      const rs = avgGain / avgLoss;
-      return 100 - 100 / (1 + rs);
-    };
-    const rsi = Number(calcRSI(prices, 14).toFixed(2));
-
-    // EMA
-    const calcEMA = (arr, period) => {
-      if (arr.length < period) return lastClose;
-      const k = 2 / (period + 1);
-      let ema = arr[0];
-      for (let i = 1; i < arr.length; i++) ema = arr[i] * k + ema * (1 - k);
-      return ema.toFixed(2);
-    };
-    const ema20 = Number(calcEMA(prices, 20));
-    const ema50 = Number(calcEMA(prices, 50));
-    const ema200 = Number(calcEMA(prices, 200));
-
-    const trend =
-      lastClose > ema20 && ema20 > ema50
-        ? "Uptrend"
-        : lastClose < ema20 && ema20 < ema50
-        ? "Downtrend"
-        : "Sideway";
-
+    const q = result.indicators?.quote?.[0] || {};
+    const prices = q.close?.filter(Boolean) || [];
+    const lastClose = prices.at(-1);
     const prevClose = prices.at(-2) || lastClose;
     const change = ((lastClose - prevClose) / prevClose) * 100;
 
-    let signal = "Hold";
+    // --- Indicator ---
+    const rsi = calcRSI(prices, 14);
+    const ema20 = calcEMA(prices, 20);
+    const ema50 = calcEMA(prices, 50);
+    const ema200 = calcEMA(prices, 200);
+
+    const trend =
+      lastClose > ema20 && ema20 > ema50 ? "Uptrend" :
+      lastClose < ema20 && ema20 < ema50 ? "Downtrend" : "Sideway";
+
+    // --- สร้างคะแนนพื้นฐาน ---
     let aiScore = 50;
     aiScore += trend === "Uptrend" ? 15 : trend === "Downtrend" ? -15 : 0;
     aiScore += change > 1 ? 10 : change < -1 ? -10 : 0;
     aiScore += rsi < 40 ? 10 : rsi > 70 ? -10 : 0;
-    aiScore = Math.max(0, Math.min(100, aiScore));
 
-    if (aiScore >= 70 && trend === "Uptrend" && rsi < 70) signal = "Buy";
-    else if (aiScore <= 30 && trend === "Downtrend" && rsi > 55) signal = "Sell";
+    // --- ตัดสินสัญญาณ ---
+    let signal = "Hold";
+    if (aiScore >= 70 && rsi < 70 && trend === "Uptrend") signal = "Buy";
+    else if (aiScore <= 30 && rsi > 55 && trend === "Downtrend") signal = "Sell";
 
-    let confidence = 0;
-    if (signal === "Buy") {
-      confidence =
-        (rsi > 40 && rsi < 65 ? 25 : 0) +
-        (ema20 > ema50 ? 25 : 0) +
-        (change > 0 ? 25 : 0) +
-        (trend === "Uptrend" ? 25 : 0);
-    } else if (signal === "Sell") {
-      confidence =
-        (rsi > 60 ? 25 : 0) +
-        (ema20 < ema50 ? 25 : 0) +
-        (change < 0 ? 25 : 0) +
-        (trend === "Downtrend" ? 25 : 0);
+    // --- ตรวจผลย้อนหลังเพื่อเรียนรู้ ---
+    if (mem.lastSignal && mem.lastPrice) {
+      const wasBuy = mem.lastSignal === "Buy";
+      const wasSell = mem.lastSignal === "Sell";
+      const movedUp = lastClose > mem.lastPrice;
+      const movedDown = lastClose < mem.lastPrice;
+      if ((wasBuy && movedUp) || (wasSell && movedDown)) mem.correct++;
+      mem.total++;
     }
-    confidence = Math.min(100, confidence);
 
+    // --- อัปเดตความจำ ---
+    mem.lastSignal = signal;
+    mem.lastPrice = lastClose;
+    memory[symbol] = mem;
+    saveMemory(memory);
+
+    // --- คำนวณความแม่นของ AI ---
+    const learnedAcc = mem.total ? (mem.correct / mem.total) * 100 : 60;
+    const confidence = Math.round((aiScore + learnedAcc) / 2);
+
+    // --- ส่งออกผล ---
     res.status(200).json({
       symbol,
       lastClose: Number(lastClose.toFixed(2)),
-      rsi,
+      change: Number(change.toFixed(2)),
+      rsi: Number(rsi.toFixed(2)),
       ema20,
       ema50,
       ema200,
       trend,
-      change: Number(change.toFixed(2)),
       signal,
-      aiScore,
       confidence,
-      chart: { timestamps, prices, open: quotes.open, high: quotes.high, low: quotes.low, volume: quotes.volume },
-      source: "Yahoo Finance + OriginX AI Core v∞.52 (Restored)"
+      accuracy: Math.round(learnedAcc),
+      chart: {
+        timestamps: result.timestamp,
+        prices,
+        open: q.open,
+        high: q.high,
+        low: q.low,
+        volume: q.volume,
+      },
+      source: "OriginX Self-Learning AI v∞.6",
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
-        }
+}
+
+// ===== Helper functions =====
+function calcRSI(prices, period = 14) {
+  if (prices.length < period) return 50;
+  let gains = 0, losses = 0;
+  for (let i = prices.length - period; i < prices.length; i++) {
+    const diff = prices[i] - prices[i - 1];
+    if (diff >= 0) gains += diff; else losses -= diff;
+  }
+  const rs = gains / (losses || 1e-9);
+  return 100 - 100 / (1 + rs);
+}
+
+function calcEMA(prices, period) {
+  if (prices.length < period) return prices.at(-1);
+  const k = 2 / (period + 1);
+  let ema = prices[0];
+  for (let i = 1; i < prices.length; i++) ema = prices[i] * k + ema * (1 - k);
+  return Number(ema.toFixed(2));
+      }
