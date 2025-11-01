@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option Summary Integrated + Supreme Layout)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option Summary + AI Entry Zone + Perfect Layout)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -15,7 +15,6 @@ export default function Analyze() {
   const [mode, setMode] = useState("stock");
   const [loading, setLoading] = useState(true);
 
-  // ✅ โหลดข้อมูลจากทุก API
   useEffect(() => {
     if (!symbol) return;
     (async () => {
@@ -79,7 +78,7 @@ export default function Analyze() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <button
-            onClick={() => window.history.back()} // ✅ กลับหน้าเดิมจริง ๆ
+            onClick={() => window.history.back()}
             className="text-sm bg-white/5 px-3 py-1 rounded border border-white/10 hover:bg-emerald-500/10"
           >
             ← ย้อนกลับ
@@ -95,7 +94,7 @@ export default function Analyze() {
           <Chart candles={hist} markers={markers} />
         </div>
 
-        {/* Toggle Mode */}
+        {/* Mode Toggle */}
         <div className="flex justify-center gap-2">
           <button
             onClick={() => setMode("stock")}
@@ -115,17 +114,14 @@ export default function Analyze() {
           </button>
         </div>
 
-        {/* Signal Section */}
         <AISignalSection ind={core} sig={sig} price={price} scanner={scanner} mode={mode} />
-
-        {/* News */}
         <MarketNews news={news} />
       </div>
     </main>
   );
 }
 
-// ===== AI LOGIC =====
+// ===== Logic =====
 function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   if (![lastClose, ema20, ema50, ema200, rsi].every((v) => Number.isFinite(v)))
     return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
@@ -138,12 +134,11 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   if (trend === "Uptrend") score += 0.5;
   if (trend === "Downtrend") score -= 0.5;
 
-  if (score >= 3) return { action: "Buy", confidence: score / 4, reason: "แนวโน้มขาขึ้นแข็งแรง" };
-  if (score <= 1) return { action: "Sell", confidence: (2 - score) / 2, reason: "แรงขายกดดัน" };
-  return { action: "Hold", confidence: 0.5, reason: "สัญญาณเป็นกลาง" };
+  if (score >= 3) return { action: "Buy", confidence: 90, reason: "แนวโน้มขาขึ้นแข็งแรง" };
+  if (score <= 1) return { action: "Sell", confidence: 70, reason: "แรงขายกดดัน" };
+  return { action: "Hold", confidence: 50, reason: "สัญญาณเป็นกลาง" };
 }
 
-// ✅ Supreme Option AI
 function computeOptionSupreme({ lastClose, ema20, ema50, ema200, rsi, trend = "Neutral", aiConf = 60 }) {
   if (![lastClose, ema20, ema50, ema200, rsi].every(Number.isFinite))
     return { action: "Hold", confidence: 60, reason: "ข้อมูลไม่ครบ" };
@@ -164,12 +159,12 @@ function computeOptionSupreme({ lastClose, ema20, ema50, ema200, rsi, trend = "N
   return { action: "Hold", confidence: 60, reason: "รอการยืนยันเพิ่มเติม" };
 }
 
-// ===== UI COMPONENTS =====
+// ===== UI =====
 function Info({ label, value }) {
   return (
     <div className="rounded-lg border border-white/10 bg-[#141b2d] p-2 text-center">
       <div className="text-xs text-gray-400 mb-1">{label}</div>
-      <div className="text-sm font-bold text-gray-100">{value}</div>
+      <div className="text-sm font-semibold text-gray-100">{value}</div>
     </div>
   );
 }
@@ -179,6 +174,7 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
   const rsi = ind?.rsi ?? 0;
   const target = scanner?.targetPrice ?? price * 1.08;
   const reason = scanner?.reason || sig.reason;
+  const showOption = mode === "option";
 
   const optSig = computeOptionSupreme({
     lastClose: ind?.lastClose,
@@ -190,7 +186,6 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
     aiConf: baseConf,
   });
 
-  const showOption = mode === "option";
   const action = showOption ? optSig.action : sig.action;
   const conf = showOption ? optSig.confidence : baseConf;
 
@@ -199,7 +194,7 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
 
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4 space-y-4 shadow-inner">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-1">
         <h2 className="text-base font-semibold">
           AI {showOption ? "Option" : "Trade"} Signal
         </h2>
@@ -216,17 +211,18 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-sm">
+      {/* Main Signal Info */}
+      <div className="grid grid-cols-2 gap-2 text-[13px]">
         <Info label="🎯 Target" value={`$${fmt(target, 2)}`} />
         <Info label="🤖 Confidence" value={`${fmt(conf, 0)}%`} />
         <Info label="📋 Reason" value={reason} />
         <Info label="RSI (14)" value={fmt(rsi, 1)} />
       </div>
 
-      {/* EMA Table */}
+      {/* EMA */}
       <div className="bg-[#0f172a] rounded-xl border border-emerald-400/20 p-3">
-        <h3 className="text-emerald-400 font-semibold mb-2 text-sm">EMA Overview</h3>
-        <div className="grid grid-cols-4 gap-2 text-sm text-center">
+        <h3 className="text-emerald-400 font-semibold mb-2 text-xs">EMA Overview</h3>
+        <div className="grid grid-cols-4 gap-2 text-xs text-center">
           <Info label="Last" value={`$${fmt(ind?.lastClose)}`} />
           <Info label="EMA20" value={fmt(ind?.ema20)} />
           <Info label="EMA50" value={fmt(ind?.ema50)} />
@@ -234,37 +230,58 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </div>
       </div>
 
-      {/* ✅ Option Summary: แสดงเฉพาะโหมด Option */}
+      {/* ✅ Option Summary (เฉพาะโหมดออปชั่น) */}
       {showOption && (
-        <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-3">
-          <h3 className="text-pink-400 font-semibold mb-2 text-sm">Option Summary</h3>
+        <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-3 space-y-3">
+          <h3 className="text-pink-400 font-semibold text-sm mb-1">Option Summary</h3>
+
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="bg-[#1b2435] rounded-lg p-2">
+            <div className="bg-[#1b2435] rounded-lg p-2 text-center">
               <p className="text-gray-400 text-xs">🟢 Top Call</p>
-              <p className="font-bold">Strike: ${optionCall.strike}</p>
-              <p>Premium: ${optionCall.premium}</p>
-              <p className="text-emerald-400">ROI: +{optionCall.roi}%</p>
+              <p className="font-semibold">Strike: ${optionCall.strike}</p>
+              <p className="text-[12px]">Premium: ${optionCall.premium}</p>
+              <p className="text-emerald-400 text-[12px]">ROI: +{optionCall.roi}%</p>
             </div>
-            <div className="bg-[#1b2435] rounded-lg p-2">
+            <div className="bg-[#1b2435] rounded-lg p-2 text-center">
               <p className="text-gray-400 text-xs">🔴 Top Put</p>
-              <p className="font-bold">Strike: ${optionPut.strike}</p>
-              <p>Premium: ${optionPut.premium}</p>
-              <p className="text-pink-400">ROI: +{optionPut.roi}%</p>
+              <p className="font-semibold">Strike: ${optionPut.strike}</p>
+              <p className="text-[12px]">Premium: ${optionPut.premium}</p>
+              <p className="text-pink-400 text-[12px]">ROI: +{optionPut.roi}%</p>
             </div>
           </div>
 
-          <div className="mt-3 text-xs text-gray-400">
+          {/* ✅ AI Entry Zone */}
+          <div className="mt-1 text-xs text-gray-300">
             <p>📘 Reason: {optSig.reason}</p>
-            <p>🎯 Entry Zone: Active Buy Zone</p>
+            <p>🎯 Entry Zone: <span className="text-emerald-400 font-semibold">Active Buy Zone</span></p>
           </div>
-          <div className="mt-2 bg-[#0f172a] rounded-full h-2">
+          <div className="mt-2 h-2 bg-[#0f172a] rounded-full overflow-hidden">
             <div
-              className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-emerald-400"
+              className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-emerald-400 transition-all"
               style={{ width: `${conf}%` }}
             />
           </div>
         </div>
       )}
+
+      {/* ✅ AI Entry Zone (ด้านล่างสุดของทุกโหมด) */}
+      <div className="bg-[#0f172a] rounded-xl border border-white/10 p-3 text-xs space-y-1">
+        <div className="text-emerald-400 font-semibold text-sm">AI Entry Zone</div>
+        {rsi < 40 && "🔵 Oversold — รอการกลับตัว"}
+        {rsi >= 40 && rsi <= 60 && "🟢 โซนเข้าซื้อแนะนำ"}
+        {rsi > 60 && rsi <= 70 && "🟡 ถือรอดูแรงซื้อต่อเนื่อง"}
+        {rsi > 70 && "🔴 Overbought — อย่าเพิ่งเข้า"}
+        <div className="mt-2 h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
+          <div
+            className="h-1.5 rounded-full transition-all duration-500"
+            style={{
+              width: `${Math.min(Math.max(rsi, 0), 100)}%`,
+              background:
+                rsi < 40 ? "#3b82f6" : rsi <= 60 ? "#22c55e" : rsi <= 70 ? "#eab308" : "#ef4444",
+            }}
+          />
+        </div>
+      </div>
     </section>
   );
 }
@@ -279,21 +296,14 @@ function MarketNews({ news }) {
         <ul className="space-y-2">
           {news.slice(0, 8).map((n, i) => (
             <li key={i} className="p-2 bg-black/20 border border-white/10 rounded-lg">
-              <a
-                href={n.link || n.url}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-emerald-400 text-sm"
-              >
+              <a href={n.link || n.url} target="_blank" rel="noreferrer" className="hover:text-emerald-400 text-sm">
                 {n.title}
               </a>
-              <div className="text-[10px] text-gray-400 mt-0.5">
-                {n.publisher || n.source || ""}
-              </div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{n.publisher || n.source || ""}</div>
             </li>
           ))}
         </ul>
       )}
     </section>
   );
-                     }
+          }
