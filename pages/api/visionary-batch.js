@@ -1,15 +1,13 @@
-// ✅ Visionary Batch Scanner — v∞.50 (Quantum Filter: Price $2–$65 + Vol + RSI + Trend + AI Score)
+// ✅ Visionary Batch Scanner — v∞.51 (Stable Optimize + Price Sync)
 export default async function handler(req, res) {
   const { batch = "1" } = req.query;
 
-  // ===== Batch/Universe =====
-  const BATCH_SIZE = 300; // เร็ว+เสถียร
+  const BATCH_SIZE = 300;
   const listURLs = [
     "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv",
     "https://datahub.io/core/nyse-listings/r/nyse-listed.csv",
   ];
 
-  // ===== Indicators (เบา เร็ว) =====
   const EMA = (arr, p) => {
     if (!arr || arr.length < 2) return null;
     const k = 2 / (p + 1);
@@ -29,7 +27,6 @@ export default async function handler(req, res) {
     return 100 - 100 / (1 + rs);
   };
 
-  // ===== Fetch from Yahoo (มี fail-safe) =====
   const getYahoo = async (sym) => {
     try {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=6mo&interval=1d`;
@@ -42,17 +39,16 @@ export default async function handler(req, res) {
   };
 
   try {
-    // ===== 1) รวม NASDAQ + NYSE =====
+    // ✅ รวม list หุ้น (เร็วขึ้นเล็กน้อย)
     let all = [];
     for (const url of listURLs) {
-      const raw = await fetch(url).then((r) => r.text());
+      const raw = await fetch(url, { cache: "no-store" }).then((r) => r.text());
       const tickers = raw
         .split("\n")
         .map((l) => l.split(",")[0]?.trim())
         .filter((s) => /^[A-Z.]{1,5}$/.test(s));
       all.push(...tickers);
     }
-    // ลบซ้ำ
     all = Array.from(new Set(all));
 
     const totalBatches = Math.ceil(all.length / BATCH_SIZE);
@@ -60,7 +56,6 @@ export default async function handler(req, res) {
     const start = (i - 1) * BATCH_SIZE;
     const symbols = all.slice(start, start + BATCH_SIZE);
 
-    // ===== 2) สแกน + Quantum Filter =====
     const results = [];
     for (const s of symbols) {
       try {
@@ -73,7 +68,6 @@ export default async function handler(req, res) {
         const last = closes.at(-1);
         const prev = closes.at(-2) ?? last;
         const change = ((last - prev) / prev) * 100;
-
         const ema20 = EMA(closes, 20);
         const ema50 = EMA(closes, 50);
         const rsi = RSI(closes, 14);
@@ -86,7 +80,6 @@ export default async function handler(req, res) {
           last > ema20 && ema20 > ema50 ? "Up" :
           last < ema20 && ema20 < ema50 ? "Down" : "Side";
 
-        // ===== AI Score (น้ำหนักกับ momentum/vol) =====
         let aiScore = 50;
         aiScore += trend === "Up" ? 20 : trend === "Down" ? -20 : 0;
         aiScore += change > 1 ? 10 : change < -1 ? -10 : 0;
@@ -94,20 +87,17 @@ export default async function handler(req, res) {
         aiScore += volSpike ? 10 : 0;
         aiScore = Math.max(0, Math.min(100, aiScore));
 
-        // ===== QUANTUM FILTER =====
-        // 1) ราคา $2–$65
+        // ===== Quantum Filter =====
         if (!(last >= 2 && last <= 65)) continue;
-        // 2) วอลุ่มล่าสุด > 200k
         if (!Number.isFinite(volNow) || volNow < 200_000) continue;
-        // 3) ไม่ Overbought จัด
         if (rsi >= 60) continue;
-        // 4) แนวโน้มต้อง Up
         if (trend !== "Up") continue;
-        // 5) AI ต้องมั่นใจจริง
         if (aiScore < 80) continue;
 
+        // ✅ ปรับฟิลด์ให้รองรับราคาหน้า OriginX
         results.push({
           symbol: s,
+          price: Number(last.toFixed(2)), // เพิ่มราคาตรงนี้ให้ UI อ่านได้
           last: Number(last.toFixed(2)),
           rsi: Number(rsi.toFixed(1)),
           ema20: Number(ema20?.toFixed(2)),
@@ -118,15 +108,11 @@ export default async function handler(req, res) {
           signal: "Buy",
           change: Number(change.toFixed(2)),
         });
-      } catch {
-        /* ignore single-symbol errors */
-      }
-
-      // หน่วงสั้น ป้องกัน rate limit (ปลอดภัยกับ Vercel)
-      await new Promise((r) => setTimeout(r, 120));
+      } catch {}
+      // ✅ ลด delay ลงนิด (เร็วขึ้นแต่ยังปลอดภัย)
+      await new Promise((r) => setTimeout(r, 80));
     }
 
-    // ===== 3) ส่งผลลัพธ์ =====
     const done = i >= totalBatches;
     res.status(200).json({
       success: true,
@@ -137,9 +123,9 @@ export default async function handler(req, res) {
       passedFilter: results.length,
       results: results
         .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
-        .slice(0, 100), // จำกัด payload ต่อ batch ให้เบา
+        .slice(0, 100),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-        }
+             }
