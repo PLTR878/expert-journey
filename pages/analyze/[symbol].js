@@ -21,14 +21,27 @@ export default function Analyze() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/visionary-core?symbol=${symbol}`);
-        const data = await res.json();
-        setCore(data);
-        setScanner({
-          targetPrice: data.lastClose * 1.08,
-          confidence: data.confidence,
-          reason: "AI expects upside momentum",
-        });
+        const infiniteRes = await fetch(`/api/visionary-infinite-core?symbol=${symbol}`).then((r) => r.json());
+        const isInfiniteOk = infiniteRes && !infiniteRes.error && infiniteRes.symbol;
+
+        if (isInfiniteOk) {
+          setCore(infiniteRes);
+          setScanner({
+            targetPrice: infiniteRes.lastClose * 1.08,
+            confidence: infiniteRes.confidence,
+            reason: infiniteRes.reason,
+          });
+          setNews(infiniteRes.news || []);
+        } else {
+          const [coreRes, scannerRes, newsRes] = await Promise.all([
+            fetch(`/api/visionary-core?symbol=${symbol}`).then((r) => r.json()),
+            fetch(`/api/visionary-scanner?symbol=${symbol}`).then((r) => r.json()),
+            fetch(`/api/news?symbol=${symbol}`).then((r) => r.json()),
+          ]);
+          setCore(coreRes);
+          setScanner(scannerRes);
+          setNews(newsRes.items || []);
+        }
       } catch (e) {
         console.error("⚠️ Analyzer fetch error:", e);
       } finally {
@@ -66,7 +79,7 @@ export default function Analyze() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => window.history.back()} // ✅ กลับหน้าเดิมจริง ๆ
             className="text-sm bg-white/5 px-3 py-1 rounded border border-white/10 hover:bg-emerald-500/10"
           >
             ← ย้อนกลับ
@@ -102,8 +115,11 @@ export default function Analyze() {
           </button>
         </div>
 
-        {/* Signal */}
+        {/* Signal Section */}
         <AISignalSection ind={core} sig={sig} price={price} scanner={scanner} mode={mode} />
+
+        {/* News */}
+        <MarketNews news={news} />
       </div>
     </main>
   );
@@ -120,15 +136,38 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   if (ema50 > ema200) score++;
   if (rsi > 55) score++;
   if (trend === "Uptrend") score += 0.5;
+  if (trend === "Downtrend") score -= 0.5;
 
-  if (score >= 3) return { action: "Buy", confidence: 90, reason: "แนวโน้มขาขึ้นแข็งแรง" };
-  if (score <= 1) return { action: "Sell", confidence: 70, reason: "แรงขายกดดัน" };
-  return { action: "Hold", confidence: 50, reason: "สัญญาณเป็นกลาง" };
+  if (score >= 3) return { action: "Buy", confidence: score / 4, reason: "แนวโน้มขาขึ้นแข็งแรง" };
+  if (score <= 1) return { action: "Sell", confidence: (2 - score) / 2, reason: "แรงขายกดดัน" };
+  return { action: "Hold", confidence: 0.5, reason: "สัญญาณเป็นกลาง" };
 }
 
+// ✅ Supreme Option AI
+function computeOptionSupreme({ lastClose, ema20, ema50, ema200, rsi, trend = "Neutral", aiConf = 60 }) {
+  if (![lastClose, ema20, ema50, ema200, rsi].every(Number.isFinite))
+    return { action: "Hold", confidence: 60, reason: "ข้อมูลไม่ครบ" };
+
+  let score = 0;
+  if (lastClose > ema20) score++;
+  if (ema20 > ema50) score++;
+  if (ema50 > ema200) score++;
+  if (rsi > 55) score++;
+  if (trend === "Uptrend") score += 1;
+  else if (trend === "Downtrend") score -= 1;
+  score += (aiConf - 50) / 25;
+
+  if (score >= 3.5) return { action: "Buy", confidence: 95, reason: "แรงซื้อมหาศาล ยืนยันขาขึ้น" };
+  if (score >= 2.0) return { action: "Buy", confidence: 85, reason: "แนวโน้มขาขึ้นแข็งแรง" };
+  if (score <= -2) return { action: "Sell", confidence: 90, reason: "แรงขายกดดันหนัก" };
+  if (score <= -1) return { action: "Sell", confidence: 70, reason: "แนวโน้มอ่อนแรง" };
+  return { action: "Hold", confidence: 60, reason: "รอการยืนยันเพิ่มเติม" };
+}
+
+// ===== UI COMPONENTS =====
 function Info({ label, value }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-[#141b2d] p-3 text-center">
+    <div className="rounded-lg border border-white/10 bg-[#141b2d] p-2 text-center">
       <div className="text-xs text-gray-400 mb-1">{label}</div>
       <div className="text-sm font-bold text-gray-100">{value}</div>
     </div>
@@ -136,9 +175,24 @@ function Info({ label, value }) {
 }
 
 function AISignalSection({ ind, sig, price, scanner, mode }) {
-  const conf = scanner?.confidence ?? sig.confidence;
-  const reason = scanner?.reason ?? sig.reason;
+  const baseConf = scanner?.confidence ?? sig.confidence * 100;
+  const rsi = ind?.rsi ?? 0;
   const target = scanner?.targetPrice ?? price * 1.08;
+  const reason = scanner?.reason || sig.reason;
+
+  const optSig = computeOptionSupreme({
+    lastClose: ind?.lastClose,
+    ema20: ind?.ema20,
+    ema50: ind?.ema50,
+    ema200: ind?.ema200,
+    rsi,
+    trend: ind?.trend,
+    aiConf: baseConf,
+  });
+
+  const showOption = mode === "option";
+  const action = showOption ? optSig.action : sig.action;
+  const conf = showOption ? optSig.confidence : baseConf;
 
   const optionCall = { strike: 21.0, premium: 0.6, roi: 85 };
   const optionPut = { strike: 19.0, premium: 0.4, roi: 15 };
@@ -146,26 +200,27 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4 space-y-4 shadow-inner">
       <div className="flex justify-between items-center">
-        <h2 className="text-base font-semibold text-emerald-400">AI Trade & Option Summary</h2>
+        <h2 className="text-base font-semibold">
+          AI {showOption ? "Option" : "Trade"} Signal
+        </h2>
         <span
           className={`font-bold ${
-            sig.action === "Buy"
+            action === "Buy"
               ? "text-green-400"
-              : sig.action === "Sell"
+              : action === "Sell"
               ? "text-red-400"
               : "text-yellow-300"
           }`}
         >
-          {sig.action}
+          {action}
         </span>
       </div>
 
-      {/* Trade Summary */}
-      <div className="grid grid-cols-2 gap-2 text-sm text-gray-300">
-        <div>💵 ราคา: ${fmt(price)}</div>
-        <div>📊 RSI: {fmt(ind?.rsi)}</div>
-        <div>📈 แนวโน้ม: {ind?.trend}</div>
-        <div>🧠 AI Score: {fmt(sig.confidence)}</div>
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <Info label="🎯 Target" value={`$${fmt(target, 2)}`} />
+        <Info label="🤖 Confidence" value={`${fmt(conf, 0)}%`} />
+        <Info label="📋 Reason" value={reason} />
+        <Info label="RSI (14)" value={fmt(rsi, 1)} />
       </div>
 
       {/* EMA Table */}
@@ -179,35 +234,66 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </div>
       </div>
 
-      {/* Option Summary */}
-      <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-3">
-        <h3 className="text-pink-400 font-semibold mb-2 text-sm">Option Summary</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="bg-[#1b2435] rounded-lg p-2">
-            <p className="text-gray-400 text-xs">🟢 Top Call</p>
-            <p className="font-bold">Strike: ${optionCall.strike}</p>
-            <p>Premium: ${optionCall.premium}</p>
-            <p className="text-emerald-400">ROI: +{optionCall.roi}%</p>
+      {/* ✅ Option Summary: แสดงเฉพาะโหมด Option */}
+      {showOption && (
+        <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-3">
+          <h3 className="text-pink-400 font-semibold mb-2 text-sm">Option Summary</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="bg-[#1b2435] rounded-lg p-2">
+              <p className="text-gray-400 text-xs">🟢 Top Call</p>
+              <p className="font-bold">Strike: ${optionCall.strike}</p>
+              <p>Premium: ${optionCall.premium}</p>
+              <p className="text-emerald-400">ROI: +{optionCall.roi}%</p>
+            </div>
+            <div className="bg-[#1b2435] rounded-lg p-2">
+              <p className="text-gray-400 text-xs">🔴 Top Put</p>
+              <p className="font-bold">Strike: ${optionPut.strike}</p>
+              <p>Premium: ${optionPut.premium}</p>
+              <p className="text-pink-400">ROI: +{optionPut.roi}%</p>
+            </div>
           </div>
-          <div className="bg-[#1b2435] rounded-lg p-2">
-            <p className="text-gray-400 text-xs">🔴 Top Put</p>
-            <p className="font-bold">Strike: ${optionPut.strike}</p>
-            <p>Premium: ${optionPut.premium}</p>
-            <p className="text-pink-400">ROI: +{optionPut.roi}%</p>
-          </div>
-        </div>
 
-        <div className="mt-3 text-xs text-gray-400">
-          <p>📘 Reason: {reason}</p>
-          <p>🎯 Entry Zone: Active Buy Zone</p>
+          <div className="mt-3 text-xs text-gray-400">
+            <p>📘 Reason: {optSig.reason}</p>
+            <p>🎯 Entry Zone: Active Buy Zone</p>
+          </div>
+          <div className="mt-2 bg-[#0f172a] rounded-full h-2">
+            <div
+              className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-emerald-400"
+              style={{ width: `${conf}%` }}
+            />
+          </div>
         </div>
-        <div className="mt-2 bg-[#0f172a] rounded-full h-2">
-          <div
-            className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-emerald-400"
-            style={{ width: `${conf}%` }}
-          />
-        </div>
-      </div>
+      )}
     </section>
   );
-              }
+}
+
+function MarketNews({ news }) {
+  return (
+    <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4">
+      <h2 className="text-base font-semibold mb-2">Market News</h2>
+      {!news?.length ? (
+        <div className="text-xs text-gray-400">No recent news.</div>
+      ) : (
+        <ul className="space-y-2">
+          {news.slice(0, 8).map((n, i) => (
+            <li key={i} className="p-2 bg-black/20 border border-white/10 rounded-lg">
+              <a
+                href={n.link || n.url}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-emerald-400 text-sm"
+              >
+                {n.title}
+              </a>
+              <div className="text-[10px] text-gray-400 mt-0.5">
+                {n.publisher || n.source || ""}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+                     }
