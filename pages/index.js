@@ -1,4 +1,4 @@
-// ✅ /pages/index.js — Visionary Home (Full Linked: OriginX + OptionX + AI Core)
+// ✅ /pages/index.js — Visionary Home (Stable v∞.54 + OriginX + OptionX + AI Core)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -50,19 +50,18 @@ export default function Home() {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // ✅ Scanner (OptionX + Visionary Core)
+  // ✅ สแกน (AI Core + Option Analyzer)
   async function handleScan() {
     if (!scanSymbol) return alert("⚠️ ใส่ชื่อหุ้นก่อน เช่น PLTR");
     setLoading(true);
+    setOptionResult(null);
     try {
-      // 1️⃣ เรียก Visionary Core (RSI / EMA / Trend)
-      const coreRes = await fetch(`/api/visionary-core?symbol=${scanSymbol}`);
+      const [coreRes, optRes] = await Promise.all([
+        fetch(`/api/visionary-core?symbol=${scanSymbol}`),
+        fetch(`/api/optionx-analyzer?symbol=${scanSymbol}`),
+      ]);
       const core = await coreRes.json();
-
-      // 2️⃣ เรียก OptionX Analyzer (Option Data)
-      const optRes = await fetch(`/api/optionx-analyzer?symbol=${scanSymbol}`);
       const opt = await optRes.json();
-
       setOptionResult({ core, opt });
     } catch (e) {
       alert("❌ Error: " + e.message);
@@ -71,14 +70,14 @@ export default function Home() {
     }
   }
 
-  // ✅ ฟังก์ชันเปลี่ยนแท็บ
+  // ✅ เปลี่ยนแท็บ
   const go = (tab) => {
     setActive(tab);
     localStorage.setItem("lastActiveTab", tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ หน้าหลักแต่ละแท็บ
+  // ✅ หน้าหลัก
   const renderPage = () => {
     switch (active) {
       case "favorites":
@@ -119,37 +118,60 @@ export default function Home() {
                 onClick={handleScan}
                 className="bg-emerald-500 hover:bg-emerald-600 px-4 rounded-md"
               >
-                {loading ? "🔍 กำลังสแกน..." : "SCAN"}
+                {loading ? "🔍 สแกน..." : "SCAN"}
               </button>
             </div>
 
+            {/* ✅ แสดงผล */}
             {optionResult && (
-              <div className="bg-[#141a2b] p-4 rounded-lg">
+              <div className="bg-[#141a2b] p-4 rounded-lg border border-emerald-500/20">
                 <h2 className="text-lg text-emerald-400 mb-2">
                   ผลลัพธ์ ({optionResult.core?.symbol})
                 </h2>
-                <p>ราคาหุ้น: ${optionResult.core?.lastClose}</p>
-                <p>RSI: {optionResult.core?.rsi}</p>
-                <p>แนวโน้ม: {optionResult.core?.trend}</p>
-                <p>สัญญาณ: {optionResult.core?.signal}</p>
+
+                <p>
+                  ราคาหุ้น: $
+                  {optionResult.core?.lastClose ??
+                    optionResult.core?.price ??
+                    "ไม่พบข้อมูล"}
+                </p>
+                <p>RSI: {optionResult.core?.rsi ?? "-"}</p>
+                <p>แนวโน้ม: {optionResult.core?.trend ?? "-"}</p>
+                <p>สัญญาณ: {optionResult.core?.signal ?? "-"}</p>
+                <p>AI Score: {optionResult.core?.aiScore ?? "-"}</p>
+                <p>ความมั่นใจ: {optionResult.core?.confidence ?? "-"}%</p>
 
                 <hr className="my-3 border-gray-600" />
 
+                {/* ✅ Option CALLS */}
                 <h3 className="text-pink-400 mb-2">Option Calls (Top)</h3>
-                {optionResult.opt?.calls?.map((o, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>Strike {o.strike}</span>
-                    <span>${o.last} | ROI {o.roi}%</span>
-                  </div>
-                ))}
+                {optionResult.opt?.calls?.length > 0 ? (
+                  optionResult.opt.calls.map((o, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>Strike {o.strike}</span>
+                      <span>${o.last} | ROI {o.roi}%</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">
+                    ไม่มีข้อมูลออปชันฝั่ง Call
+                  </p>
+                )}
 
+                {/* ✅ Option PUTS */}
                 <h3 className="text-pink-400 mt-4 mb-2">Option Puts (Top)</h3>
-                {optionResult.opt?.puts?.map((o, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>Strike {o.strike}</span>
-                    <span>${o.last} | ROI {o.roi}%</span>
-                  </div>
-                ))}
+                {optionResult.opt?.puts?.length > 0 ? (
+                  optionResult.opt.puts.map((o, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>Strike {o.strike}</span>
+                      <span>${o.last} | ROI {o.roi}%</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">
+                    ไม่มีข้อมูลออปชันฝั่ง Put
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -168,7 +190,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ แถบเมนูด้านล่าง */}
+      {/* ✅ เมนู */}
       <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[13px] font-extrabold uppercase py-3 shadow-lg shadow-black/30">
         {[
           { id: "favorites", label: "Favorites" },
@@ -191,4 +213,4 @@ export default function Home() {
       </nav>
     </main>
   );
-        }
+                     }
