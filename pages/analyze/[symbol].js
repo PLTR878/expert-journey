@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option Summary + AI Entry Zone + Perfect Layout)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -11,10 +11,12 @@ export default function Analyze() {
   const symbol = (query.symbol || "").toString().toUpperCase();
   const [core, setCore] = useState(null);
   const [scanner, setScanner] = useState(null);
+  const [optionAI, setOptionAI] = useState(null);
   const [news, setNews] = useState([]);
   const [mode, setMode] = useState("stock");
   const [loading, setLoading] = useState(true);
 
+  // ===== โหลดข้อมูลหุ้นหลัก =====
   useEffect(() => {
     if (!symbol) return;
     (async () => {
@@ -49,6 +51,15 @@ export default function Analyze() {
     })();
   }, [symbol]);
 
+  // ===== โหลดข้อมูล Option AI =====
+  useEffect(() => {
+    if (!symbol) return;
+    fetch(`/api/visionary-option-ai?symbol=${symbol}`)
+      .then((r) => r.json())
+      .then(setOptionAI)
+      .catch((e) => console.error("Option AI error:", e));
+  }, [symbol]);
+
   const sig = computeSignal(core || {});
   const price = core?.lastClose || 0;
   const hist = core?.chart?.timestamps
@@ -73,18 +84,18 @@ export default function Analyze() {
   }, [JSON.stringify(sig), hist.length]);
 
   return (
-    <main className="min-h-screen bg-[#0b1220] text-white">
+    <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold">
       <div className="max-w-6xl mx-auto px-3 py-5 space-y-5">
         {/* Header */}
         <div className="flex justify-between items-center">
           <button
             onClick={() => window.history.back()}
-            className="text-sm bg-white/5 px-3 py-1 rounded border border-white/10 hover:bg-emerald-500/10"
+            className="text-[12px] bg-white/5 px-3 py-1 rounded border border-white/10 hover:bg-emerald-500/10"
           >
             ← ย้อนกลับ
           </button>
-          <h1 className="text-lg font-bold text-white tracking-widest">{symbol}</h1>
-          <div className="text-emerald-400 font-semibold text-sm border border-emerald-400/30 rounded px-2 py-0.5">
+          <h1 className="text-[14px] font-bold tracking-widest">{symbol}</h1>
+          <div className="text-emerald-400 font-semibold text-[12px] border border-emerald-400/30 rounded px-2 py-0.5">
             ${fmt(price, 2)}
           </div>
         </div>
@@ -98,7 +109,7 @@ export default function Analyze() {
         <div className="flex justify-center gap-2">
           <button
             onClick={() => setMode("stock")}
-            className={`px-3 py-1 rounded-md text-sm font-semibold ${
+            className={`px-3 py-1 rounded-md text-[12px] font-bold ${
               mode === "stock" ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-gray-400"
             }`}
           >
@@ -106,7 +117,7 @@ export default function Analyze() {
           </button>
           <button
             onClick={() => setMode("option")}
-            className={`px-3 py-1 rounded-md text-sm font-semibold ${
+            className={`px-3 py-1 rounded-md text-[12px] font-bold ${
               mode === "option" ? "bg-pink-500/20 text-pink-400" : "bg-white/5 text-gray-400"
             }`}
           >
@@ -114,7 +125,7 @@ export default function Analyze() {
           </button>
         </div>
 
-        <AISignalSection ind={core} sig={sig} price={price} scanner={scanner} mode={mode} />
+        <AISignalSection ind={core} sig={sig} price={price} scanner={scanner} optionAI={optionAI} mode={mode} />
         <MarketNews news={news} />
       </div>
     </main>
@@ -139,63 +150,32 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   return { action: "Hold", confidence: 50, reason: "สัญญาณเป็นกลาง" };
 }
 
-function computeOptionSupreme({ lastClose, ema20, ema50, ema200, rsi, trend = "Neutral", aiConf = 60 }) {
-  if (![lastClose, ema20, ema50, ema200, rsi].every(Number.isFinite))
-    return { action: "Hold", confidence: 60, reason: "ข้อมูลไม่ครบ" };
-
-  let score = 0;
-  if (lastClose > ema20) score++;
-  if (ema20 > ema50) score++;
-  if (ema50 > ema200) score++;
-  if (rsi > 55) score++;
-  if (trend === "Uptrend") score += 1;
-  else if (trend === "Downtrend") score -= 1;
-  score += (aiConf - 50) / 25;
-
-  if (score >= 3.5) return { action: "Buy", confidence: 95, reason: "แรงซื้อมหาศาล ยืนยันขาขึ้น" };
-  if (score >= 2.0) return { action: "Buy", confidence: 85, reason: "แนวโน้มขาขึ้นแข็งแรง" };
-  if (score <= -2) return { action: "Sell", confidence: 90, reason: "แรงขายกดดันหนัก" };
-  if (score <= -1) return { action: "Sell", confidence: 70, reason: "แนวโน้มอ่อนแรง" };
-  return { action: "Hold", confidence: 60, reason: "รอการยืนยันเพิ่มเติม" };
-}
-
 // ===== UI =====
 function Info({ label, value }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-[#141b2d] p-2 text-center">
-      <div className="text-xs text-gray-400 mb-1">{label}</div>
-      <div className="text-sm font-semibold text-gray-100">{value}</div>
+    <div className="rounded-lg border border-white/10 bg-[#141b2d] p-1.5 text-center">
+      <div className="text-[11px] text-gray-400 mb-0.5">{label}</div>
+      <div className="text-[12px] font-bold text-gray-100">{value}</div>
     </div>
   );
 }
 
-function AISignalSection({ ind, sig, price, scanner, mode }) {
+function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
   const baseConf = scanner?.confidence ?? sig.confidence * 100;
   const rsi = ind?.rsi ?? 0;
   const target = scanner?.targetPrice ?? price * 1.08;
   const reason = scanner?.reason || sig.reason;
   const showOption = mode === "option";
 
-  const optSig = computeOptionSupreme({
-    lastClose: ind?.lastClose,
-    ema20: ind?.ema20,
-    ema50: ind?.ema50,
-    ema200: ind?.ema200,
-    rsi,
-    trend: ind?.trend,
-    aiConf: baseConf,
-  });
-
-  const action = showOption ? optSig.action : sig.action;
-  const conf = showOption ? optSig.confidence : baseConf;
-
-  const optionCall = { strike: 21.0, premium: 0.6, roi: 85 };
-  const optionPut = { strike: 19.0, premium: 0.4, roi: 15 };
+  const action = showOption ? optionAI?.signal || sig.action : sig.action;
+  const conf = showOption ? optionAI?.confidence || baseConf : baseConf;
+  const call = optionAI?.topCall || { strike: "-", premium: "-", roi: "-" };
+  const put = optionAI?.topPut || { strike: "-", premium: "-", roi: "-" };
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4 space-y-4 shadow-inner">
+    <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-3 space-y-3 shadow-inner">
       <div className="flex justify-between items-center mb-1">
-        <h2 className="text-base font-semibold">
+        <h2 className="text-[13px] font-bold tracking-widest">
           AI {showOption ? "Option" : "Trade"} Signal
         </h2>
         <span
@@ -211,18 +191,17 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </span>
       </div>
 
-      {/* Main Signal Info */}
-      <div className="grid grid-cols-2 gap-2 text-[13px]">
-        <Info label="🎯 Target" value={`$${fmt(target, 2)}`} />
+      <div className="grid grid-cols-2 gap-1.5 text-[12px]">
+        <Info label="🎯 Target" value={`$${fmt(optionAI?.target || target, 2)}`} />
         <Info label="🤖 Confidence" value={`${fmt(conf, 0)}%`} />
-        <Info label="📋 Reason" value={reason} />
+        <Info label="📋 Reason" value={optionAI?.reason || reason} />
         <Info label="RSI (14)" value={fmt(rsi, 1)} />
       </div>
 
       {/* EMA */}
-      <div className="bg-[#0f172a] rounded-xl border border-emerald-400/20 p-3">
-        <h3 className="text-emerald-400 font-semibold mb-2 text-xs">EMA Overview</h3>
-        <div className="grid grid-cols-4 gap-2 text-xs text-center">
+      <div className="bg-[#0f172a] rounded-xl border border-emerald-400/20 p-2">
+        <h3 className="text-emerald-400 font-semibold mb-1 text-[11px]">EMA Overview</h3>
+        <div className="grid grid-cols-4 gap-1.5 text-[11px] text-center">
           <Info label="Last" value={`$${fmt(ind?.lastClose)}`} />
           <Info label="EMA20" value={fmt(ind?.ema20)} />
           <Info label="EMA50" value={fmt(ind?.ema50)} />
@@ -230,32 +209,31 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </div>
       </div>
 
-      {/* ✅ Option Summary (เฉพาะโหมดออปชั่น) */}
+      {/* ✅ Option Summary */}
       {showOption && (
-        <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-3 space-y-3">
-          <h3 className="text-pink-400 font-semibold text-sm mb-1">Option Summary</h3>
+        <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-2 space-y-2">
+          <h3 className="text-pink-400 font-bold text-[12px] mb-1 tracking-wider">Option Summary</h3>
 
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="bg-[#1b2435] rounded-lg p-2 text-center">
-              <p className="text-gray-400 text-xs">🟢 Top Call</p>
-              <p className="font-semibold">Strike: ${optionCall.strike}</p>
-              <p className="text-[12px]">Premium: ${optionCall.premium}</p>
-              <p className="text-emerald-400 text-[12px]">ROI: +{optionCall.roi}%</p>
+          <div className="grid grid-cols-2 gap-1.5 text-[12px]">
+            <div className="bg-[#1b2435] rounded-lg p-1.5 text-center">
+              <p className="text-gray-400 text-[11px]">🟢 Top Call</p>
+              <p className="font-semibold">Strike: ${call.strike}</p>
+              <p className="text-[11px]">Premium: ${call.premium}</p>
+              <p className="text-emerald-400 text-[11px]">ROI: +{call.roi}%</p>
             </div>
-            <div className="bg-[#1b2435] rounded-lg p-2 text-center">
-              <p className="text-gray-400 text-xs">🔴 Top Put</p>
-              <p className="font-semibold">Strike: ${optionPut.strike}</p>
-              <p className="text-[12px]">Premium: ${optionPut.premium}</p>
-              <p className="text-pink-400 text-[12px]">ROI: +{optionPut.roi}%</p>
+            <div className="bg-[#1b2435] rounded-lg p-1.5 text-center">
+              <p className="text-gray-400 text-[11px]">🔴 Top Put</p>
+              <p className="font-semibold">Strike: ${put.strike}</p>
+              <p className="text-[11px]">Premium: ${put.premium}</p>
+              <p className="text-pink-400 text-[11px]">ROI: +{put.roi}%</p>
             </div>
           </div>
 
-          {/* ✅ AI Entry Zone */}
-          <div className="mt-1 text-xs text-gray-300">
-            <p>📘 Reason: {optSig.reason}</p>
-            <p>🎯 Entry Zone: <span className="text-emerald-400 font-semibold">Active Buy Zone</span></p>
+          <div className="text-[11px] text-gray-300">
+            <p>📘 Reason: {optionAI?.reason}</p>
+            <p>🎯 Entry Zone: <span className="text-emerald-400 font-semibold">{optionAI?.zone || "Active Zone"}</span></p>
           </div>
-          <div className="mt-2 h-2 bg-[#0f172a] rounded-full overflow-hidden">
+          <div className="mt-1 h-2 bg-[#0f172a] rounded-full overflow-hidden">
             <div
               className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-emerald-400 transition-all"
               style={{ width: `${conf}%` }}
@@ -264,9 +242,9 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
         </div>
       )}
 
-      {/* ✅ AI Entry Zone (ด้านล่างสุดของทุกโหมด) */}
-      <div className="bg-[#0f172a] rounded-xl border border-white/10 p-3 text-xs space-y-1">
-        <div className="text-emerald-400 font-semibold text-sm">AI Entry Zone</div>
+      {/* ✅ AI Entry Zone */}
+      <div className="bg-[#0f172a] rounded-xl border border-white/10 p-2 text-[11px] space-y-1">
+        <div className="text-emerald-400 font-bold text-[12px]">AI Entry Zone</div>
         {rsi < 40 && "🔵 Oversold — รอการกลับตัว"}
         {rsi >= 40 && rsi <= 60 && "🟢 โซนเข้าซื้อแนะนำ"}
         {rsi > 60 && rsi <= 70 && "🟡 ถือรอดูแรงซื้อต่อเนื่อง"}
@@ -288,15 +266,20 @@ function AISignalSection({ ind, sig, price, scanner, mode }) {
 
 function MarketNews({ news }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-4">
-      <h2 className="text-base font-semibold mb-2">Market News</h2>
+    <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-3">
+      <h2 className="text-[13px] font-bold mb-1 tracking-wide">Market News</h2>
       {!news?.length ? (
-        <div className="text-xs text-gray-400">No recent news.</div>
+        <div className="text-[11px] text-gray-400">No recent news.</div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {news.slice(0, 8).map((n, i) => (
-            <li key={i} className="p-2 bg-black/20 border border-white/10 rounded-lg">
-              <a href={n.link || n.url} target="_blank" rel="noreferrer" className="hover:text-emerald-400 text-sm">
+            <li key={i} className="p-1.5 bg-black/20 border border-white/10 rounded-lg">
+              <a
+                href={n.link || n.url}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-emerald-400 text-[12px] font-medium"
+              >
                 {n.title}
               </a>
               <div className="text-[10px] text-gray-400 mt-0.5">{n.publisher || n.source || ""}</div>
@@ -306,4 +289,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-          }
+              }
