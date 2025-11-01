@@ -1,17 +1,14 @@
-// ✅ /components/MarketSection.js — OriginX Picks (Ultra Fast Cached Version)
 import { useEffect, useState } from "react";
 
 export default function MarketSection() {
   const [data, setData] = useState([]);
 
-  // === หุ้น 25 ตัว ===
   const symbols = [
     "WULF","DNA","BYND","OSCR","BBAI","ACHR","PATH","MVIS","SES","KSCP",
     "CCCX","RKLB","ASTS","CRSP","SLDP","ENVX","SOFI","HASI","LWLG","SOUN",
     "AXTI","LAES","RXRX","NRGV","RIVN"
   ];
 
-  // === โลโก้ & บริษัท ===
   const logoMap = {
     WULF:"terawulf.com", DNA:"ginkgobioworks.com", BYND:"beyondmeat.com",
     OSCR:"hioscar.com", BBAI:"bigbear.ai", ACHR:"archer.com", PATH:"uipath.com",
@@ -21,6 +18,7 @@ export default function MarketSection() {
     SOUN:"soundhound.com", AXTI:"axt.com", LAES:"sealsq.com", RXRX:"recursion.com",
     NRGV:"energyvault.com", RIVN:"rivian.com"
   };
+
   const companyMap = {
     WULF:"TeraWulf Inc.", DNA:"Ginkgo Bioworks Holdings Inc.", BYND:"Beyond Meat Inc.",
     OSCR:"Oscar Health Inc.", BBAI:"BigBear.ai Holdings Inc.", ACHR:"Archer Aviation Inc.",
@@ -34,21 +32,32 @@ export default function MarketSection() {
     NRGV:"Energy Vault Holdings Inc.", RIVN:"Rivian Automotive Inc."
   };
 
-  // ✅ โหลดข้อมูลหุ้นแบบพร้อมกันทั้งหมด (เร็วมาก)
+  // ✅ โหลดข้อมูลหุ้นทั้งหมด (พร้อม fallback ถ้าราคา 0)
   async function loadAll() {
     const cached = sessionStorage.getItem("originx-cache");
-    if (cached) {
-      setData(JSON.parse(cached));
-    }
+    if (cached) setData(JSON.parse(cached));
 
     try {
       const results = await Promise.all(
         symbols.map(async (sym) => {
           const res = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
           const json = await res.json();
-          const price = json?.lastClose ?? 0;
+          let price = json?.lastClose ?? json?.price ?? 0;
           const rsi = json?.rsi ?? 50;
+
+          // ✅ ถ้าราคาไม่เจอ → ดึงจาก Yahoo quote API
+          if (!price || price === 0) {
+            try {
+              const y = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${sym}`);
+              const yj = await y.json();
+              price = yj?.quoteResponse?.result?.[0]?.regularMarketPrice ?? 0;
+            } catch (e) {
+              console.warn(`⚠️ Yahoo Fallback failed for ${sym}`);
+            }
+          }
+
           const signal = rsi > 55 ? "Buy" : rsi < 45 ? "Sell" : "Hold";
+
           return {
             symbol: sym,
             company: companyMap[sym],
@@ -60,7 +69,7 @@ export default function MarketSection() {
       );
 
       setData(results);
-      sessionStorage.setItem("originx-cache", JSON.stringify(results)); // cache ทันที
+      sessionStorage.setItem("originx-cache", JSON.stringify(results));
     } catch (err) {
       console.warn("⚠️ Error loading stocks:", err);
     }
@@ -68,11 +77,10 @@ export default function MarketSection() {
 
   useEffect(() => {
     loadAll();
-    const timer = setInterval(loadAll, 60000); // รีโหลดทุก 1 นาที
+    const timer = setInterval(loadAll, 60000);
     return () => clearInterval(timer);
   }, []);
 
-  // === UI ===
   return (
     <section className="w-full bg-[#0b1220] min-h-screen text-gray-100 px-3 pt-3 font-sans">
       <h2 className="text-[22px] font-extrabold text-white flex items-center gap-2 mb-4 tracking-tight">
@@ -114,7 +122,7 @@ export default function MarketSection() {
               {/* ราคา + RSI + สัญญาณ */}
               <div className="text-right leading-tight font-mono min-w-[75px]">
                 <div className="text-[15px] text-white font-black">
-                  ${r.price.toFixed(2)}
+                  ${r.price ? r.price.toFixed(2) : "-"}
                 </div>
                 <div
                   className={`text-[13px] font-bold ${
@@ -145,4 +153,4 @@ export default function MarketSection() {
       )}
     </section>
   );
-                }
+}
