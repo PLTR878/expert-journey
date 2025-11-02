@@ -298,4 +298,4 @@ className="hover:text-emerald-400 text-[12px] font-medium"
 )}
 </section>
 );
-  }
+}
