@@ -25,6 +25,15 @@ export default function Analyze() {
         const infiniteRes = await fetch(`/api/visionary-infinite-core?symbol=${symbol}`).then((r) => r.json());
         const isInfiniteOk = infiniteRes && !infiniteRes.error && infiniteRes.symbol;
 
+        // ✅ เพิ่มส่วนโหลด Option AI สำรอง เพื่อให้สรุปออฟชั่นทำงาน
+        try {
+          const optExtra = await fetch(`/api/visionary-option-core?symbol=${symbol}`).then(r => r.json());
+          if (optExtra && !optExtra.error) setOptionAI(optExtra);
+        } catch (err) {
+          console.warn("⚠️ Option Core fetch fail:", err);
+        }
+        // ✅ จบส่วนที่เพิ่ม
+
         if (isInfiniteOk) {
           setCore(infiniteRes);
           setScanner({
@@ -51,7 +60,7 @@ export default function Analyze() {
     })();
   }, [symbol]);
 
-  // ===== โหลดข้อมูล Option AI =====
+  // ===== โหลดข้อมูล Option AI หลัก =====
   useEffect(() => {
     if (!symbol) return;
     fetch(`/api/visionary-option-ai?symbol=${symbol}`)
@@ -231,7 +240,10 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
 
           <div className="text-[11px] text-gray-300">
             <p>📘 Reason: {optionAI?.reason}</p>
-            <p>🎯 Entry Zone: <span className="text-emerald-400 font-semibold">{optionAI?.zone || "Active Zone"}</span></p>
+            <p>
+              🎯 Entry Zone:{" "}
+              <span className="text-emerald-400 font-semibold">{optionAI?.zone || "Active Zone"}</span>
+            </p>
           </div>
           <div className="mt-1 h-2 bg-[#0f172a] rounded-full overflow-hidden">
             <div
