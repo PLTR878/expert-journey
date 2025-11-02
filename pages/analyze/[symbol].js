@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font + Option Simulator v2)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer + AI Entry Guard (Option Accuracy System)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -25,13 +25,10 @@ export default function Analyze() {
         const infiniteRes = await fetch(`/api/visionary-infinite-core?symbol=${symbol}`).then(r => r.json());
         const isInfiniteOk = infiniteRes && !infiniteRes.error && infiniteRes.symbol;
 
-        // ✅ โหลด Option Core สำรอง
         try {
           const optExtra = await fetch(`/api/visionary-option-core?symbol=${symbol}`).then(r => r.json());
           if (optExtra && !optExtra.error) setOptionAI(optExtra);
-        } catch (err) {
-          console.warn("⚠️ Option Core fetch fail:", err);
-        }
+        } catch {}
 
         if (isInfiniteOk) {
           setCore(infiniteRes);
@@ -59,7 +56,7 @@ export default function Analyze() {
     })();
   }, [symbol]);
 
-  // ===== โหลดข้อมูล Option AI หลัก =====
+  // ===== โหลด Option AI =====
   useEffect(() => {
     if (!symbol) return;
     fetch(`/api/visionary-option-ai?symbol=${symbol}`)
@@ -100,9 +97,7 @@ export default function Analyze() {
             ← ย้อนกลับ
           </button>
           <h1 className="text-[14px] font-bold tracking-widest">{symbol}</h1>
-          <div className="text-emerald-400 font-semibold text-[12px] border border-emerald-400/30 rounded px-2 py-0.5">
-            ${fmt(price, 2)}
-          </div>
+          <div className="text-emerald-400 font-semibold text-[12px] border border-emerald-400/30 rounded px-2 py-0.5">${fmt(price, 2)}</div>
         </div>
 
         {/* Chart */}
@@ -110,19 +105,15 @@ export default function Analyze() {
           <Chart candles={hist} markers={markers} />
         </div>
 
-        {/* Mode Toggle */}
+        {/* Toggle */}
         <div className="flex justify-center gap-2">
           {[
             { id: "stock", label: "หุ้นธรรมดา (Stock)", color: "emerald" },
             { id: "option", label: "ออปชั่น (Option)", color: "pink" },
           ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setMode(t.id)}
+            <button key={t.id} onClick={() => setMode(t.id)}
               className={`px-3 py-1 rounded-md text-[12px] font-bold ${
-                mode === t.id
-                  ? `bg-${t.color}-500/20 text-${t.color}-400`
-                  : "bg-white/5 text-gray-400"
+                mode === t.id ? `bg-${t.color}-500/20 text-${t.color}-400` : "bg-white/5 text-gray-400"
               }`}
             >
               {t.label}
@@ -137,7 +128,6 @@ export default function Analyze() {
   );
 }
 
-// ===== Logic =====
 function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   if (![lastClose, ema20, ema50, ema200, rsi].every(v => Number.isFinite(v)))
     return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
@@ -153,7 +143,6 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   return { action: "Hold", confidence: 50, reason: "สัญญาณเป็นกลาง" };
 }
 
-// ===== UI =====
 function Info({ label, value }) {
   return (
     <div className="rounded-lg border border-white/10 bg-[#141b2d] p-1.5 text-center">
@@ -163,7 +152,7 @@ function Info({ label, value }) {
   );
 }
 
-// ====== AI Section + Option Simulator ======
+// ====== Main Section ======
 function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
   const baseConf = scanner?.confidence ?? sig.confidence * 100;
   const rsi = ind?.rsi ?? 0;
@@ -176,18 +165,29 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
   const call = optionAI?.topCall || { strike: "-", premium: "-", roi: "-" };
   const put = optionAI?.topPut || { strike: "-", premium: "-", roi: "-" };
 
+  const stockPrice = ind?.lastClose || 0;
+  const callStrike = parseFloat(call.strike) || 0;
+  const callPrem = parseFloat(call.premium) || 0;
+  const Δ = window._delta || optionAI?.delta || 0.2;
+  const Θ = window._theta || optionAI?.theta || -0.008;
+  const expectedOption = callPrem + Δ * (target - stockPrice) + Θ * 3;
+  const deviation = ((stockPrice - target) / stockPrice) * 100;
+  let entryHint =
+    Math.abs(deviation) < 2
+      ? "✅ ราคาเข้าซื้อเหมาะสม"
+      : deviation > 2
+      ? "⚠️ หุ้นสูงกว่าจุดเป้าหมายเกินไป"
+      : "⚠️ หุ้นยังต่ำกว่าจุดเข้าที่เหมาะสม";
+
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-3 space-y-3 shadow-inner">
       <div className="flex justify-between items-center mb-1">
-        <h2 className="text-[13px] font-bold tracking-widest">
-          AI {showOption ? "Option" : "Trade"} Signal
-        </h2>
+        <h2 className="text-[13px] font-bold tracking-widest">AI {showOption ? "Option" : "Trade"} Signal</h2>
         <span className={`font-bold ${action === "Buy" ? "text-green-400" : action === "Sell" ? "text-red-400" : "text-yellow-300"}`}>
           {action}
         </span>
       </div>
 
-      {/* ข้อมูลหลัก */}
       <div className="grid grid-cols-2 gap-1.5 text-[12px]">
         <Info label="🎯 Target" value={`$${fmt(optionAI?.target || target, 2)}`} />
         <Info label="🤖 Confidence" value={`${fmt(conf, 0)}%`} />
@@ -195,7 +195,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
         <Info label="RSI (14)" value={fmt(rsi, 1)} />
       </div>
 
-      {/* EMA */}
       <div className="bg-[#0f172a] rounded-xl border border-emerald-400/20 p-2">
         <h3 className="text-emerald-400 font-semibold mb-1 text-[11px]">EMA Overview</h3>
         <div className="grid grid-cols-4 gap-1.5 text-[11px] text-center">
@@ -206,63 +205,64 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
         </div>
       </div>
 
-      {/* ✅ Option Summary + Simulator */}
       {showOption && (
-        <>
-          {/* Option Summary */}
-          <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-2 space-y-2">
-            <h3 className="text-pink-400 font-bold text-[12px] mb-1 tracking-wider">Option Summary</h3>
-            <div className="grid grid-cols-2 gap-1.5 text-[12px]">
-              <div className="bg-[#1b2435] rounded-lg p-1.5 text-center">
-                <p className="text-gray-400 text-[11px]">🟢 Top Call</p>
-                <p className="font-semibold">Strike: ${call.strike}</p>
-                <p className="text-[11px]">Premium: ${call.premium}</p>
-                <p className="text-emerald-400 text-[11px]">ROI: +{call.roi}%</p>
-              </div>
-              <div className="bg-[#1b2435] rounded-lg p-1.5 text-center">
-                <p className="text-gray-400 text-[11px]">🔴 Top Put</p>
-                <p className="font-semibold">Strike: ${put.strike}</p>
-                <p className="text-[11px]">Premium: ${put.premium}</p>
-                <p className="text-pink-400 text-[11px]">ROI: +{put.roi}%</p>
-              </div>
+        <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-2 space-y-2">
+          <h3 className="text-pink-400 font-bold text-[12px] mb-1 tracking-wider">Option Summary</h3>
+          <div className="grid grid-cols-2 gap-1.5 text-[12px]">
+            <div className="bg-[#1b2435] rounded-lg p-1.5 text-center">
+              <p className="text-gray-400 text-[11px]">🟢 Top Call</p>
+              <p className="font-semibold">Strike: ${call.strike}</p>
+              <p className="text-[11px]">Premium: ${call.premium}</p>
+              <p className="text-emerald-400 text-[11px]">ROI: +{call.roi}%</p>
             </div>
-
-            {/* Option Simulator (เหมือนเดิม 100%) */}
-            <div className="bg-[#0f172a] rounded-xl border border-emerald-400/20 p-3 space-y-2">
-              <h3 className="text-emerald-400 font-bold text-[12px] mb-1 tracking-wider">
-                Option Simulator (Δ + Θ)
-              </h3>
-              <div className="grid grid-cols-2 gap-1.5 text-[12px]">
-                <input id="delta" type="number" step="0.01" defaultValue={optionAI?.delta || 0.2}
-                  className="bg-[#1b2435] text-white text-center rounded p-1 border border-white/10" placeholder="Δ Delta"/>
-                <input id="theta" type="number" step="0.001" defaultValue={optionAI?.theta || -0.008}
-                  className="bg-[#1b2435] text-white text-center rounded p-1 border border-white/10" placeholder="Θ Theta"/>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5 text-[12px]">
-                <input id="move" type="number" step="0.1" defaultValue={1} className="bg-[#1b2435] text-white text-center rounded p-1" placeholder="หุ้นขึ้น (USD)" />
-                <input id="days" type="number" step="1" defaultValue={3} className="bg-[#1b2435] text-white text-center rounded p-1" placeholder="วัน" />
-                <input id="base" type="number" step="0.01" defaultValue={call.premium || 0.4} className="bg-[#1b2435] text-white text-center rounded p-1" placeholder="ราคา Option" />
-              </div>
-              <button
-                onClick={() => {
-                  const Δ = parseFloat(document.getElementById("delta").value || 0.2);
-                  const Θ = parseFloat(document.getElementById("theta").value || -0.008);
-                  const move = parseFloat(document.getElementById("move").value || 1);
-                  const days = parseInt(document.getElementById("days").value || 1);
-                  const base = parseFloat(document.getElementById("base").value || 0.4);
-                  const result = base + Δ * move + Θ * days;
-                  alert(`คาดว่า Option ≈ $${result.toFixed(2)} (${((result - base) / base * 100).toFixed(0)}%)`);
-                }}
-                className="w-full mt-2 py-1.5 bg-emerald-500/20 border border-emerald-400/30 rounded text-emerald-400 font-semibold text-[12px] hover:bg-emerald-500/30"
-              >
-                🧮 คำนวณราคา Option (Simulate)
-              </button>
+            <div className="bg-[#1b2435] rounded-lg p-1.5 text-center">
+              <p className="text-gray-400 text-[11px]">🔴 Top Put</p>
+              <p className="font-semibold">Strike: ${put.strike}</p>
+              <p className="text-[11px]">Premium: ${put.premium}</p>
+              <p className="text-pink-400 text-[11px]">ROI: +{put.roi}%</p>
             </div>
           </div>
-        </>
+
+          <div className="text-[11px] text-gray-300 space-y-1">
+            <p>📘 Reason: {optionAI?.reason}</p>
+            <p>🎯 Entry Zone: <span className="text-emerald-400 font-semibold">{optionAI?.zone || "Active Zone"}</span></p>
+            <p>💡 Entry Check: <span className="text-emerald-400 font-semibold">{entryHint}</span></p>
+            <p>🎯 Target Option ≈ ${expectedOption.toFixed(2)}</p>
+          </div>
+
+          {/* Simulator */}
+          <div className="bg-[#0f172a] rounded-xl border border-emerald-400/20 p-3 space-y-2">
+            <h3 className="text-emerald-400 font-bold text-[12px] mb-1 tracking-wider">Option Simulator (Δ + Θ)</h3>
+            <div className="grid grid-cols-2 gap-1.5 text-[12px]">
+              <input id="delta" type="number" step="0.01" defaultValue={optionAI?.delta || 0.2}
+                className="bg-[#1b2435] text-white text-center rounded p-1 border border-white/10" placeholder="Δ Delta" />
+              <input id="theta" type="number" step="0.001" defaultValue={optionAI?.theta || -0.008}
+                className="bg-[#1b2435] text-white text-center rounded p-1 border border-white/10" placeholder="Θ Theta" />
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-[12px]">
+              <input id="move" type="number" step="0.1" defaultValue={1} className="bg-[#1b2435] text-white text-center rounded p-1" placeholder="หุ้นขึ้น (USD)" />
+              <input id="days" type="number" step="1" defaultValue={3} className="bg-[#1b2435] text-white text-center rounded p-1" placeholder="วัน" />
+              <input id="base" type="number" step="0.01" defaultValue={call.premium || 0.4} className="bg-[#1b2435] text-white text-center rounded p-1" placeholder="ราคา Option" />
+            </div>
+            <button
+              onClick={() => {
+                const Δ = parseFloat(document.getElementById("delta").value || 0.2);
+                const Θ = parseFloat(document.getElementById("theta").value || -0.008);
+                const move = parseFloat(document.getElementById("move").value || 1);
+                const days = parseInt(document.getElementById("days").value || 1);
+                const base = parseFloat(document.getElementById("base").value || 0.4);
+                const result = base + Δ * move + Θ * days;
+                alert(`คาดว่า Option ≈ $${result.toFixed(2)} (${((result - base) / base * 100).toFixed(0)}%)`);
+              }}
+              className="w-full mt-2 py-1.5 bg-emerald-500/20 border border-emerald-400/30 rounded text-emerald-400 font-semibold text-[12px] hover:bg-emerald-500/30"
+            >
+              🧮 คำนวณราคา Option (Simulate)
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* ✅ AI Entry Zone */}
+      {/* Entry Zone */}
       <div className="bg-[#0f172a] rounded-xl border border-white/10 p-2 text-[11px] space-y-1">
         <div className="text-emerald-400 font-bold text-[12px]">AI Entry Zone</div>
         {rsi < 40 && "🔵 Oversold — รอการกลับตัว"}
@@ -270,8 +270,7 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
         {rsi > 60 && rsi <= 70 && "🟡 ถือรอดูแรงซื้อต่อเนื่อง"}
         {rsi > 70 && "🔴 Overbought — อย่าเพิ่งเข้า"}
         <div className="mt-2 h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
-          <div
-            className="h-1.5 rounded-full transition-all duration-500"
+          <div className="h-1.5 rounded-full transition-all duration-500"
             style={{
               width: `${Math.min(Math.max(rsi, 0), 100)}%`,
               background:
@@ -284,7 +283,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
   );
 }
 
-// ===== Market News =====
 function MarketNews({ news }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-3">
@@ -295,14 +293,21 @@ function MarketNews({ news }) {
         <ul className="space-y-1.5">
           {news.slice(0, 8).map((n, i) => (
             <li key={i} className="p-1.5 bg-black/20 border border-white/10 rounded-lg">
-              <a href={n.link || n.url} target="_blank" rel="noreferrer" className="hover:text-emerald-400 text-[12px] font-medium">
+              <a
+                href={n.link || n.url}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-emerald-400 text-[12px] font-medium"
+              >
                 {n.title}
               </a>
-              <div className="text-[10px] text-gray-400 mt-0.5">{n.publisher || n.source || ""}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">
+                {n.publisher || n.source || ""}
+              </div>
             </li>
           ))}
         </ul>
       )}
     </section>
   );
-          }
+}
