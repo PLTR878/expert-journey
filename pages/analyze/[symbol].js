@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font + TP/SL Precision v∞.10)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font + TP/SL Breakout v∞.11)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -6,16 +6,11 @@ import dynamic from "next/dynamic";
 const Chart = dynamic(() => import("../../components/Chart.js"), { ssr: false });
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : "-");
 
-// ✅ ฟังก์ชันคำนวณ TP / SL ขั้นเทพ
+// ✅ ฟังก์ชันคำนวณ TP / SL ที่ปรับอัตโนมัติเมื่อทะลุแนวต้าน
 function computeSmartTargetAndSL(data) {
-  const { lastClose, ema20, ema50, ema200, rsi, trend, volume } = data;
+  const { lastClose, ema20, ema50, ema200, rsi, trend, volume, high, low } = data;
   if (![lastClose, ema20, ema50, ema200].every(Number.isFinite)) {
-    return {
-      target: lastClose,
-      stopLoss: lastClose * 0.95,
-      confidence: 20,
-      reason: "ข้อมูลไม่ครบ",
-    };
+    return { target: lastClose, stopLoss: lastClose * 0.95, confidence: 20, reason: "ข้อมูลไม่ครบ" };
   }
 
   // === ตัวแปรพื้นฐาน ===
@@ -24,16 +19,28 @@ function computeSmartTargetAndSL(data) {
   const emaTrendStrength = (emaGap20_50 + emaGap50_200) / 2;
   const volBoost = volume ? Math.min(volume / 1_000_000, 3) : 1;
 
-  // === คำนวณ TP ===
-  let tpFactor = 1 + (emaTrendStrength / 50 + (rsi - 50) / 200) * volBoost;
-  if (rsi > 70) tpFactor *= 0.97; // overbought
-  if (rsi < 35) tpFactor *= 1.08; // oversold rebound
-  const target = lastClose * tpFactor;
+  // === หาแนวต้านหลัก ===
+  const resistances = [ema20, ema50, ema200].filter(v => v > lastClose).sort((a, b) => a - b);
+  const firstRes = resistances[0] || lastClose * 1.05;
+  const nextRes = resistances[1] || firstRes * 1.05;
 
-  // === คำนวณ SL ===
+  // === เริ่มคำนวณ TP / SL ===
+  let tp = firstRes * 1.03; // TP เริ่มต้น: เหนือแนวต้านแรกเล็กน้อย
+  const volumeBoost = Math.min(volBoost, 3);
+
+  if (rsi > 60 && volumeBoost > 1.5) {
+    tp = nextRes * (1.02 + (rsi - 60) / 200);
+  }
+
+  // ถ้าราคาทะลุแนวต้านแล้ว → เลื่อน TP อัตโนมัติ
+  if (lastClose > firstRes) {
+    tp = lastClose * (1.05 + (rsi - 50) / 300);
+  }
+
+  // === SL ===
   let slFactor = 0.96;
-  if (ema20 < ema50 && ema50 < ema200) slFactor = 0.93; // downtrend
-  if (rsi < 35) slFactor = 0.90; // oversold -> wider SL
+  if (ema20 < ema50 && ema50 < ema200) slFactor = 0.93;
+  if (rsi < 35) slFactor = 0.90;
   const stopLoss = lastClose * slFactor;
 
   // === Confidence ===
@@ -51,7 +58,7 @@ function computeSmartTargetAndSL(data) {
   else if (emaTrendStrength > 2) reason = "แนวโน้มขาขึ้นแข็งแรง";
   else if (emaTrendStrength < -2) reason = "แนวโน้มอ่อนตัว";
 
-  return { target, stopLoss, confidence, reason };
+  return { target: tp, stopLoss, confidence, reason };
 }
 
 export default function Analyze() {
@@ -70,20 +77,17 @@ export default function Analyze() {
     (async () => {
       setLoading(true);
       try {
-        const infiniteRes = await fetch(`/api/visionary-infinite-core?symbol=${symbol}`).then((r) => r.json());
+        const infiniteRes = await fetch(`/api/visionary-infinite-core?symbol=${symbol}`).then(r => r.json());
         const isInfiniteOk = infiniteRes && !infiniteRes.error && infiniteRes.symbol;
 
-        // ✅ โหลด Option Core สำรอง
         try {
-          const optExtra = await fetch(`/api/visionary-option-core?symbol=${symbol}`).then((r) => r.json());
+          const optExtra = await fetch(`/api/visionary-option-core?symbol=${symbol}`).then(r => r.json());
           if (optExtra && !optExtra.error) setOptionAI(optExtra);
         } catch (err) {
           console.warn("⚠️ Option Core fetch fail:", err);
         }
 
-        // ✅ ปรับระบบ TP/SL แบบใหม่
         const smart = computeSmartTargetAndSL(infiniteRes || {});
-
         if (isInfiniteOk) {
           setCore(infiniteRes);
           setScanner({
@@ -95,9 +99,9 @@ export default function Analyze() {
           setNews(infiniteRes.news || []);
         } else {
           const [coreRes, scannerRes, newsRes] = await Promise.all([
-            fetch(`/api/visionary-core?symbol=${symbol}`).then((r) => r.json()),
-            fetch(`/api/visionary-scanner?symbol=${symbol}`).then((r) => r.json()),
-            fetch(`/api/news?symbol=${symbol}`).then((r) => r.json()),
+            fetch(`/api/visionary-core?symbol=${symbol}`).then(r => r.json()),
+            fetch(`/api/visionary-scanner?symbol=${symbol}`).then(r => r.json()),
+            fetch(`/api/news?symbol=${symbol}`).then(r => r.json()),
           ]);
           const smart2 = computeSmartTargetAndSL(coreRes || {});
           setCore(coreRes);
@@ -117,13 +121,13 @@ export default function Analyze() {
     })();
   }, [symbol]);
 
-  // ===== โหลดข้อมูล Option AI หลัก =====
+  // ===== โหลด Option AI =====
   useEffect(() => {
     if (!symbol) return;
     fetch(`/api/visionary-option-ai?symbol=${symbol}`)
-      .then((r) => r.json())
+      .then(r => r.json())
       .then(setOptionAI)
-      .catch((e) => console.error("Option AI error:", e));
+      .catch(e => console.error("Option AI error:", e));
   }, [symbol]);
 
   const sig = computeSignal(core || {});
@@ -152,64 +156,30 @@ export default function Analyze() {
   return (
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold">
       <div className="max-w-6xl mx-auto px-3 py-5 space-y-5">
-        {/* Header */}
         <div className="flex justify-between items-center">
-          <button
-            onClick={() => window.history.back()}
-            className="text-[12px] bg-white/5 px-3 py-1 rounded border border-white/10 hover:bg-emerald-500/10"
-          >
-            ← ย้อนกลับ
-          </button>
+          <button onClick={() => window.history.back()} className="text-[12px] bg-white/5 px-3 py-1 rounded border border-white/10 hover:bg-emerald-500/10">← ย้อนกลับ</button>
           <h1 className="text-[14px] font-bold tracking-widest">{symbol}</h1>
-          <div className="text-emerald-400 font-semibold text-[12px] border border-emerald-400/30 rounded px-2 py-0.5">
-            ${fmt(price, 2)}
-          </div>
+          <div className="text-emerald-400 font-semibold text-[12px] border border-emerald-400/30 rounded px-2 py-0.5">${fmt(price, 2)}</div>
         </div>
 
-        {/* Chart */}
-        <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#0f172a]">
-          <Chart candles={hist} markers={markers} />
-        </div>
+        <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#0f172a]"><Chart candles={hist} markers={markers} /></div>
 
-        {/* Mode Toggle */}
         <div className="flex justify-center gap-2">
-          <button
-            onClick={() => setMode("stock")}
-            className={`px-3 py-1 rounded-md text-[12px] font-bold ${
-              mode === "stock" ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-gray-400"
-            }`}
-          >
-            หุ้นธรรมดา (Stock)
-          </button>
-          <button
-            onClick={() => setMode("option")}
-            className={`px-3 py-1 rounded-md text-[12px] font-bold ${
-              mode === "option" ? "bg-pink-500/20 text-pink-400" : "bg-white/5 text-gray-400"
-            }`}
-          >
-            ออปชั่น (Option)
-          </button>
+          <button onClick={() => setMode("stock")} className={`px-3 py-1 rounded-md text-[12px] font-bold ${mode === "stock" ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-gray-400"}`}>หุ้นธรรมดา (Stock)</button>
+          <button onClick={() => setMode("option")} className={`px-3 py-1 rounded-md text-[12px] font-bold ${mode === "option" ? "bg-pink-500/20 text-pink-400" : "bg-white/5 text-gray-400"}`}>ออปชั่น (Option)</button>
         </div>
 
-        <AISignalSection
-          ind={core}
-          sig={sig}
-          price={price}
-          scanner={scanner}
-          optionAI={optionAI}
-          mode={mode}
-        />
+        <AISignalSection ind={core} sig={sig} price={price} scanner={scanner} optionAI={optionAI} mode={mode} />
         <MarketNews news={news} />
       </div>
     </main>
   );
 }
 
-// ===== Logic เดิม (ไม่ลบ) =====
+// ===== Logic เดิม =====
 function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
-  if (![lastClose, ema20, ema50, ema200, rsi].every((v) => Number.isFinite(v)))
+  if (![lastClose, ema20, ema50, ema200, rsi].every(Number.isFinite))
     return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
-
   let score = 0;
   if (lastClose > ema20) score++;
   if (ema20 > ema50) score++;
@@ -217,13 +187,12 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   if (rsi > 55) score++;
   if (trend === "Uptrend") score += 0.5;
   if (trend === "Downtrend") score -= 0.5;
-
   if (score >= 3) return { action: "Buy", confidence: 90, reason: "แนวโน้มขาขึ้นแข็งแรง" };
   if (score <= 1) return { action: "Sell", confidence: 70, reason: "แรงขายกดดัน" };
   return { action: "Hold", confidence: 50, reason: "สัญญาณเป็นกลาง" };
 }
 
-// ===== UI เดิม (ไม่ลบเลย) =====
+// ===== UI เดิม =====
 function Info({ label, value }) {
   return (
     <div className="rounded-lg border border-white/10 bg-[#141b2d] p-1.5 text-center">
@@ -240,7 +209,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
   const stopLoss = scanner?.stopLoss ?? price * 0.95;
   const reason = scanner?.reason || sig.reason;
   const showOption = mode === "option";
-
   const action = showOption ? optionAI?.signal || sig.action : sig.action;
   const conf = showOption ? optionAI?.confidence || baseConf : baseConf;
   const call = optionAI?.topCall || { strike: "-", premium: "-", roi: "-" };
@@ -249,20 +217,8 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#141b2d] p-3 space-y-3 shadow-inner">
       <div className="flex justify-between items-center mb-1">
-        <h2 className="text-[13px] font-bold tracking-widest">
-          AI {showOption ? "Option" : "Trade"} Signal
-        </h2>
-        <span
-          className={`font-bold ${
-            action === "Buy"
-              ? "text-green-400"
-              : action === "Sell"
-              ? "text-red-400"
-              : "text-yellow-300"
-          }`}
-        >
-          {action}
-        </span>
+        <h2 className="text-[13px] font-bold tracking-widest">AI {showOption ? "Option" : "Trade"} Signal</h2>
+        <span className={`font-bold ${action === "Buy" ? "text-green-400" : action === "Sell" ? "text-red-400" : "text-yellow-300"}`}>{action}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-1.5 text-[12px]">
@@ -272,7 +228,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
         <Info label="📋 Reason" value={reason} />
       </div>
 
-      {/* EMA */}
       <div className="bg-[#0f172a] rounded-xl border border-emerald-400/20 p-2">
         <h3 className="text-emerald-400 font-semibold mb-1 text-[11px]">EMA Overview</h3>
         <div className="grid grid-cols-4 gap-1.5 text-[11px] text-center">
@@ -283,7 +238,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
         </div>
       </div>
 
-      {/* ✅ Option Summary */}
       {showOption && (
         <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-2 space-y-2">
           <h3 className="text-pink-400 font-bold text-[12px] mb-1 tracking-wider">Option Summary</h3>
@@ -303,25 +257,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
           </div>
         </div>
       )}
-
-      {/* ✅ AI Entry Zone */}
-      <div className="bg-[#0f172a] rounded-xl border border-white/10 p-2 text-[11px] space-y-1">
-        <div className="text-emerald-400 font-bold text-[12px]">AI Entry Zone</div>
-        {rsi < 40 && "🔵 Oversold — รอการกลับตัว"}
-        {rsi >= 40 && rsi <= 60 && "🟢 โซนเข้าซื้อแนะนำ"}
-        {rsi > 60 && rsi <= 70 && "🟡 ถือรอดูแรงซื้อต่อเนื่อง"}
-        {rsi > 70 && "🔴 Overbought — อย่าเพิ่งเข้า"}
-        <div className="mt-2 h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
-          <div
-            className="h-1.5 rounded-full transition-all duration-500"
-            style={{
-              width: `${Math.min(Math.max(rsi, 0), 100)}%`,
-              background:
-                rsi < 40 ? "#3b82f6" : rsi <= 60 ? "#22c55e" : rsi <= 70 ? "#eab308" : "#ef4444",
-            }}
-          />
-        </div>
-      </div>
     </section>
   );
 }
@@ -334,23 +269,16 @@ function MarketNews({ news }) {
         <div className="text-[11px] text-gray-400">No recent news.</div>
       ) : (
         <ul className="space-y-1.5">
-        {news.slice(0, 8).map((n, i) => (
+          {news.slice(0, 8).map((n, i) => (
             <li key={i} className="p-1.5 bg-black/20 border border-white/10 rounded-lg">
-              <a
-                href={n.link || n.url}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-emerald-400 text-[12px] font-medium"
-              >
+              <a href={n.link || n.url} target="_blank" rel="noreferrer" className="hover:text-emerald-400 text-[12px] font-medium">
                 {n.title}
               </a>
-              <div className="text-[10px] text-gray-400 mt-0.5">
-                {n.publisher || n.source || ""}
-              </div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{n.publisher || n.source || ""}</div>
             </li>
           ))}
         </ul>
       )}
     </section>
   );
-          }
+    }
