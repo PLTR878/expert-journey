@@ -310,4 +310,4 @@ function MarketNews({ news }) {
       )}
     </section>
   );
-}
+                  }
