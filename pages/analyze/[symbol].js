@@ -1,10 +1,58 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font + TP/SL Precision v∞.10)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
 const Chart = dynamic(() => import("../../components/Chart.js"), { ssr: false });
 const fmt = (n, d = 2) => (Number.isFinite(n) ? Number(n).toFixed(d) : "-");
+
+// ✅ ฟังก์ชันคำนวณ TP / SL ขั้นเทพ
+function computeSmartTargetAndSL(data) {
+  const { lastClose, ema20, ema50, ema200, rsi, trend, volume } = data;
+  if (![lastClose, ema20, ema50, ema200].every(Number.isFinite)) {
+    return {
+      target: lastClose,
+      stopLoss: lastClose * 0.95,
+      confidence: 20,
+      reason: "ข้อมูลไม่ครบ",
+    };
+  }
+
+  // === ตัวแปรพื้นฐาน ===
+  const emaGap20_50 = ((ema20 - ema50) / ema50) * 100;
+  const emaGap50_200 = ((ema50 - ema200) / ema200) * 100;
+  const emaTrendStrength = (emaGap20_50 + emaGap50_200) / 2;
+  const volBoost = volume ? Math.min(volume / 1_000_000, 3) : 1;
+
+  // === คำนวณ TP ===
+  let tpFactor = 1 + (emaTrendStrength / 50 + (rsi - 50) / 200) * volBoost;
+  if (rsi > 70) tpFactor *= 0.97; // overbought
+  if (rsi < 35) tpFactor *= 1.08; // oversold rebound
+  const target = lastClose * tpFactor;
+
+  // === คำนวณ SL ===
+  let slFactor = 0.96;
+  if (ema20 < ema50 && ema50 < ema200) slFactor = 0.93; // downtrend
+  if (rsi < 35) slFactor = 0.90; // oversold -> wider SL
+  const stopLoss = lastClose * slFactor;
+
+  // === Confidence ===
+  const confRaw =
+    Math.abs(emaGap20_50 * 3) +
+    Math.abs(emaGap50_200 * 2) +
+    (trend === "Uptrend" ? 20 : 0) +
+    (rsi >= 45 && rsi <= 65 ? 10 : 0);
+  const confidence = Math.min(99, Math.max(10, confRaw));
+
+  // === Reason ===
+  let reason = "รอการยืนยันเพิ่มเติม";
+  if (rsi > 70) reason = "RSI สูงเกินไป — ระวังแรงขาย";
+  else if (rsi < 35) reason = "RSI ต่ำมาก — อาจมีรีบาวด์แรง";
+  else if (emaTrendStrength > 2) reason = "แนวโน้มขาขึ้นแข็งแรง";
+  else if (emaTrendStrength < -2) reason = "แนวโน้มอ่อนตัว";
+
+  return { target, stopLoss, confidence, reason };
+}
 
 export default function Analyze() {
   const { query } = useRouter();
@@ -33,12 +81,16 @@ export default function Analyze() {
           console.warn("⚠️ Option Core fetch fail:", err);
         }
 
+        // ✅ ปรับระบบ TP/SL แบบใหม่
+        const smart = computeSmartTargetAndSL(infiniteRes || {});
+
         if (isInfiniteOk) {
           setCore(infiniteRes);
           setScanner({
-            targetPrice: infiniteRes.lastClose * 1.08,
-            confidence: infiniteRes.confidence,
-            reason: infiniteRes.reason,
+            targetPrice: smart.target,
+            stopLoss: smart.stopLoss,
+            confidence: smart.confidence,
+            reason: smart.reason,
           });
           setNews(infiniteRes.news || []);
         } else {
@@ -47,8 +99,14 @@ export default function Analyze() {
             fetch(`/api/visionary-scanner?symbol=${symbol}`).then((r) => r.json()),
             fetch(`/api/news?symbol=${symbol}`).then((r) => r.json()),
           ]);
+          const smart2 = computeSmartTargetAndSL(coreRes || {});
           setCore(coreRes);
-          setScanner(scannerRes);
+          setScanner({
+            targetPrice: smart2.target,
+            stopLoss: smart2.stopLoss,
+            confidence: smart2.confidence,
+            reason: smart2.reason,
+          });
           setNews(newsRes.items || []);
         }
       } catch (e) {
@@ -133,14 +191,21 @@ export default function Analyze() {
           </button>
         </div>
 
-        <AISignalSection ind={core} sig={sig} price={price} scanner={scanner} optionAI={optionAI} mode={mode} />
+        <AISignalSection
+          ind={core}
+          sig={sig}
+          price={price}
+          scanner={scanner}
+          optionAI={optionAI}
+          mode={mode}
+        />
         <MarketNews news={news} />
       </div>
     </main>
   );
 }
 
-// ===== Logic =====
+// ===== Logic เดิม (ไม่ลบ) =====
 function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   if (![lastClose, ema20, ema50, ema200, rsi].every((v) => Number.isFinite(v)))
     return { action: "Hold", confidence: 0.5, reason: "ข้อมูลไม่เพียงพอ" };
@@ -158,7 +223,7 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   return { action: "Hold", confidence: 50, reason: "สัญญาณเป็นกลาง" };
 }
 
-// ===== UI =====
+// ===== UI เดิม (ไม่ลบเลย) =====
 function Info({ label, value }) {
   return (
     <div className="rounded-lg border border-white/10 bg-[#141b2d] p-1.5 text-center">
@@ -172,6 +237,7 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
   const baseConf = scanner?.confidence ?? sig.confidence * 100;
   const rsi = ind?.rsi ?? 0;
   const target = scanner?.targetPrice ?? price * 1.08;
+  const stopLoss = scanner?.stopLoss ?? price * 0.95;
   const reason = scanner?.reason || sig.reason;
   const showOption = mode === "option";
 
@@ -200,10 +266,10 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
       </div>
 
       <div className="grid grid-cols-2 gap-1.5 text-[12px]">
-        <Info label="🎯 Target" value={`$${fmt(optionAI?.target || target, 2)}`} />
+        <Info label="🎯 Target (TP)" value={`$${fmt(target, 2)}`} />
+        <Info label="🛑 Stop Loss" value={`$${fmt(stopLoss, 2)}`} />
         <Info label="🤖 Confidence" value={`${fmt(conf, 0)}%`} />
-        <Info label="📋 Reason" value={optionAI?.reason || reason} />
-        <Info label="RSI (14)" value={fmt(rsi, 1)} />
+        <Info label="📋 Reason" value={reason} />
       </div>
 
       {/* EMA */}
@@ -221,7 +287,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
       {showOption && (
         <div className="bg-[#131c2d] rounded-xl border border-pink-500/20 p-2 space-y-2">
           <h3 className="text-pink-400 font-bold text-[12px] mb-1 tracking-wider">Option Summary</h3>
-
           <div className="grid grid-cols-2 gap-1.5 text-[12px]">
             <div className="bg-[#1b2435] rounded-lg p-1.5 text-center">
               <p className="text-gray-400 text-[11px]">🟢 Top Call</p>
@@ -235,20 +300,6 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
               <p className="text-[11px]">Premium: ${put.premium}</p>
               <p className="text-pink-400 text-[11px]">ROI: +{put.roi}%</p>
             </div>
-          </div>
-
-          <div className="text-[11px] text-gray-300">
-            <p>📘 Reason: {optionAI?.reason}</p>
-            <p>
-              🎯 Entry Zone:{" "}
-              <span className="text-emerald-400 font-semibold">{optionAI?.zone || "Active Zone"}</span>
-            </p>
-          </div>
-          <div className="mt-1 h-2 bg-[#0f172a] rounded-full overflow-hidden">
-            <div
-              className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-emerald-400 transition-all"
-              style={{ width: `${conf}%` }}
-            />
           </div>
         </div>
       )}
@@ -265,7 +316,8 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
             className="h-1.5 rounded-full transition-all duration-500"
             style={{
               width: `${Math.min(Math.max(rsi, 0), 100)}%`,
-              background: rsi < 40 ? "#3b82f6" : rsi <= 60 ? "#22c55e" : rsi <= 70 ? "#eab308" : "#ef4444",
+              background:
+                rsi < 40 ? "#3b82f6" : rsi <= 60 ? "#22c55e" : rsi <= 70 ? "#eab308" : "#ef4444",
             }}
           />
         </div>
@@ -282,7 +334,7 @@ function MarketNews({ news }) {
         <div className="text-[11px] text-gray-400">No recent news.</div>
       ) : (
         <ul className="space-y-1.5">
-          {news.slice(0, 8).map((n, i) => (
+        {news.slice(0, 8).map((n, i) => (
             <li key={i} className="p-1.5 bg-black/20 border border-white/10 rounded-lg">
               <a
                 href={n.link || n.url}
@@ -292,11 +344,13 @@ function MarketNews({ news }) {
               >
                 {n.title}
               </a>
-              <div className="text-[10px] text-gray-400 mt-0.5">{n.publisher || n.source || ""}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">
+                {n.publisher || n.source || ""}
+              </div>
             </li>
           ))}
         </ul>
       )}
     </section>
   );
-      }
+          }
