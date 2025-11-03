@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (OriginX Style Vertical RSI)
+// ✅ /components/Favorites.js — Visionary Favorites (Fast + Elegant Logos)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -31,63 +31,50 @@ export default function Favorites({ favorites, setFavorites }) {
     EZGO: "EZGO Technologies", QMCO: "Quantum Corp", LAC: "Lithium Americas",
   };
 
-  const fetchStockData = async (sym) => {
+  // ✅ ฟังก์ชันโหลดข้อมูลแบบเร็ว + cache 5 นาที
+  const fetchAllStocks = async () => {
+    if (!favorites?.length) return;
+
+    const cacheKey = "favoritesCache";
+    const cache = JSON.parse(localStorage.getItem(cacheKey) || "{}");
+    const now = Date.now();
+
+    if (cache?.timestamp && now - cache.timestamp < 300000 && cache?.data) {
+      setData(cache.data);
+      return;
+    }
+
     try {
-      const coreRes = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
-      const core = await coreRes.json();
+      const res = await fetch(`/api/visionary-batch?symbols=${favorites.join(",")}`, { cache: "no-store" });
+      const j = await res.json();
+      const results = j?.results || [];
 
-      let price = core?.lastClose ?? 0;
-      let rsi = core?.rsi ?? 50;
-      let trend = core?.trend ?? null;
-      let company = core?.companyName || companyMap[sym] || sym;
-
-      if (!price || !trend) {
-        try {
-          const infRes = await fetch(`/api/visionary-infinite-core?symbol=${sym}`, { cache: "no-store" });
-          const inf = await infRes.json();
-          price = price || inf?.lastClose || 0;
-          rsi = rsi || inf?.rsi || 50;
-          trend = trend || inf?.trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
-          company = company || inf?.companyName || sym;
-        } catch {}
-      }
-
-      const finalTrend = trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
-      const signal = finalTrend === "Uptrend" ? "Buy" : finalTrend === "Downtrend" ? "Sell" : "Hold";
-
-      const item = { symbol: sym, companyName: company, lastClose: price, rsi, signal };
-
-      setData((prev) => {
-        const existing = prev.find((x) => x.symbol === sym);
-        return existing
-          ? prev.map((x) => (x.symbol === sym ? { ...x, ...item } : x))
-          : [...prev, item];
-      });
+      setData(results);
+      localStorage.setItem(cacheKey, JSON.stringify({ data: results, timestamp: now }));
     } catch (err) {
-      console.error(`❌ Fetch error ${sym}:`, err);
+      console.error("❌ Batch fetch error:", err);
     }
   };
 
   useEffect(() => {
-    if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
+    fetchAllStocks();
   }, [favorites]);
 
+  // ✅ เพิ่มหุ้น
   const handleSubmit = async () => {
     const sym = symbol.trim().toUpperCase();
     if (!sym) return;
-
     const stored = JSON.parse(localStorage.getItem("favorites") || "[]");
     if (!stored.includes(sym)) {
       const updated = [...stored, sym];
       setFavorites(updated);
       localStorage.setItem("favorites", JSON.stringify(updated));
-      await fetchStockData(sym);
     }
-
     setSymbol("");
     setShowModal(false);
   };
 
+  // ✅ ลบหุ้น
   const removeFavorite = (sym) => {
     const updated = favorites.filter((s) => s !== sym);
     setFavorites(updated);
@@ -109,7 +96,7 @@ export default function Favorites({ favorites, setFavorites }) {
     <section className="w-full px-[6px] sm:px-3 pt-3 bg-[#0b1220] text-gray-200 min-h-screen">
       <div className="flex justify-between items-center mb-3 px-[2px] sm:px-2">
         <h2 className="text-[17px] font-bold text-emerald-400 flex items-center gap-1">
-          🔮 My Favorite Stocks
+           My Favorite Stocks
         </h2>
         <button
           onClick={() => setShowModal(true)}
@@ -137,10 +124,10 @@ export default function Favorites({ favorites, setFavorites }) {
               >
                 {/* โลโก้ + ชื่อ */}
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden hover:shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-all duration-300">
                     {imgError[sym] ? (
-                      <div className="w-full h-full bg-white flex flex-col items-center justify-center rounded-full border border-gray-300">
-                        <span className="text-black font-extrabold text-[11px] uppercase tracking-tight mt-[3px]">
+                      <div className="w-full h-full flex flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#0f172a] to-[#1e293b]">
+                        <span className="text-white font-extrabold text-[11px] uppercase tracking-tight drop-shadow-sm">
                           {sym}
                         </span>
                       </div>
@@ -166,7 +153,7 @@ export default function Favorites({ favorites, setFavorites }) {
                   </div>
                 </div>
 
-                {/* ราคา + RSI + Signal (แนวตั้งเหมือน OriginX) */}
+                {/* ราคา + RSI + Signal */}
                 <div className="text-right leading-tight font-mono min-w-[75px]">
                   <div className="text-[15px] text-white font-black">
                     {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
@@ -204,7 +191,7 @@ export default function Favorites({ favorites, setFavorites }) {
         )}
       </div>
 
-      {/* 🔍 Modal */}
+      {/* ➕ Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#111827] rounded-2xl shadow-xl p-5 w-[80%] max-w-xs text-center border border-gray-700 -translate-y-14">
@@ -213,7 +200,7 @@ export default function Favorites({ favorites, setFavorites }) {
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA, TSLA"
+              placeholder="พิมพ์ชื่อย่อหุ้น เช่น NVDA,TSLA"
               className="w-full text-center bg-[#0d121d]/90 border border-gray-700 text-gray-100 rounded-md py-[9px]
               focus:outline-none focus:ring-1 focus:ring-emerald-400 mb-4 text-[14px] font-semibold"
             />
@@ -236,4 +223,4 @@ export default function Favorites({ favorites, setFavorites }) {
       )}
     </section>
   );
-    }
+            }
