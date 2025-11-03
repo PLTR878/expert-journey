@@ -1,4 +1,4 @@
-// ✅ /components/Favorites.js — Visionary Favorites (Fixed Price + Elegant Fallback)
+// ✅ /components/Favorites.js — Visionary Favorites (Full Price Fix + Transparent Logo)
 import { useState, useRef, useEffect } from "react";
 
 export default function Favorites({ favorites, setFavorites }) {
@@ -31,17 +31,37 @@ export default function Favorites({ favorites, setFavorites }) {
     EZGO: "EZGO Technologies", QMCO: "Quantum Corp", LAC: "Lithium Americas",
   };
 
-  // ✅ โหลดข้อมูลหุ้นทีละตัว (คืนระบบราคา)
+  // ✅ โหลดข้อมูลหุ้นทีละตัว (ดึงต่อเนื่องจนได้ราคาแน่ ๆ)
   const fetchStockData = async (sym) => {
     try {
-      const res = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
-      const core = await res.json();
-      const price = core?.lastClose ?? 0;
-      const rsi = core?.rsi ?? 50;
-      const trend = core?.trend ?? (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
-      const company = core?.companyName || companyMap[sym] || sym;
-      const signal = trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
+      let price = 0,
+        rsi = 50,
+        trend = null,
+        company = companyMap[sym] || sym;
 
+      // ✅ 1. ดึงจาก visionary-core
+      try {
+        const res = await fetch(`/api/visionary-core?symbol=${sym}`, { cache: "no-store" });
+        const core = await res.json();
+        price = core?.lastClose ?? 0;
+        rsi = core?.rsi ?? 50;
+        trend = core?.trend ?? null;
+        company = core?.companyName || company;
+      } catch {}
+
+      // ✅ 2. ถ้าไม่เจอราคา → ดึงต่อจาก visionary-infinite-core
+      if (!price || price <= 0) {
+        try {
+          const res2 = await fetch(`/api/visionary-infinite-core?symbol=${sym}`, { cache: "no-store" });
+          const inf = await res2.json();
+          price = inf?.lastClose ?? price;
+          rsi = inf?.rsi ?? rsi;
+          trend = trend || inf?.trend || (rsi > 55 ? "Uptrend" : rsi < 45 ? "Downtrend" : "Sideway");
+          company = company || inf?.companyName || sym;
+        } catch {}
+      }
+
+      const signal = trend === "Uptrend" ? "Buy" : trend === "Downtrend" ? "Sell" : "Hold";
       const item = { symbol: sym, companyName: company, lastClose: price, rsi, signal };
 
       setData((prev) => {
@@ -55,6 +75,7 @@ export default function Favorites({ favorites, setFavorites }) {
     }
   };
 
+  // ✅ โหลดข้อมูลเมื่อเปลี่ยน favorites
   useEffect(() => {
     if (favorites?.length > 0) favorites.forEach((sym) => fetchStockData(sym));
   }, [favorites]);
@@ -123,10 +144,10 @@ export default function Favorites({ favorites, setFavorites }) {
               >
                 {/* โลโก้ + ชื่อ */}
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full border border-gray-700 bg-[#0b0f17] flex items-center justify-center overflow-hidden">
+                  <div className="w-9 h-9 rounded-full border border-gray-700 flex items-center justify-center overflow-hidden">
                     {imgError[sym] ? (
-                      <div className="w-full h-full flex items-center justify-center rounded-full bg-black">
-                        <span className="text-white font-bold text-[10px] uppercase tracking-tight">
+                      <div className="w-full h-full flex items-center justify-center rounded-full bg-transparent">
+                        <span className="text-white font-semibold text-[10px] uppercase tracking-tight">
                           {sym}
                         </span>
                       </div>
@@ -155,7 +176,7 @@ export default function Favorites({ favorites, setFavorites }) {
                 {/* ราคา + RSI + Signal */}
                 <div className="text-right leading-tight font-mono min-w-[75px]">
                   <div className="text-[15px] text-white font-black">
-                    {r?.lastClose ? `$${r.lastClose.toFixed(2)}` : "-"}
+                    {r?.lastClose && r.lastClose > 0 ? `$${r.lastClose.toFixed(2)}` : "-"}
                   </div>
                   <div
                     className={`text-[13px] font-bold ${
