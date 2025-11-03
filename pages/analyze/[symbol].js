@@ -1,4 +1,4 @@
-// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font + TP/SL Breakout v∞.11)
+// ✅ /pages/analyze/[symbol].js — Visionary Analyzer (Stock + Option + AI Entry Zone + Compact Font + TP/SL Breakout v∞.12)
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -25,25 +25,16 @@ function computeSmartTargetAndSL(data) {
   const nextRes = resistances[1] || firstRes * 1.05;
 
   // === เริ่มคำนวณ TP / SL ===
-  let tp = firstRes * 1.03; // TP เริ่มต้น: เหนือแนวต้านแรกเล็กน้อย
+  let tp = firstRes * 1.03;
   const volumeBoost = Math.min(volBoost, 3);
+  if (rsi > 60 && volumeBoost > 1.5) tp = nextRes * (1.02 + (rsi - 60) / 200);
+  if (lastClose > firstRes) tp = lastClose * (1.05 + (rsi - 50) / 300);
 
-  if (rsi > 60 && volumeBoost > 1.5) {
-    tp = nextRes * (1.02 + (rsi - 60) / 200);
-  }
-
-  // ถ้าราคาทะลุแนวต้านแล้ว → เลื่อน TP อัตโนมัติ
-  if (lastClose > firstRes) {
-    tp = lastClose * (1.05 + (rsi - 50) / 300);
-  }
-
-  // === SL ===
   let slFactor = 0.96;
   if (ema20 < ema50 && ema50 < ema200) slFactor = 0.93;
   if (rsi < 35) slFactor = 0.90;
   const stopLoss = lastClose * slFactor;
 
-  // === Confidence ===
   const confRaw =
     Math.abs(emaGap20_50 * 3) +
     Math.abs(emaGap50_200 * 2) +
@@ -51,7 +42,6 @@ function computeSmartTargetAndSL(data) {
     (rsi >= 45 && rsi <= 65 ? 10 : 0);
   const confidence = Math.min(99, Math.max(10, confRaw));
 
-  // === Reason ===
   let reason = "รอการยืนยันเพิ่มเติม";
   if (rsi > 70) reason = "RSI สูงเกินไป — ระวังแรงขาย";
   else if (rsi < 35) reason = "RSI ต่ำมาก — อาจมีรีบาวด์แรง";
@@ -192,7 +182,7 @@ function computeSignal({ lastClose, ema20, ema50, ema200, rsi, trend }) {
   return { action: "Hold", confidence: 50, reason: "สัญญาณเป็นกลาง" };
 }
 
-// ===== UI เดิม =====
+// ===== UI =====
 function Info({ label, value }) {
   return (
     <div className="rounded-lg border border-white/10 bg-[#141b2d] p-1.5 text-center">
@@ -257,6 +247,25 @@ function AISignalSection({ ind, sig, price, scanner, optionAI, mode }) {
           </div>
         </div>
       )}
+
+      {/* ✅ AI Entry Zone */}
+      <div className="bg-[#0f172a] rounded-xl border border-white/10 p-2 text-[11px] space-y-1">
+        <div className="text-emerald-400 font-bold text-[12px]">AI Entry Zone</div>
+        {rsi < 40 && "🔵 Oversold — รอการกลับตัว"}
+        {rsi >= 40 && rsi <= 60 && "🟢 โซนเข้าซื้อแนะนำ"}
+        {rsi > 60 && rsi <= 70 && "🟡 ถือรอดูแรงซื้อต่อเนื่อง"}
+        {rsi > 70 && "🔴 Overbought — อย่าเพิ่งเข้า"}
+        <div className="mt-2 h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
+          <div
+            className="h-1.5 rounded-full transition-all duration-500"
+            style={{
+              width: `${Math.min(Math.max(rsi, 0), 100)}%`,
+              background:
+                rsi < 40 ? "#3b82f6" : rsi <= 60 ? "#22c55e" : rsi <= 70 ? "#eab308" : "#ef4444",
+            }}
+          />
+        </div>
+      </div>
     </section>
   );
 }
