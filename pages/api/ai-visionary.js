@@ -1,4 +1,3 @@
-// ✅ Visionary AI Backend API — ใช้เรียก GPT-5 โดยตรง
 export default async function handler(req, res) {
   try {
     const { prompt } = await req.json();
@@ -14,7 +13,8 @@ export default async function handler(req, res) {
         messages: [
           {
             role: "system",
-            content: "คุณคือ Visionary AI — วิเคราะห์หุ้น ออปชั่น และแนวโน้มราคาอย่างแม่นยำ",
+            content:
+              "คุณคือ Visionary AI — วิเคราะห์หุ้น ออปชั่น และแนวโน้มการลงทุนได้แม่นยำสูงสุด",
           },
           { role: "user", content: prompt },
         ],
@@ -22,9 +22,11 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    res.status(200).json({ result: data.choices?.[0]?.message?.content || "ไม่มีคำตอบครับ" });
+    res.status(200).json({
+      result: data?.choices?.[0]?.message?.content || "ไม่มีคำตอบจาก AI",
+    });
   } catch (err) {
-    console.error("❌ AI Error:", err);
+    console.error("❌ Visionary AI Error:", err);
     res.status(500).json({ error: "AI Server Error" });
   }
 }
