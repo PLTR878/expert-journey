@@ -1,73 +1,60 @@
-// ✅ components/SettinMenu.js — หน้าการตั้งค่าหลัก (ไม่มีตัว g)
-import { useState, useEffect } from "react";
+// ✅ /components/SettinMenu.js — แทนที่ด้วย Visionary AI UI
+import { useState } from "react";
 
 export default function SettinMenu() {
-  const [theme, setTheme] = useState("dark");
-  const [autoScan, setAutoScan] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const savedAuto = localStorage.getItem("autoScan");
-    if (savedTheme) setTheme(savedTheme);
-    if (savedAuto) setAutoScan(savedAuto === "true");
-  }, []);
+  const askAI = async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setAnswer("");
 
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    localStorage.setItem("autoScan", autoScan);
-  }, [theme, autoScan]);
+    try {
+      const res = await fetch("/api/ai-visionary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const j = await res.json();
+      setAnswer(j.result);
+    } catch (err) {
+      setAnswer("❌ ไม่สามารถเชื่อมต่อกับ AI ได้");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white px-4 py-8">
-      <h1 className="text-[20px] font-extrabold mb-6 text-emerald-400 tracking-wide">
-        ⚙️ OriginX Settings
-      </h1>
+    <section className="min-h-screen bg-[#0b1220] text-gray-100 p-4">
+      <div className="max-w-xl mx-auto">
+        <h1 className="text-2xl font-bold text-emerald-400 text-center mb-4">
+          💬 Visionary AI (GPT-5)
+        </h1>
 
-      <div className="space-y-6">
-        {/* โหมดธีม */}
-        <div className="flex justify-between items-center">
-          <span className="text-[15px] font-bold text-gray-200">
-            Interface Theme
-          </span>
-          <select
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-            className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-1 text-sm"
-          >
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-          </select>
-        </div>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+          placeholder="พิมพ์คำถาม เช่น 'วิเคราะห์ PLTR แนวโน้ม 7 วัน'"
+          className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-sm mb-3 focus:ring-1 focus:ring-emerald-400"
+        />
 
-        {/* Auto Scan */}
-        <div className="flex justify-between items-center">
-          <span className="text-[15px] font-bold text-gray-200">
-            Auto Scan on Load
-          </span>
-          <button
-            onClick={() => setAutoScan((p) => !p)}
-            className={`px-4 py-1 rounded-lg text-sm font-extrabold ${
-              autoScan ? "bg-emerald-500 text-black" : "bg-gray-700 text-gray-300"
-            }`}
-          >
-            {autoScan ? "ON" : "OFF"}
-          </button>
-        </div>
+        <button
+          onClick={askAI}
+          disabled={loading}
+          className="w-full py-2 bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition"
+        >
+          {loading ? "⚙️ กำลังวิเคราะห์..." : "⚡ ถาม Visionary AI"}
+        </button>
 
-        {/* Reset */}
-        <div className="pt-6 border-t border-gray-700">
-          <button
-            onClick={() => {
-              localStorage.clear();
-              alert("✅ Settings & Cache Cleared!");
-              window.location.reload();
-            }}
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-extrabold py-2 rounded-xl transition-all"
-          >
-            Reset All Data
-          </button>
-        </div>
+        {answer && (
+          <div className="mt-4 bg-[#111827] border border-gray-700 rounded-lg p-3 text-sm whitespace-pre-line">
+            {answer}
+          </div>
+        )}
       </div>
-    </div>
+    </section>
   );
-              }
+            }
