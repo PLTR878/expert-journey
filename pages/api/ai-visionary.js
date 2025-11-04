@@ -1,7 +1,8 @@
+// ✅ /pages/api/ai-visionary.js
 export default async function handler(req, res) {
   try {
-    const { symbol = "PLTR" } = req.query;
-    const prompt = `วิเคราะห์หุ้น ${symbol} แบบละเอียด`;
+    const { symbol = "PLTR", question = "วิเคราะห์หุ้น" } = req.query;
+    const prompt = `${question} ${symbol} แบบละเอียด`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -12,15 +13,26 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "คุณคือผู้เชี่ยวชาญด้านหุ้นอเมริกา" },
+          { role: "system", content: "คุณคือผู้ช่วยด้านหุ้นและการลงทุนในตลาดสหรัฐ" },
           { role: "user", content: prompt },
         ],
       }),
     });
 
     const data = await response.json();
-    res.status(200).json({ success: true, reply: data.choices?.[0]?.message?.content || "ไม่มีข้อมูล" });
+
+    if (data.error) {
+      throw new Error(data.error.message || "OpenAI error");
+    }
+
+    res.status(200).json({
+      success: true,
+      reply: data.choices?.[0]?.message?.content || "❌ ไม่พบคำตอบจาก AI",
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({
+      success: false,
+      error: err.message || "Unknown error",
+    });
   }
 }
