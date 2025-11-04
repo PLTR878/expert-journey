@@ -1,9 +1,9 @@
-// ✅ /pages/index.js — Visionary Home (Smart Loader + Compact UI + Option AI Linked)
+// ✅ /pages/index.js — Visionary Home (AI Linked)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSwitcher from "../components/ScannerSwitcher";
-import SettinMenu from "../components/SettinMenu";
+import SettinMenu from "../components/SettinMenu"; // ✅ หน้าใหม่ของ AI
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -12,18 +12,15 @@ export default function Home() {
   const [optionAI, setOptionAI] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // ✅ โหลดแท็บล่าสุดจาก localStorage
   useEffect(() => {
-    const savedTab = localStorage.getItem("lastActiveTab");
-    if (savedTab) setActive(savedTab);
+    const saved = localStorage.getItem("lastActiveTab");
+    if (saved) setActive(saved);
   }, []);
 
-  // ✅ จำแท็บล่าสุดทุกครั้งที่เปลี่ยน
   useEffect(() => {
     localStorage.setItem("lastActiveTab", active);
   }, [active]);
 
-  // ✅ โหลดข้อมูลหุ้นต้นน้ำ (Visionary Batch)
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -37,10 +34,9 @@ export default function Home() {
     }
   }
 
-  // ✅ โหลดข้อมูล Option AI (เพื่อใช้ในหน้า Scanner หรือ Market)
   async function loadOptionAI() {
     try {
-      const res = await fetch("/api/visionary-option-ai?symbol=PLTR"); // ทดลองโหลดหุ้นหนึ่งตัวเพื่อ warmup
+      const res = await fetch("/api/visionary-option-ai?symbol=PLTR");
       const j = await res.json();
       setOptionAI(j);
     } catch (err) {
@@ -53,7 +49,6 @@ export default function Home() {
     loadOptionAI();
   }, []);
 
-  // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem("favorites");
@@ -63,7 +58,6 @@ export default function Home() {
     }
   }, []);
 
-  // ✅ บันทึก Favorites กลับเข้า localStorage
   useEffect(() => {
     try {
       localStorage.setItem("favorites", JSON.stringify(favorites));
@@ -72,14 +66,12 @@ export default function Home() {
     }
   }, [favorites]);
 
-  // ✅ เปลี่ยนแท็บ
   const go = (tab) => {
     setActive(tab);
     localStorage.setItem("lastActiveTab", tab);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ แสดงเนื้อหาหลัก
   const renderPage = () => {
     switch (active) {
       case "favorites":
@@ -103,24 +95,23 @@ export default function Home() {
       case "scan":
         return <ScannerSwitcher optionAI={optionAI} />;
       case "settings":
-        return <SettinMenu />;
+        return <SettinMenu />; // ✅ เชื่อมหน้า AI
       default:
         return <MarketSection />;
     }
   };
 
-  // ✅ Layout หลัก
   return (
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ แถบเมนูด้านล่าง */}
+      {/* ✅ เมนูด้านล่าง */}
       <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
         {[
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
-          { id: "settings", label: "Settings" },
+          { id: "settings", label: "AI Trade" }, // ✅ เปลี่ยนชื่อแท็บ
         ].map((t) => (
           <button
             key={t.id}
@@ -137,4 +128,4 @@ export default function Home() {
       </nav>
     </main>
   );
-          }
+  }
