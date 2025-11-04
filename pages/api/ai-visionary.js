@@ -1,8 +1,17 @@
-// ✅ /pages/api/ai-visionary.js — เชื่อมต่อ Visionary AI เต็มระบบ
+// ✅ /pages/api/ai-visionary.js — แก้ e.json is not a function
 export default async function handler(req, res) {
   try {
-    const { symbol = "PLTR", prompt = "วิเคราะห์แนวโน้มวันนี้" } =
-      req.method === "POST" ? await req.json() : req.query;
+    let symbol = "PLTR";
+    let prompt = "วิเคราะห์แนวโน้มวันนี้";
+
+    if (req.method === "POST") {
+      const body = req.body;
+      if (body.symbol) symbol = body.symbol;
+      if (body.prompt) prompt = body.prompt;
+    } else if (req.query.symbol) {
+      symbol = req.query.symbol;
+      prompt = req.query.prompt || prompt;
+    }
 
     // ✅ ดึงราคาหุ้นจริงจาก Yahoo
     const quoteRes = await fetch(
@@ -21,7 +30,7 @@ export default async function handler(req, res) {
 คำถาม: ${prompt}
 `;
 
-    // ✅ วิเคราะห์ด้วย GPT (ใช้ API Key ของพี่)
+    // ✅ วิเคราะห์ด้วย GPT
     const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
