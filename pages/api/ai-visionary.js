@@ -19,10 +19,7 @@ export default async function handler(req, res) {
             content:
               "คุณคือ Visionary AI นักลงทุนระดับโลก วิเคราะห์หุ้นและแนวโน้มราคาด้วยความแม่นยำสูงสุด",
           },
-          {
-            role: "user",
-            content: prompt,
-          },
+          { role: "user", content: prompt },
         ],
       }),
     });
