@@ -1,9 +1,9 @@
-// ✅ /pages/api/ai-visionary.js — Real AI Connection (OpenAI Linked)
+// ✅ /pages/api/ai-visionary.js — Visionary AI Analyzer
 export default async function handler(req, res) {
   try {
     const { symbol = "PLTR" } = req.query;
 
-    const prompt = `วิเคราะห์หุ้น ${symbol} แบบสั้นๆ สรุปแนวโน้ม ราคา เหตุผลสำคัญ และแนวทางการเทรดเบื้องต้น ภาษาไทยแบบเข้าใจง่าย`;
+    const prompt = `วิเคราะห์หุ้น ${symbol} แบบละเอียด บอกแนวโน้ม ราคาเป้าหมาย และจุดเข้าออก`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -14,28 +14,35 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "คุณคือ AI วิเคราะห์หุ้นขั้นเทพ" },
-          { role: "user", content: prompt },
+          {
+            role: "system",
+            content:
+              "คุณคือ Visionary AI นักลงทุนระดับโลก วิเคราะห์หุ้นและแนวโน้มราคาด้วยความแม่นยำสูงสุด",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
         ],
       }),
     });
 
     const data = await response.json();
 
-    const reply =
-      data?.choices?.[0]?.message?.content ||
-      "❌ ไม่สามารถเชื่อมต่อ AI ได้ในขณะนี้";
+    if (!response.ok) {
+      throw new Error(data.error?.message || "OpenAI API Error");
+    }
 
     res.status(200).json({
       success: true,
       symbol,
-      aiMessage: reply,
+      aiMessage: data.choices?.[0]?.message?.content || "❌ ไม่มีข้อความจาก AI",
     });
   } catch (err) {
-    console.error("AI Visionary Error:", err);
+    console.error("❌ AI Error:", err);
     res.status(500).json({
       success: false,
-      error: err.message,
+      error: err.message || "Unknown Error",
     });
   }
 }
