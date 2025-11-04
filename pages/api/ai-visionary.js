@@ -1,14 +1,26 @@
-// ✅ /pages/api/ai-visionary.js
+// ✅ /pages/api/ai-visionary.js — Visionary AI (Real Stock Data)
 export default async function handler(req, res) {
+  const { prompt = "", symbol = "PLTR" } = req.body;
+
   try {
-    // รับ symbol และข้อความจาก query หรือใช้ค่าเริ่มต้น
-    const { symbol = "PLTR", question = "วิเคราะห์หุ้น" } = req.query;
+    // 🔹 ดึงราคาจริงจาก quote API
+    const quoteRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/quote?symbol=${symbol}`);
+    const quote = await quoteRes.json();
 
-    // Prompt ที่ส่งให้ AI
-    const prompt = `${question} ${symbol} วิเคราะห์เชิงลึก หุ้นนี้แนวโน้มรายเดือน รายปี จุดเด่น ความเสี่ยง และโอกาสการเติบโต`;
+    const context = `
+    หุ้น: ${quote.name} (${quote.symbol})
+    ราคา: $${quote.price}
+    เปลี่ยนแปลง: ${quote.change}%
+    High: ${quote.high} / Low: ${quote.low}
+    ปริมาณ: ${quote.volume}
+    Market Cap: ${quote.marketCap}
+    เวลา: ${new Date(quote.time * 1000).toLocaleString()}
 
-    // เรียก OpenAI API
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    คำถามจากผู้ใช้: ${prompt}
+    โปรดวิเคราะห์แนวโน้ม (RSI, sentiment, และแนวรับแนวต้าน) สั้น 3 บรรทัด
+    `;
+
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -16,34 +28,18 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "คุณคือ Visionary AI ผู้ช่วยวิเคราะห์หุ้นระดับเทพ ใช้ภาษาไทยสั้น กระชับ ชัดเจน และให้เหตุผลเชิงลึก",
-          },
-          { role: "user", content: prompt },
-        ],
+        messages: [{ role: "user", content: context }],
       }),
     });
+    const data = await aiRes.json();
+    const answer = data.choices?.[0]?.message?.content || "❌ ไม่มีคำตอบ";
 
-    const data = await response.json();
-
-    // ตรวจว่ามีคำตอบจาก API หรือไม่
-    if (!data.choices || !data.choices[0]) {
-      throw new Error("ไม่มีคำตอบจาก OpenAI");
-    }
-
-    // ส่งผลลัพธ์กลับไปหน้าเว็บ
     res.status(200).json({
       success: true,
-      reply: data.choices[0].message.content,
+      result: answer,
+      quote,
     });
   } catch (err) {
-    console.error("❌ Visionary API Error:", err);
-    res.status(500).json({
-      success: false,
-      error: err.message || "เกิดข้อผิดพลาดในระบบ Visionary AI",
-    });
+    res.status(500).json({ success: false, error: err.message });
   }
 }
