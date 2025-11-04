@@ -1,4 +1,4 @@
-// ✅ /pages/index.js — Visionary Home (AI Linked)
+// ✅ /pages/index.js — Visionary Home (AI Linked + Twelve Data)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
@@ -12,6 +12,7 @@ export default function Home() {
   const [optionAI, setOptionAI] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // ✅ โหลดแท็บล่าสุดที่เปิดไว้
   useEffect(() => {
     const saved = localStorage.getItem("lastActiveTab");
     if (saved) setActive(saved);
@@ -21,6 +22,7 @@ export default function Home() {
     localStorage.setItem("lastActiveTab", active);
   }, [active]);
 
+  // ✅ โหลดหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -34,13 +36,26 @@ export default function Home() {
     }
   }
 
+  // ✅ โหลดข้อมูลจาก AI ใหม่ (Twelve Data + GPT)
   async function loadOptionAI() {
     try {
-      const res = await fetch("/api/visionary-option-ai?symbol=PLTR");
+      const res = await fetch("/api/ai-visionary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: "PLTR",
+          prompt: "แนวโน้มสัปดาห์นี้",
+        }),
+      });
       const j = await res.json();
-      setOptionAI(j);
+      if (j.success) {
+        setOptionAI(j);
+        console.log("✅ Visionary AI Response:", j);
+      } else {
+        console.warn("⚠️ Visionary AI Error:", j.error);
+      }
     } catch (err) {
-      console.error("⚠️ Option AI load error:", err);
+      console.error("❌ Visionary AI load error:", err);
     }
   }
 
@@ -49,6 +64,7 @@ export default function Home() {
     loadOptionAI();
   }, []);
 
+  // ✅ โหลด Favorites จาก localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem("favorites");
@@ -58,6 +74,7 @@ export default function Home() {
     }
   }, []);
 
+  // ✅ บันทึก Favorites ลง localStorage
   useEffect(() => {
     try {
       localStorage.setItem("favorites", JSON.stringify(favorites));
@@ -72,6 +89,7 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ✅ จัดการสลับหน้า
   const renderPage = () => {
     switch (active) {
       case "favorites":
@@ -95,12 +113,13 @@ export default function Home() {
       case "scan":
         return <ScannerSwitcher optionAI={optionAI} />;
       case "settings":
-        return <SettinMenu />; // ✅ เชื่อมหน้า AI
+        return <SettinMenu />; // ✅ หน้า AI Trade
       default:
         return <MarketSection />;
     }
   };
 
+  // ✅ ส่วนแสดงผลหลัก
   return (
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
@@ -111,7 +130,7 @@ export default function Home() {
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
-          { id: "settings", label: "AI Trade" }, // ✅ เปลี่ยนชื่อแท็บ
+          { id: "settings", label: "AI Trade" },
         ].map((t) => (
           <button
             key={t.id}
@@ -128,4 +147,4 @@ export default function Home() {
       </nav>
     </main>
   );
-  }
+                           }
