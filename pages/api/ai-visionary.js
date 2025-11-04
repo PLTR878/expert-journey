@@ -1,4 +1,4 @@
-// ✅ /pages/api/visionary-option-ai.js
+// ✅ Visionary Option AI — วิเคราะห์หุ้นรายตัวด้วย GPT-5
 import OpenAI from "openai";
 
 const client = new OpenAI({
@@ -10,13 +10,13 @@ export default async function handler(req, res) {
     const { symbol = "PLTR" } = req.query;
 
     const prompt = `
-      วิเคราะห์หุ้น ${symbol}:
-      - แนวโน้มระยะสั้น (2–7 วัน)
-      - แนวโน้มระยะกลาง (1–2 เดือน)
-      - แนวโน้มระยะยาว (6–12 เดือน)
-      - ราคาเป้าหมาย (TP)
-      - ความเสี่ยง และแนวรับแนวต้านที่สำคัญ
-      ตอบสั้น กระชับ พร้อมตัวเลขแนวรับ/แนวต้าน
+      วิเคราะห์หุ้น ${symbol} แบบมืออาชีพ:
+      • แนวโน้มระยะสั้น (2–7 วัน)
+      • แนวโน้มระยะกลาง (1–2 เดือน)
+      • แนวโน้มระยะยาว (6–12 เดือน)
+      • แนวรับ / แนวต้าน / ราคาเป้าหมาย (TP)
+      • คำแนะนำเข้าซื้อหรือถือ
+      ตอบสั้น กระชับ พร้อมราคาประมาณการ
     `;
 
     const response = await client.responses.create({
