@@ -1,4 +1,4 @@
-// ✅ /pages/api/ai-visionary.js — รุ่นแก้ "ไม่พบข้อมูลหุ้น"
+// ✅ /pages/api/ai-visionary.js — ใช้ Twelve Data + GPT วิเคราะห์หุ้น
 export default async function handler(req, res) {
   try {
     let symbol = "PLTR";
@@ -13,20 +13,21 @@ export default async function handler(req, res) {
       prompt = req.query.prompt || prompt;
     }
 
-    // ✅ ดึงราคาหุ้นจาก API ฟรี
-    const quoteRes = await fetch(
-      `https://financialmodelingprep.com/api/v3/quote/${symbol}?apikey=demo`
+    // ✅ ดึงข้อมูลหุ้นจาก Twelve Data
+    const stockRes = await fetch(
+      `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${process.env.TWELVE_API_KEY}`
     );
-    const quoteJson = await quoteRes.json();
-    const q = quoteJson[0];
-    if (!q)
+    const stockJson = await stockRes.json();
+
+    if (!stockJson || !stockJson.symbol)
       return res.status(404).json({ success: false, error: "ไม่พบข้อมูลหุ้น" });
 
     const summary = `
-หุ้น: ${q.name || symbol}
-ราคา: $${q.price} (${q.changesPercentage}%)
-สูงสุด/ต่ำสุด: ${q.dayHigh} / ${q.dayLow}
-ปริมาณ: ${q.volume}
+หุ้น: ${stockJson.name || symbol}
+ราคา: $${stockJson.price}
+เปลี่ยนแปลง: ${stockJson.percent_change}%
+สูงสุด/ต่ำสุด: ${stockJson.high} / ${stockJson.low}
+ปริมาณ: ${stockJson.volume}
 คำถาม: ${prompt}
 `;
 
@@ -53,12 +54,12 @@ export default async function handler(req, res) {
       success: true,
       quote: {
         symbol,
-        price: q.price,
-        change: q.changesPercentage,
+        price: stockJson.price,
+        change: stockJson.percent_change,
       },
       result,
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
-          }
+}
