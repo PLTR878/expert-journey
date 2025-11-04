@@ -1,8 +1,14 @@
-// ✅ Visionary Batch Scanner — v∞.51 (Stable Optimize + Price Sync)
-export default async function handler(req, res) {
-  const { batch = "1" } = req.query;
+// ✅ Visionary Batch Scanner + GPT-5 Analysis — v∞.52 Hybrid
+import OpenAI from "openai";
 
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export default async function handler(req, res) {
+  const { batch = "1", ai = "off" } = req.query;
   const BATCH_SIZE = 300;
+
   const listURLs = [
     "https://datahub.io/core/nasdaq-listings/r/nasdaq-listed.csv",
     "https://datahub.io/core/nyse-listings/r/nyse-listed.csv",
@@ -39,7 +45,6 @@ export default async function handler(req, res) {
   };
 
   try {
-    // ✅ รวม list หุ้น (เร็วขึ้นเล็กน้อย)
     let all = [];
     for (const url of listURLs) {
       const raw = await fetch(url, { cache: "no-store" }).then((r) => r.text());
@@ -87,18 +92,15 @@ export default async function handler(req, res) {
         aiScore += volSpike ? 10 : 0;
         aiScore = Math.max(0, Math.min(100, aiScore));
 
-        // ===== Quantum Filter =====
         if (!(last >= 2 && last <= 65)) continue;
         if (!Number.isFinite(volNow) || volNow < 200_000) continue;
         if (rsi >= 60) continue;
         if (trend !== "Up") continue;
         if (aiScore < 80) continue;
 
-        // ✅ ปรับฟิลด์ให้รองรับราคาหน้า OriginX
         results.push({
           symbol: s,
-          price: Number(last.toFixed(2)), // เพิ่มราคาตรงนี้ให้ UI อ่านได้
-          last: Number(last.toFixed(2)),
+          price: Number(last.toFixed(2)),
           rsi: Number(rsi.toFixed(1)),
           ema20: Number(ema20?.toFixed(2)),
           ema50: Number(ema50?.toFixed(2)),
@@ -109,18 +111,40 @@ export default async function handler(req, res) {
           change: Number(change.toFixed(2)),
         });
       } catch {}
-      // ✅ ลด delay ลงนิด (เร็วขึ้นแต่ยังปลอดภัย)
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise((r) => setTimeout(r, 60));
+    }
+
+    // ✅ หลังสแกนเสร็จ → ถ้า ai=on ให้ใช้ GPT-5 วิเคราะห์เพิ่มเติม
+    let aiSummary = null;
+    if (ai === "on" && results.length) {
+      const top5 = results.slice(0, 5).map((x) => x.symbol).join(", ");
+      const prompt = `
+        วิเคราะห์หุ้น ${top5} จากการสแกนเทคนิคอล:
+        - แนวโน้มโดยรวมของกลุ่ม
+        - ตัวไหนเด่นสุด และทำไม
+        - มุมมองระยะ 1-2 เดือน
+        ตอบสั้น กระชับ และให้ราคาเป้าหมายคร่าวๆ
+      `;
+      try {
+        const r = await client.responses.create({
+          model: "gpt-5",
+          input: prompt,
+        });
+        aiSummary = r.output_text;
+      } catch (e) {
+        aiSummary = "⚠️ GPT-5 วิเคราะห์ไม่สำเร็จ";
+      }
     }
 
     const done = i >= totalBatches;
     res.status(200).json({
       success: true,
       message: done ? "✅ Completed all batches!" : `✅ Finished Batch ${i}/${totalBatches}`,
-      nextBatch: done ? null : i + 1,
       totalSymbols: all.length,
       scanned: symbols.length,
       passedFilter: results.length,
+      nextBatch: done ? null : i + 1,
+      aiSummary, // 🔹 เพิ่มวิเคราะห์เชิงลึกจาก GPT-5
       results: results
         .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
         .slice(0, 100),
@@ -128,4 +152,4 @@ export default async function handler(req, res) {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-  }
+          }
