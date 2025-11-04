@@ -1,4 +1,4 @@
-// ✅ /pages/api/ai-visionary.js — แก้ e.json is not a function
+// ✅ /pages/api/ai-visionary.js — รุ่นแก้ "ไม่พบข้อมูลหุ้น"
 export default async function handler(req, res) {
   try {
     let symbol = "PLTR";
@@ -6,27 +6,27 @@ export default async function handler(req, res) {
 
     if (req.method === "POST") {
       const body = req.body;
-      if (body.symbol) symbol = body.symbol;
+      if (body.symbol) symbol = body.symbol.toUpperCase();
       if (body.prompt) prompt = body.prompt;
     } else if (req.query.symbol) {
-      symbol = req.query.symbol;
+      symbol = req.query.symbol.toUpperCase();
       prompt = req.query.prompt || prompt;
     }
 
-    // ✅ ดึงราคาหุ้นจริงจาก Yahoo
+    // ✅ ดึงราคาหุ้นจาก API ฟรี
     const quoteRes = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`
+      `https://financialmodelingprep.com/api/v3/quote/${symbol}?apikey=demo`
     );
     const quoteJson = await quoteRes.json();
-    const q = quoteJson?.quoteResponse?.result?.[0];
+    const q = quoteJson[0];
     if (!q)
       return res.status(404).json({ success: false, error: "ไม่พบข้อมูลหุ้น" });
 
     const summary = `
-หุ้น: ${q.shortName || symbol}
-ราคา: $${q.regularMarketPrice} (${q.regularMarketChangePercent}%)
-สูงสุด/ต่ำสุด: ${q.regularMarketDayHigh} / ${q.regularMarketDayLow}
-ปริมาณ: ${q.regularMarketVolume}
+หุ้น: ${q.name || symbol}
+ราคา: $${q.price} (${q.changesPercentage}%)
+สูงสุด/ต่ำสุด: ${q.dayHigh} / ${q.dayLow}
+ปริมาณ: ${q.volume}
 คำถาม: ${prompt}
 `;
 
@@ -53,12 +53,12 @@ export default async function handler(req, res) {
       success: true,
       quote: {
         symbol,
-        price: q.regularMarketPrice,
-        change: q.regularMarketChangePercent,
+        price: q.price,
+        change: q.changesPercentage,
       },
       result,
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
-}
+          }
