@@ -1,10 +1,11 @@
-// ✅ /pages/index.js — Visionary Home (with VIP Page Added)
+// ✅ /pages/index.js — Visionary Home (with VIP Page Integrated)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSwitcher from "../components/ScannerSwitcher";
 import SettinMenu from "../components/SettinMenu";
-import VipPage from "../components/VipPage"; // ✅ เพิ่มหน้า VIP
+import VipPage from "../components/VipPage";   // ✅ ใช้หน้า VIP
+import Register from "../components/Register"; // ✅ ใช้หน้าสมัครสมาชิก
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -12,6 +13,9 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [optionAI, setOptionAI] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const isVIP = localStorage.getItem("vip") === "true";
+  const hasUser = localStorage.getItem("USER_DATA") !== null;
 
   useEffect(() => {
     const savedTab = localStorage.getItem("lastActiveTab");
@@ -73,7 +77,11 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ✅ ควบคุมว่าลูกค้าจะได้ดูอะไร
   const renderPage = () => {
+    if (!hasUser) return <Register onRegister={() => go("vip")} />;
+    if (!isVIP) return <VipPage />;
+
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
@@ -96,7 +104,7 @@ export default function Home() {
       case "scan":
         return <ScannerSwitcher optionAI={optionAI} />;
       case "vip":
-        return <VipPage />; // ✅ หน้า VIP ใช้งานแล้ว
+        return <VipPage />;
       case "settings":
         return <SettinMenu />;
       default:
@@ -108,28 +116,30 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ เมนู */}
-      <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
-        {[
-          { id: "favorites", label: "Favorites" },
-          { id: "market", label: "OriginX" },
-          { id: "scan", label: "Scanner" },
-          { id: "vip", label: "VIP" },      // ✅ มาปุ่ม VIP แล้ว
-          { id: "settings", label: "Settings" },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => go(t.id)}
-            className={`transition-all px-2 ${
-              active === t.id
-                ? "text-emerald-400 border-b-2 border-emerald-400 pb-1"
-                : "text-gray-400 hover:text-emerald-300"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      {/* ✅ แถบเมนู */}
+      {isVIP && hasUser && (
+        <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
+          {[
+            { id: "favorites", label: "Favorites" },
+            { id: "market", label: "OriginX" },
+            { id: "scan", label: "Scanner" },
+            { id: "vip", label: "VIP" },
+            { id: "settings", label: "Settings" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => go(t.id)}
+              className={`transition-all px-2 ${
+                active === t.id
+                  ? "text-emerald-400 border-b-2 border-emerald-400 pb-1"
+                  : "text-gray-400 hover:text-emerald-300"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      )}
     </main>
   );
     }
