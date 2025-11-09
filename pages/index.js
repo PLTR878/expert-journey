@@ -1,5 +1,6 @@
 // ✅ /pages/index.js
 import { useState, useEffect } from "react";
+
 import Reister from "../components/Reister";
 import VipPae from "../components/VipPae";
 
@@ -15,22 +16,22 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ เช็คสถานะ Register / VIP
+  // ✅ โหลดสถานะสมาชิก
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const name = localStorage.getItem("username");
+    const username = localStorage.getItem("username");
     const vip = localStorage.getItem("vip");
 
-    if (!name) setStage("register");
+    if (!username) setStage("register");
     else if (vip !== "yes") setStage("vip");
     else setStage("app");
   }, []);
 
-  // ✅ โหลด Tab ล่าสุด
+  // ✅ โหลดแท็บล่าสุด
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const savedTab = localStorage.getItem("lastActiveTab");
-    if (savedTab) setActive(savedTab);
+    const saved = localStorage.getItem("lastActiveTab");
+    if (saved) setActive(saved);
   }, []);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function Home() {
     }
   }, [active]);
 
-  // ✅ โหลด Future Discovery
+  // ✅ โหลดหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -55,21 +56,27 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // ✅ ถ้ายังโหลดสถานะ ไม่ต้องแสดงอะไร
+  // ✅ หน้า Loading ครั้งแรก
   if (stage === "loading") return null;
 
-  // ✅ ยังไม่สมัคร → แสดงสมัครสมาชิก
-  if (stage === "register") return <Reister onRegister={() => setStage("vip")} />;
+  // ✅ ยังไม่สมัคร → หน้า Register
+  if (stage === "register")
+    return (
+      <Reister
+        onRegister={() => setStage("vip")}
+        goVip={() => setStage("app")}
+      />
+    );
 
-  // ✅ สมัครแล้วแต่ยังไม่ได้ VIP → ใส่โค้ด VIP
-  if (stage === "vip") return <VipPae onVIP={() => setStage("app")} />;
+  // ✅ สมัครแล้ว → แต่ยังไม่ VIP → ใส่รหัส VIP
+  if (stage === "vip")
+    return <VipPae onVIP={() => setStage("app")} />;
 
-  // ✅ ถ้า VIP แล้ว → แสดง App เต็ม
+  // ✅ ผ่าน VIP แล้ว → เข้าแอปปกติ
   const renderPage = () => {
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
-
       case "market":
         return (
           <MarketSection
@@ -86,13 +93,10 @@ export default function Home() {
             }
           />
         );
-
       case "scanner":
         return <ScannerSwitcher />;
-
       case "settings":
         return <SettinMenu />;
-
       default:
         return <MarketSection />;
     }
@@ -102,7 +106,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ เมนูด้านล่างแบบเดิม */}
+      {/* ✅ เมนู */}
       <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
         {[
           { id: "favorites", label: "Favorites" },
@@ -125,4 +129,4 @@ export default function Home() {
       </nav>
     </main>
   );
-      }
+}
