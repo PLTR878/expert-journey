@@ -19,12 +19,19 @@ export default function Home() {
   // ✅ โหลดสถานะสมาชิก
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const username = localStorage.getItem("username");
     const vip = localStorage.getItem("vip");
 
-    if (!username) setStage("register");
-    else if (vip !== "yes") setStage("vip");
-    else setStage("app");
+    if (!username) {
+      setStage("register"); // ✅ ยังไม่เคยสมัคร
+    } 
+    else if (vip !== "yes") {
+      setStage("vipCode"); // ✅ สมัครแล้ว แต่ยังไม่ได้ VIP Code
+    } 
+    else {
+      setStage("app"); // ✅ ใช้งานได้แล้ว
+    }
   }, []);
 
   // ✅ โหลดแท็บล่าสุด
@@ -56,27 +63,28 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // ✅ หน้า Loading ครั้งแรก
+  // ✅ Loading ครั้งแรก
   if (stage === "loading") return null;
 
-  // ✅ ยังไม่สมัคร → หน้า Register
+  // ✅ สมัครสมาชิกก่อน → ไม่เด้งไป VIP อีกแล้ว
   if (stage === "register")
     return (
       <Reister
-        onRegister={() => setStage("vip")}
-        goVip={() => setStage("app")}
+        onRegister={() => setStage("vipCode")}
+        goVip={() => setStage("vipCode")}
       />
     );
 
-  // ✅ สมัครแล้ว → แต่ยังไม่ VIP → ใส่รหัส VIP
-  if (stage === "vip")
+  // ✅ หน้ากรอก VIP CODE
+  if (stage === "vipCode")
     return <VipPae onVIP={() => setStage("app")} />;
 
-  // ✅ ผ่าน VIP แล้ว → เข้าแอปปกติ
+  // ✅ เข้าแอปปกติ
   const renderPage = () => {
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
+
       case "market":
         return (
           <MarketSection
@@ -93,10 +101,13 @@ export default function Home() {
             }
           />
         );
+
       case "scanner":
         return <ScannerSwitcher />;
+
       case "settings":
         return <SettinMenu />;
+
       default:
         return <MarketSection />;
     }
@@ -129,4 +140,4 @@ export default function Home() {
       </nav>
     </main>
   );
-}
+          
