@@ -1,11 +1,11 @@
-// ✅ /pages/index.js — Visionary Home (with VIP Page Integrated)
+// ✅ /pages/index.js — พร้อมใช้งาน VIP + Register + ไม่มี localStorage Error
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSwitcher from "../components/ScannerSwitcher";
 import SettinMenu from "../components/SettinMenu";
-import VipPage from "../components/VipPage";   // ✅ ใช้หน้า VIP
-import Register from "../components/Register"; // ✅ ใช้หน้าสมัครสมาชิก
+import VipPage from "../components/VipPage";
+import Register from "../components/Register";
 
 export default function Home() {
   const [active, setActive] = useState("market");
@@ -14,18 +14,32 @@ export default function Home() {
   const [optionAI, setOptionAI] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const isVIP = localStorage.getItem("vip") === "true";
-  const hasUser = localStorage.getItem("USER_DATA") !== null;
+  const [isVIP, setIsVIP] = useState(false);
+  const [hasUser, setHasUser] = useState(false);
 
+  // ✅ โหลดสถานะ VIP & USER จาก localStorage — แบบปลอดภัย SSR
   useEffect(() => {
-    const savedTab = localStorage.getItem("lastActiveTab");
-    if (savedTab) setActive(savedTab);
+    if (typeof window !== "undefined") {
+      setIsVIP(localStorage.getItem("vip") === "true");
+      setHasUser(localStorage.getItem("USER_DATA") !== null);
+    }
+  }, []);
+
+  // ✅ โหลดแท็บล่าสุด
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem("lastActiveTab");
+      if (savedTab) setActive(savedTab);
+    }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("lastActiveTab", active);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lastActiveTab", active);
+    }
   }, [active]);
 
+  // ✅ โหลดข้อมูลหุ้น
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -33,19 +47,20 @@ export default function Home() {
       const j = await res.json();
       setFutureDiscovery(j.results || []);
     } catch (err) {
-      console.error("❌ Discovery load error:", err);
+      console.error("Discovery Error:", err);
     } finally {
       setLoading(false);
     }
   }
 
+  // ✅ โหลด AI Option
   async function loadOptionAI() {
     try {
       const res = await fetch("/api/visionary-option-ai?symbol=PLTR");
       const j = await res.json();
       setOptionAI(j);
     } catch (err) {
-      console.error("⚠️ Option AI load error:", err);
+      console.error("Option Error:", err);
     }
   }
 
@@ -54,33 +69,33 @@ export default function Home() {
     loadOptionAI();
   }, []);
 
+  // ✅ Favorites Load & Save
   useEffect(() => {
-    try {
+    if (typeof window !== "undefined") {
       const saved = localStorage.getItem("favorites");
       if (saved) setFavorites(JSON.parse(saved));
-    } catch (e) {
-      console.error("❌ Load favorites error:", e);
     }
   }, []);
 
   useEffect(() => {
-    try {
+    if (typeof window !== "undefined") {
       localStorage.setItem("favorites", JSON.stringify(favorites));
-    } catch (e) {
-      console.error("❌ Save favorites error:", e);
     }
   }, [favorites]);
 
+  // ✅ เปลี่ยนหน้า
   const go = (tab) => {
     setActive(tab);
-    localStorage.setItem("lastActiveTab", tab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lastActiveTab", tab);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ ควบคุมว่าลูกค้าจะได้ดูอะไร
+  // ✅ เลือกว่าจะโชว์หน้าไหนตามสถานะ
   const renderPage = () => {
-    if (!hasUser) return <Register onRegister={() => go("vip")} />;
-    if (!isVIP) return <VipPage />;
+    if (!hasUser) return <Register onRegister={() => setHasUser(true)} />;
+    if (hasUser && !isVIP) return <VipPage onVIP={() => setIsVIP(true)} />;
 
     switch (active) {
       case "favorites":
@@ -94,9 +109,7 @@ export default function Home() {
             favorites={favorites}
             toggleFavorite={(sym) =>
               setFavorites((prev) =>
-                prev.includes(sym)
-                  ? prev.filter((x) => x !== sym)
-                  : [...prev, sym]
+                prev.includes(sym) ? prev.filter((x) => x !== sym) : [...prev, sym]
               )
             }
           />
@@ -104,7 +117,7 @@ export default function Home() {
       case "scan":
         return <ScannerSwitcher optionAI={optionAI} />;
       case "vip":
-        return <VipPage />;
+        return <VipPage onVIP={() => setIsVIP(true)} />;
       case "settings":
         return <SettinMenu />;
       default:
@@ -116,7 +129,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ แถบเมนู */}
+      {/* ✅ Menubar */}
       {isVIP && hasUser && (
         <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
           {[
