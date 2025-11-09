@@ -15,22 +15,40 @@ export default function Reister({ onRegister }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1220] flex flex-col justify-center items-center text-white px-8">
-      <h1 className="text-2xl font-bold mb-6">Create Account</h1>
+    <div className="min-h-screen bg-[#0b1220] flex flex-col justify-center items-center px-8 text-white">
 
-      <input
-        placeholder="Enter your name"
-        value={user}
-        onChange={(e) => setUser(e.target.value)}
-        className="bg-[#111827] w-full border border-white/10 px-4 py-2 rounded-xl mb-6"
-      />
+      {/* Header */}
+      <h1 className="text-[28px] font-bold mb-2 tracking-wide text-emerald-400">
+        Welcome
+      </h1>
+      <p className="text-gray-400 mb-10 text-[14px]">
+        Create your member profile to continue.
+      </p>
 
+      {/* Input box */}
+      <div className="w-full max-w-sm">
+        <label className="text-gray-300 text-sm mb-2 block">Display Name</label>
+        <input
+          placeholder="Ex. Tanasak Trader"
+          value={user}
+          onChange={(e) => setUser(e.target.value)}
+          className="w-full bg-[#111827] border border-white/10 focus:border-emerald-400 transition-all px-4 py-3 rounded-xl outline-none text-[14px]"
+        />
+      </div>
+
+      {/* Button */}
       <button
         onClick={register}
-        className="w-full bg-emerald-500 py-3 rounded-xl font-semibold"
+        className="w-full max-w-sm mt-8 bg-emerald-500 hover:bg-emerald-400 transition-all py-3 rounded-xl font-semibold text-black tracking-wide text-[15px]"
       >
-        Continue
+        Continue →
       </button>
+
+      {/* Footer tip */}
+      <p className="text-gray-500 text-[12px] mt-6">
+        Your account will be stored securely on this device.
+      </p>
+
     </div>
   );
-}
+      }
