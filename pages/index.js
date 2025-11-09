@@ -1,20 +1,12 @@
-// ✅ /pages/index.js — Visionary Home (Smart Loader + VIP Lock + Compact UI + Option AI Linked)
+// ✅ /pages/index.js — Visionary Home (with VIP Page Added)
 import { useState, useEffect } from "react";
 import MarketSection from "../components/MarketSection";
 import Favorites from "../components/Favorites";
 import ScannerSwitcher from "../components/ScannerSwitcher";
 import SettinMenu from "../components/SettinMenu";
+import VipPage from "../components/VipPage"; // ✅ เพิ่มหน้า VIP
 
 export default function Home() {
-
-  // ✅ ตรวจ VIP ก่อนเข้าแอป
-  useEffect(() => {
-    const vip = localStorage.getItem("vip_pass");
-    if (!vip) {
-      window.location.href = "/login";
-    }
-  }, []);
-
   const [active, setActive] = useState("market");
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
@@ -62,13 +54,17 @@ export default function Home() {
     try {
       const saved = localStorage.getItem("favorites");
       if (saved) setFavorites(JSON.parse(saved));
-    } catch {}
+    } catch (e) {
+      console.error("❌ Load favorites error:", e);
+    }
   }, []);
 
   useEffect(() => {
     try {
       localStorage.setItem("favorites", JSON.stringify(favorites));
-    } catch {}
+    } catch (e) {
+      console.error("❌ Save favorites error:", e);
+    }
   }, [favorites]);
 
   const go = (tab) => {
@@ -99,6 +95,8 @@ export default function Home() {
         );
       case "scan":
         return <ScannerSwitcher optionAI={optionAI} />;
+      case "vip":
+        return <VipPage />; // ✅ หน้า VIP ใช้งานแล้ว
       case "settings":
         return <SettinMenu />;
       default:
@@ -110,11 +108,13 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
+      {/* ✅ เมนู */}
       <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
         {[
           { id: "favorites", label: "Favorites" },
           { id: "market", label: "OriginX" },
           { id: "scan", label: "Scanner" },
+          { id: "vip", label: "VIP" },      // ✅ มาปุ่ม VIP แล้ว
           { id: "settings", label: "Settings" },
         ].map((t) => (
           <button
