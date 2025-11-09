@@ -11,21 +11,23 @@ export default function SettinMenu() {
   const logout = () => {
     localStorage.removeItem("logged");
     localStorage.removeItem("username");
-    window.location.href = "/";
+    window.location.reload();
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white px-5 pt-10">
-      <h1 className="text-[20px] font-semibold mb-6">Settings</h1>
+    <div className="min-h-screen bg-[#0b1220] text-white px-5 pt-8">
+      <h1 className="text-[20px] font-semibold mb-8">Settings</h1>
 
-      <div className="mb-10">
-        <p className="text-gray-400 text-[13px] mb-1">Current Account</p>
-        <p className="text-[16px] font-medium">{user || "Guest Mode"}</p>
+      <div className="bg-[#111827] p-4 rounded-lg border border-white/10 mb-8">
+        <p className="text-gray-400 text-[13px]">Current Account</p>
+        <p className="text-[16px] font-medium mt-1">
+          {user || "Guest Mode"}
+        </p>
       </div>
 
       <button
         onClick={logout}
-        className="w-full bg-red-500/80 hover:bg-red-500 transition-all py-3 rounded-lg text-[14px] font-medium"
+        className="w-full py-3 rounded-lg bg-red-500/80 hover:bg-red-500 transition text-[14px] font-medium"
       >
         Logout
       </button>
