@@ -1,32 +1,35 @@
 import { useState } from "react";
 
-export default function Reister({ onDone }) {
+export default function Reister({ onRegister }) {
   const [user, setUser] = useState("");
 
   const register = () => {
     if (!user.trim()) return;
-    localStorage.setItem("USER_DATA", user);
-    onDone(); // ✅ สมัครเสร็จไปหน้า VIP
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("username", user);
+      localStorage.setItem("vip", "");
+    }
+
+    onRegister();
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white px-6 py-20">
-      <h1 className="text-center text-2xl font-semibold text-emerald-400 mb-10">
-        Register Account
-      </h1>
+    <div className="min-h-screen bg-[#0b1220] flex flex-col justify-center items-center text-white px-8">
+      <h1 className="text-2xl font-bold mb-6">Create Account</h1>
 
       <input
-        placeholder="ตั้งชื่อผู้ใช้งานของคุณ"
-        className="w-full bg-[#111827] border border-white/10 rounded-xl px-4 py-3 mb-6 text-sm"
+        placeholder="Enter your name"
         value={user}
         onChange={(e) => setUser(e.target.value)}
+        className="bg-[#111827] w-full border border-white/10 px-4 py-2 rounded-xl mb-6"
       />
 
       <button
         onClick={register}
-        className="w-full bg-emerald-500 hover:bg-emerald-600 transition-all py-3 rounded-xl text-black font-bold"
+        className="w-full bg-emerald-500 py-3 rounded-xl font-semibold"
       >
-        Confirm Register
+        Continue
       </button>
     </div>
   );
