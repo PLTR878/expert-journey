@@ -5,32 +5,34 @@ export default function Reister({ onRegister, goVip }) {
   const [pass, setPass] = useState("");
 
   const [showLogin, setShowLogin] = useState(false);
+  const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
 
-  // ✅ สมัครสมาชิก → บันทึก + เปิดป๊อปอัพ Login ทันที
+  // สมัครสมาชิก
   const register = () => {
     if (!user.trim() || !pass.trim()) return;
 
     if (typeof window !== "undefined") {
       localStorage.setItem("username", user);
       localStorage.setItem("password", pass);
-      localStorage.setItem("vip", ""); // ยังไม่ VIP
+      localStorage.setItem("vip", ""); 
     }
 
-    onRegister();       // ยังอยู่หน้าเดิม
-    setShowLogin(true); // ✅ เปิดเข้าสู่ระบบทันที
+    onRegister();
+    setShowLogin(true); // เปิด Login ทันที
   };
 
-  // ✅ เข้าสู่ระบบ → เช็ครหัส
+  // เข้าสู่ระบบ
   const login = () => {
     if (typeof window !== "undefined") {
+      const savedUser = localStorage.getItem("username");
       const savedPass = localStorage.getItem("password");
 
-      if (loginPass.trim() === savedPass) {
+      if (loginUser.trim() === savedUser && loginPass.trim() === savedPass) {
         setShowLogin(false);
-        goVip(); // ✅ เด้งไปหน้า VIP CODE
+        goVip(); // ไปหน้า VIP
       } else {
-        alert("❌ รหัสผ่านไม่ถูกต้อง");
+        alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
       }
     }
   };
@@ -38,7 +40,6 @@ export default function Reister({ onRegister, goVip }) {
   return (
     <div className="min-h-screen bg-[#0b1220] flex flex-col justify-center items-center px-8 text-white font-bold">
 
-      {/* Header */}
       <h1 className="text-[30px] font-extrabold mb-2 tracking-wide text-white">Welcome</h1>
       <p className="text-gray-400 mb-10 text-[15px] font-normal">
         Create your secure member account.
@@ -67,7 +68,6 @@ export default function Reister({ onRegister, goVip }) {
         </div>
       </div>
 
-      {/* สมัคร */}
       <button
         onClick={register}
         className="w-full max-w-sm mt-10 bg-emerald-400 hover:bg-emerald-300 transition-all py-3 rounded-xl font-extrabold text-black tracking-wide text-[16px]"
@@ -75,7 +75,6 @@ export default function Reister({ onRegister, goVip }) {
         Continue →
       </button>
 
-      {/* เปิดป๊อป Login */}
       <button
         onClick={() => setShowLogin(true)}
         className="mt-6 text-emerald-300 hover:text-emerald-200 text-[14px] font-normal"
@@ -83,15 +82,22 @@ export default function Reister({ onRegister, goVip }) {
         Already have an account? Login
       </button>
 
-      {/* ✅ POPUP LOGIN */}
       {showLogin && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center px-8">
           <div className="bg-[#111827] w-full max-w-sm p-6 rounded-2xl text-white">
+
             <h2 className="text-xl font-extrabold mb-4 text-center">เข้าสู่ระบบ</h2>
 
             <input
+              placeholder="ชื่อผู้ใช้"
+              value={loginUser}
+              onChange={(e) => setLoginUser(e.target.value)}
+              className="w-full bg-[#0d1320] border border-white/10 px-4 py-3 rounded-xl outline-none text-[15px] mb-4"
+            />
+
+            <input
               type="password"
-              placeholder="กรอกรหัสผ่านของคุณ"
+              placeholder="รหัสผ่าน"
               value={loginPass}
               onChange={(e) => setLoginPass(e.target.value)}
               className="w-full bg-[#0d1320] border border-white/10 px-4 py-3 rounded-xl outline-none text-[15px] mb-6"
@@ -110,9 +116,11 @@ export default function Reister({ onRegister, goVip }) {
             >
               ยกเลิก
             </button>
+
           </div>
         </div>
       )}
+
     </div>
   );
-              }
+          }
