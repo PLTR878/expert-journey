@@ -1,70 +1,50 @@
-// ✅ /components/SettinMenu.js — Visionary AI Trade
 import { useState } from "react";
 
-export default function SettinMenu() {
-  const [symbol, setSymbol] = useState("PLTR");
-  const [prompt, setPrompt] = useState("แนวโน้มสัปดาห์นี้");
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+export default function LoginPage() {
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+  const [msg, setMsg] = useState("");
 
-  const askAI = async () => {
-    setLoading(true);
-    setData(null);
-    try {
-      const res = await fetch("/api/ai-visionary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbol, prompt }),
-      });
-      const j = await res.json();
-      setData(j);
-    } catch (err) {
-      setData({ success: false, error: "❌ เชื่อมต่อไม่สำเร็จ" });
+  const login = () => {
+    if (user === "admin" && pass === "1234") {
+      localStorage.setItem("logged", "yes");
+      setMsg("✅ เข้าสู่ระบบสำเร็จ");
+    } else {
+      setMsg("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
     }
-    setLoading(false);
   };
 
   return (
-    <section className="min-h-screen bg-[#0b1220] text-gray-100 p-4">
-      <div className="max-w-xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold text-emerald-400 text-center">
-          💹 Visionary AI Trade
-        </h1>
+    <section className="min-h-screen bg-[#0b1220] text-white p-6">
+      <h1 className="text-2xl text-center font-bold mb-6 text-emerald-400">
+        🔐 เข้าสู่ระบบ
+      </h1>
 
-        <input
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          className="w-full bg-[#111827] border border-gray-700 p-2 rounded-md text-center font-bold"
-          placeholder="เช่น PLTR"
-        />
+      <input
+        value={user}
+        onChange={(e) => setUser(e.target.value)}
+        placeholder="Username"
+        className="w-full p-3 rounded bg-[#111827] border border-gray-600 mb-3"
+      />
 
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
-          className="w-full bg-[#0f172a] border border-gray-700 rounded-md p-3 text-sm"
-          placeholder="เช่น วิเคราะห์แนวโน้ม 7 วัน"
-        />
+      <input
+        type="password"
+        value={pass}
+        onChange={(e) => setPass(e.target.value)}
+        placeholder="Password"
+        className="w-full p-3 rounded bg-[#111827] border border-gray-600 mb-3"
+      />
 
-        <button
-          onClick={askAI}
-          disabled={loading}
-          className="w-full py-2 bg-emerald-500/80 hover:bg-emerald-500 rounded-md font-bold text-white"
-        >
-          {loading ? "⏳ กำลังวิเคราะห์..." : "⚡ ถาม Visionary AI"}
-        </button>
+      <button
+        onClick={login}
+        className="w-full py-3 bg-emerald-500/80 hover:bg-emerald-500 rounded text-white font-bold"
+      >
+        Login
+      </button>
 
-        {data && (
-          <div className="bg-[#111827] border border-gray-700 rounded-lg p-3 mt-4 text-sm whitespace-pre-line">
-            {data.quote && (
-              <div className="text-center text-emerald-400 font-bold mb-2">
-                {data.quote.symbol} ราคา ${data.quote.price} ({data.quote.change}%)
-              </div>
-            )}
-            <div>{data.result || data.error}</div>
-          </div>
-        )}
-      </div>
+      {msg && (
+        <p className="text-center mt-4 text-sm text-gray-300">{msg}</p>
+      )}
     </section>
   );
-            }
+          }
