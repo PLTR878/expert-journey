@@ -1,8 +1,11 @@
 import { useState } from "react";
 
-export default function Reister({ onRegister }) {
+export default function Reister({ onRegister, goVip }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
+
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginPass, setLoginPass] = useState("");
 
   const register = () => {
     if (!user.trim() || !pass.trim()) return;
@@ -14,6 +17,18 @@ export default function Reister({ onRegister }) {
     }
 
     onRegister();
+  };
+
+  const login = () => {
+    if (typeof window !== "undefined") {
+      const savedPass = localStorage.getItem("password");
+      if (loginPass.trim() === savedPass) {
+        setShowLogin(false);
+        goVip(); // ✅ เด้งไปหน้า VIP
+      } else {
+        alert("❌ รหัสไม่ถูกต้อง");
+      }
+    }
   };
 
   return (
@@ -29,11 +44,8 @@ export default function Reister({ onRegister }) {
 
       <div className="w-full max-w-sm space-y-6">
 
-        {/* Username */}
         <div>
-          <label className="text-gray-300 text-sm mb-2 block">
-            Display Name
-          </label>
+          <label className="text-gray-300 text-sm mb-2 block">Display Name</label>
           <input
             placeholder="Ex. VisionTrader"
             value={user}
@@ -42,11 +54,8 @@ export default function Reister({ onRegister }) {
           />
         </div>
 
-        {/* Password */}
         <div>
-          <label className="text-gray-300 text-sm mb-2 block">
-            Password
-          </label>
+          <label className="text-gray-300 text-sm mb-2 block">Password</label>
           <input
             type="password"
             placeholder="Create a secure password"
@@ -57,7 +66,6 @@ export default function Reister({ onRegister }) {
         </div>
       </div>
 
-      {/* Button */}
       <button
         onClick={register}
         className="w-full max-w-sm mt-10 bg-emerald-400 hover:bg-emerald-300 transition-all py-3 rounded-xl font-extrabold text-black tracking-wide text-[16px]"
@@ -65,10 +73,44 @@ export default function Reister({ onRegister }) {
         Continue →
       </button>
 
-      <p className="text-gray-500 text-[12px] mt-6 font-normal">
-        Your account is stored securely in this device only.
-      </p>
+      {/* ปุ่มเข้าสู่ระบบ */}
+      <button
+        onClick={() => setShowLogin(true)}
+        className="mt-6 text-emerald-300 hover:text-emerald-200 text-[14px] font-normal"
+      >
+        Already have an account? Login
+      </button>
 
+      {/* POPUP LOGIN */}
+      {showLogin && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center px-8">
+          <div className="bg-[#111827] w-full max-w-sm p-6 rounded-2xl">
+            <h2 className="text-xl font-extrabold mb-4 text-center">Login</h2>
+
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={loginPass}
+              onChange={(e) => setLoginPass(e.target.value)}
+              className="w-full bg-[#0d1320] border border-white/10 px-4 py-3 rounded-xl outline-none text-[15px] mb-6"
+            />
+
+            <button
+              onClick={login}
+              className="w-full bg-emerald-400 text-black py-3 rounded-xl font-bold text-[15px]"
+            >
+              Enter VIP →
+            </button>
+
+            <button
+              onClick={() => setShowLogin(false)}
+              className="text-gray-400 hover:text-gray-200 mt-4 w-full text-center text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
-    }
+              }
