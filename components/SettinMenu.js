@@ -3,12 +3,14 @@ import { useState, useEffect } from "react";
 export default function SettinMenu() {
   const [theme, setTheme] = useState("dark");
   const [autoScan, setAutoScan] = useState(false);
+  const [username, setUsername] = useState("Guest");
+  const [isVip, setIsVip] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "dark";
-    const savedAuto = localStorage.getItem("autoScan") === "true";
-    setTheme(savedTheme);
-    setAutoScan(savedAuto);
+    setTheme(localStorage.getItem("theme") || "dark");
+    setAutoScan(localStorage.getItem("autoScan") === "true");
+    setUsername(localStorage.getItem("username") || "Guest");
+    setIsVip(localStorage.getItem("vip") === "true");
   }, []);
 
   const toggleTheme = (val) => {
@@ -28,17 +30,37 @@ export default function SettinMenu() {
   };
 
   const logout = () => {
-    localStorage.removeItem("logged");
     localStorage.removeItem("username");
+    localStorage.removeItem("vip");
     window.location.reload();
   };
 
   return (
     <div className="min-h-screen bg-[#0b1220] text-white px-6 py-10">
 
-      <h1 className="text-[20px] font-semibold mb-8 text-emerald-400 flex items-center gap-2">
+      {/* Title */}
+      <h1 className="text-[20px] font-semibold mb-6 text-emerald-400 flex items-center gap-2">
         ⚙️ OriginX Settings
       </h1>
+
+      {/* User Status */}
+      <div className="mb-8 bg-[#111827] border border-white/10 rounded-xl p-4">
+        <p className="text-gray-300 text-sm mb-1">Signed in as</p>
+        <p className="text-[16px] font-semibold text-white">{username}</p>
+        <p className={`text-sm mt-1 ${isVip ? "text-yellow-400" : "text-gray-500"}`}>
+          {isVip ? "🌟 VIP Member" : "Guest User"}
+        </p>
+      </div>
+
+      {/* VIP Upgrade Button */}
+      {!isVip && (
+        <button
+          onClick={() => (window.location.href = "/vip")}
+          className="w-full bg-yellow-500/90 hover:bg-yellow-600 transition-all py-3 rounded-xl text-black font-semibold mb-8"
+        >
+          อัปเกรดเป็น VIP ⭐
+        </button>
+      )}
 
       {/* Theme */}
       <div className="mb-6">
@@ -54,7 +76,7 @@ export default function SettinMenu() {
       </div>
 
       {/* Auto Scan */}
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-8 flex justify-between items-center">
         <span className="text-gray-300 text-sm">Auto Scan on Load</span>
         <button
           onClick={toggleAutoScan}
@@ -66,7 +88,7 @@ export default function SettinMenu() {
         </button>
       </div>
 
-      {/* Reset */}
+      {/* Reset Data */}
       <button
         onClick={resetData}
         className="w-full bg-red-500/90 hover:bg-red-600 transition-all py-3 rounded-xl text-white font-semibold mb-10"
@@ -81,7 +103,6 @@ export default function SettinMenu() {
       >
         Logout
       </button>
-
     </div>
   );
-        }
+    }
