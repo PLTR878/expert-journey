@@ -2,12 +2,14 @@ import { useState } from "react";
 
 export default function Reister({ onRegister }) {
   const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
 
   const register = () => {
-    if (!user.trim()) return;
+    if (!user.trim() || !pass.trim()) return;
 
     if (typeof window !== "undefined") {
       localStorage.setItem("username", user);
+      localStorage.setItem("password", pass);
       localStorage.setItem("vip", "");
     }
 
@@ -15,40 +17,58 @@ export default function Reister({ onRegister }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1220] flex flex-col justify-center items-center px-8 text-white">
+    <div className="min-h-screen bg-[#0b1220] flex flex-col justify-center items-center px-8 text-white font-bold">
 
       {/* Header */}
-      <h1 className="text-[28px] font-bold mb-2 tracking-wide text-emerald-400">
+      <h1 className="text-[30px] font-extrabold mb-2 tracking-wide text-white">
         Welcome
       </h1>
-      <p className="text-gray-400 mb-10 text-[14px]">
-        Create your member profile to continue.
+      <p className="text-gray-400 mb-10 text-[15px] font-normal">
+        Create your secure member account.
       </p>
 
-      {/* Input box */}
-      <div className="w-full max-w-sm">
-        <label className="text-gray-300 text-sm mb-2 block">Display Name</label>
-        <input
-          placeholder="Ex. Tanasak Trader"
-          value={user}
-          onChange={(e) => setUser(e.target.value)}
-          className="w-full bg-[#111827] border border-white/10 focus:border-emerald-400 transition-all px-4 py-3 rounded-xl outline-none text-[14px]"
-        />
+      <div className="w-full max-w-sm space-y-6">
+
+        {/* Username */}
+        <div>
+          <label className="text-gray-300 text-sm mb-2 block">
+            Display Name
+          </label>
+          <input
+            placeholder="Ex. VisionTrader"
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            className="w-full bg-[#111827] border border-white/10 focus:border-emerald-400 transition-all px-4 py-3 rounded-xl outline-none text-[15px] font-medium"
+          />
+        </div>
+
+        {/* Password */}
+        <div>
+          <label className="text-gray-300 text-sm mb-2 block">
+            Password
+          </label>
+          <input
+            type="password"
+            placeholder="Create a secure password"
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            className="w-full bg-[#111827] border border-white/10 focus:border-emerald-400 transition-all px-4 py-3 rounded-xl outline-none text-[15px] font-medium"
+          />
+        </div>
       </div>
 
       {/* Button */}
       <button
         onClick={register}
-        className="w-full max-w-sm mt-8 bg-emerald-500 hover:bg-emerald-400 transition-all py-3 rounded-xl font-semibold text-black tracking-wide text-[15px]"
+        className="w-full max-w-sm mt-10 bg-emerald-400 hover:bg-emerald-300 transition-all py-3 rounded-xl font-extrabold text-black tracking-wide text-[16px]"
       >
         Continue →
       </button>
 
-      {/* Footer tip */}
-      <p className="text-gray-500 text-[12px] mt-6">
-        Your account will be stored securely on this device.
+      <p className="text-gray-500 text-[12px] mt-6 font-normal">
+        Your account is stored securely in this device only.
       </p>
 
     </div>
   );
-      }
+    }
