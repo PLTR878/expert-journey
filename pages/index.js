@@ -1,4 +1,3 @@
-// ✅ /pages/index.js
 import { useState, useEffect } from "react";
 
 import Reister from "../components/Reister";
@@ -16,31 +15,16 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ โหลดสถานะสมาชิก
   useEffect(() => {
     if (typeof window === "undefined") return;
     const username = localStorage.getItem("username");
     const vip = localStorage.getItem("vip");
 
     if (!username) setStage("register");
-    else if (vip !== "yes") setStage("vipCode");
+    else if (vip !== "yes") setStage("vip");
     else setStage("app");
   }, []);
 
-  // ✅ โหลดแท็บล่าสุด
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("lastActiveTab");
-    if (saved) setActive(saved);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("lastActiveTab", active);
-    }
-  }, [active]);
-
-  // ✅ โหลดหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -56,18 +40,19 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // ✅ หน้า Loading ครั้งแรก
   if (stage === "loading") return null;
 
-  // ✅ ยังไม่สมัคร → หน้า Register
   if (stage === "register")
-    return <Reister onRegister={() => setStage("vipCode")} />;
+    return (
+      <Reister
+        onRegister={() => setStage("register")} // ✅ สมัครเสร็จยังคงอยู่หน้าเดิม
+        goVip={() => setStage("vip")} // ✅ ลูกค้า login → ไป VIP
+      />
+    );
 
-  // ✅ สมัครแล้ว → ต้องใส่ VIP CODE ก่อนเข้า
-  if (stage === "vipCode")
+  if (stage === "vip")
     return <VipPae onVIP={() => setStage("app")} />;
 
-  // ✅ ผ่าน VIP แล้ว → เข้าแอปปกติ
   const renderPage = () => {
     switch (active) {
       case "favorites":
@@ -101,7 +86,6 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ เมนู */}
       <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
         {[
           { id: "favorites", label: "Favorites" },
@@ -124,4 +108,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+        }
