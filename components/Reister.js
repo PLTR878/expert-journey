@@ -20,12 +20,11 @@ export default function Reister({ goVip }) {
 
   const login = () => {
     const saved = JSON.parse(localStorage.getItem("account"));
-
     if (!saved) return alert("⚠️ ยังไม่มีบัญชีอยู่ในเครื่องนี้");
 
     if (loginUser.trim() === saved.username && loginPass.trim() === saved.password) {
       setShowLogin(false);
-      goVip();
+      goVip(); // ✅ เข้า VIP
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
     }
@@ -34,12 +33,8 @@ export default function Reister({ goVip }) {
   return (
     <div className="min-h-screen bg-[#0b1220] flex flex-col justify-center items-center px-8 text-white font-bold">
 
-      <h1 className="text-[30px] font-extrabold mb-2 tracking-wide text-white">
-        Welcome
-      </h1>
-      <p className="text-gray-400 mb-10 text-[15px] font-normal">
-        Create your secure member account.
-      </p>
+      <h1 className="text-[30px] font-extrabold mb-2 tracking-wide text-white">Welcome</h1>
+      <p className="text-gray-400 mb-10 text-[15px] font-normal">Create your secure member account.</p>
 
       <div className="w-full max-w-sm space-y-6">
         <div>
