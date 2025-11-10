@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function Reister({ onRegister, goVip }) {
+export default function Reister({ goVip }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
 
@@ -11,23 +11,21 @@ export default function Reister({ onRegister, goVip }) {
   const register = () => {
     if (!user.trim() || !pass.trim()) return;
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("username", user);
-      localStorage.setItem("password", pass);
-      localStorage.setItem("vip", "");
-    }
+    const account = { username: user.trim(), password: pass.trim() };
+    localStorage.setItem("account", JSON.stringify(account));
+    localStorage.setItem("vip", "");
 
-    alert("✅ สมัครสมาชิกสำเร็จ\nกด 'เข้าสู่ระบบ' เพื่อเข้าใช้งาน");
+    alert("✅ สมัครสมาชิกสำเร็จแล้ว\nกด 'เข้าสู่ระบบ' เพื่อเข้าใช้งาน");
   };
 
   const login = () => {
-    const savedUser = localStorage.getItem("username");
-    const savedPass = localStorage.getItem("password");
+    const saved = JSON.parse(localStorage.getItem("account"));
 
-    if (loginUser.trim() === savedUser && loginPass.trim() === savedPass) {
-      localStorage.setItem("vip", "");
+    if (!saved) return alert("⚠️ ยังไม่มีบัญชีอยู่ในเครื่องนี้");
+
+    if (loginUser.trim() === saved.username && loginPass.trim() === saved.password) {
       setShowLogin(false);
-      goVip(); // ไปหน้าใส่โค้ด VIP
+      goVip();
     } else {
       alert("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
     }
@@ -47,7 +45,7 @@ export default function Reister({ onRegister, goVip }) {
         <div>
           <label className="text-gray-300 text-sm mb-2 block">Username</label>
           <input
-            placeholder="Ex. TanasakTrader"
+            placeholder="Ex. Trader2543"
             value={user}
             onChange={(e) => setUser(e.target.value)}
             className="w-full bg-[#111827] border border-white/10 px-4 py-3 rounded-xl"
@@ -118,4 +116,4 @@ export default function Reister({ onRegister, goVip }) {
       )}
     </div>
   );
-    }
+              }
