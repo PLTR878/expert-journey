@@ -14,43 +14,35 @@ export default function Home() {
   const [favorites, setFavorites] = useState([]);
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState("");
 
-  // ✅ โหลดสถานะสมาชิก + VIP + Favorites (ถาวร)
+  // ✅ โหลดสถานะสมาชิก
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const user = localStorage.getItem("username");
+    const u = localStorage.getItem("username");
     const vip = localStorage.getItem("vip");
-    const savedFav = localStorage.getItem("favorites");
 
-    if (savedFav) setFavorites(JSON.parse(savedFav));
+    if (u) setUsername(u);
 
-    if (!user) setStage("register");
+    if (!u) setStage("register");
     else if (vip !== "yes") setStage("vip");
     else setStage("app");
   }, []);
 
-  // ✅ บันทึก Favorites กลับลง LocalStorage ทุกครั้งที่เปลี่ยน
+  // ✅ โหลด Favorites เฉพาะของ user
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("favorites", JSON.stringify(favorites));
-    }
-  }, [favorites]);
+    if (!username) return;
+    const saved = localStorage.getItem(`favorites_${username}`);
+    if (saved) setFavorites(JSON.parse(saved));
+  }, [username]);
 
-  // ✅ โหลดแท็บล่าสุด
+  // ✅ บันทึก Favorites แบบแยก user
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("lastActiveTab");
-    if (saved) setActive(saved);
-  }, []);
+    if (!username) return;
+    localStorage.setItem(`favorites_${username}`, JSON.stringify(favorites));
+  }, [favorites, username]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("lastActiveTab", active);
-    }
-  }, [active]);
-
-  // ✅ โหลดหุ้นต้นน้ำ
+  // ✅ โหลดหุ้น AI Discovery
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -61,26 +53,29 @@ export default function Home() {
       setLoading(false);
     }
   }
-
   useEffect(() => {
     loadDiscovery();
   }, []);
 
-  // ✅ แสดงหน้าเหมาะสมกับสถานะ
   if (stage === "loading") return null;
 
+  // ✅ สมัครแล้วยังอยู่หน้าเดิม
   if (stage === "register")
-    return <Reister onRegister={() => setStage("vip")} goVip={() => setStage("app")} />;
+    return (
+      <Reister
+        onRegister={() => setStage("register")}
+        goVip={() => setStage("vip")}
+      />
+    );
 
-  if (stage === "vip")
-    return <VipPae onVIP={() => setStage("app")} />;
+  // ✅ หน้า VIP
+  if (stage === "vip") return <VipPae onVIP={() => setStage("app")} />;
 
-  // ✅ แอปจริงหลังผ่าน VIP
+  // ✅ หลัง VIP → เข้า App
   const renderPage = () => {
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
-
       case "market":
         return (
           <MarketSection
@@ -89,7 +84,7 @@ export default function Home() {
             rows={futureDiscovery}
             favorites={favorites}
             toggleFavorite={(sym) =>
-              setFavorites(prev =>
+              setFavorites((prev) =>
                 prev.includes(sym)
                   ? prev.filter((x) => x !== sym)
                   : [...prev, sym]
@@ -97,13 +92,10 @@ export default function Home() {
             }
           />
         );
-
       case "scanner":
         return <ScannerSwitcher />;
-
       case "settings":
         return <SettinMenu />;
-
       default:
         return <MarketSection />;
     }
