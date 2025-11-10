@@ -15,16 +15,42 @@ export default function Home() {
   const [futureDiscovery, setFutureDiscovery] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // ✅ โหลดสถานะสมาชิก + VIP + Favorites (ถาวร)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const username = localStorage.getItem("username");
-    const vip = localStorage.getItem("vip");
 
-    if (!username) setStage("register");
+    const user = localStorage.getItem("username");
+    const vip = localStorage.getItem("vip");
+    const savedFav = localStorage.getItem("favorites");
+
+    if (savedFav) setFavorites(JSON.parse(savedFav));
+
+    if (!user) setStage("register");
     else if (vip !== "yes") setStage("vip");
     else setStage("app");
   }, []);
 
+  // ✅ บันทึก Favorites กลับลง LocalStorage ทุกครั้งที่เปลี่ยน
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+    }
+  }, [favorites]);
+
+  // ✅ โหลดแท็บล่าสุด
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("lastActiveTab");
+    if (saved) setActive(saved);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lastActiveTab", active);
+    }
+  }, [active]);
+
+  // ✅ โหลดหุ้นต้นน้ำ
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -40,23 +66,21 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
+  // ✅ แสดงหน้าเหมาะสมกับสถานะ
   if (stage === "loading") return null;
 
   if (stage === "register")
-    return (
-      <Reister
-        onRegister={() => setStage("register")} // ✅ สมัครเสร็จยังคงอยู่หน้าเดิม
-        goVip={() => setStage("vip")} // ✅ ลูกค้า login → ไป VIP
-      />
-    );
+    return <Reister onRegister={() => setStage("vip")} goVip={() => setStage("app")} />;
 
   if (stage === "vip")
     return <VipPae onVIP={() => setStage("app")} />;
 
+  // ✅ แอปจริงหลังผ่าน VIP
   const renderPage = () => {
     switch (active) {
       case "favorites":
         return <Favorites favorites={favorites} setFavorites={setFavorites} />;
+
       case "market":
         return (
           <MarketSection
@@ -65,7 +89,7 @@ export default function Home() {
             rows={futureDiscovery}
             favorites={favorites}
             toggleFavorite={(sym) =>
-              setFavorites((prev) =>
+              setFavorites(prev =>
                 prev.includes(sym)
                   ? prev.filter((x) => x !== sym)
                   : [...prev, sym]
@@ -73,10 +97,13 @@ export default function Home() {
             }
           />
         );
+
       case "scanner":
         return <ScannerSwitcher />;
+
       case "settings":
         return <SettinMenu />;
+
       default:
         return <MarketSection />;
     }
@@ -108,4 +135,4 @@ export default function Home() {
       </nav>
     </main>
   );
-        }
+          }
