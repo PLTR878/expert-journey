@@ -17,9 +17,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
 
-  // ✅ โหลดสถานะสมาชิก
+  // ✅ โหลดสถานะสมาชิกตอนเปิดแอป
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const account = JSON.parse(localStorage.getItem("account"));
     const vip = localStorage.getItem("vip");
 
@@ -30,20 +31,20 @@ export default function Home() {
     else setStage("app");
   }, []);
 
-  // ✅ โหลด Favorites เฉพาะ user
+  // ✅ โหลด Favorites เฉพาะของ user
   useEffect(() => {
     if (!username) return;
     const saved = localStorage.getItem(`favorites_${username}`);
     if (saved) setFavorites(JSON.parse(saved));
   }, [username]);
 
-  // ✅ บันทึก Favorites แยก user
+  // ✅ บันทึก Favorites แยกตาม user
   useEffect(() => {
     if (!username) return;
     localStorage.setItem(`favorites_${username}`, JSON.stringify(favorites));
   }, [favorites, username]);
 
-  // ✅ โหลดหุ้นต้นน้ำ
+  // ✅ โหลดหุ้น AI Discovery
   async function loadDiscovery() {
     try {
       setLoading(true);
@@ -58,22 +59,18 @@ export default function Home() {
     loadDiscovery();
   }, []);
 
-  // ✅ หน้าเริ่มโหลด
+  // ✅ กำลังโหลด
   if (stage === "loading") return null;
 
-  // ✅ หน้า Register (ไม่เด้งไป VIP อัตโนมัติ)
+  // ✅ หน้าสมัคร
   if (stage === "register")
-    return (
-      <Reister
-        goVip={() => setStage("vip")} // ลูกค้ากด login → ไป VIP
-      />
-    );
+    return <Reister goVip={() => setStage("vip")} />;
 
-  // ✅ หน้าใส่ VIP Code
+  // ✅ หน้ากด VIP Code
   if (stage === "vip")
-    return <VipPae onVIP={() => setStage("app")} />; // กดถูก → เข้า App
+    return <VipPae onVIP={() => setStage("app")} />;
 
-  // ✅ หน้า App
+  // ✅ หน้าแอปหลัก
   const renderPage = () => {
     switch (active) {
       case "favorites":
@@ -107,7 +104,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0b1220] text-white text-[13px] font-semibold pb-24">
       <div className="max-w-6xl mx-auto px-3 pt-3">{renderPage()}</div>
 
-      {/* ✅ Menu Bottom */}
+      {/* ✅ เมนูด้านล่าง */}
       <nav className="fixed bottom-3 left-3 right-3 bg-[#0b1220]/95 backdrop-blur-md border border-white/10 rounded-2xl flex justify-around text-gray-400 text-[12px] font-bold uppercase py-3 shadow-lg shadow-black/40 tracking-widest">
         {[
           { id: "favorites", label: "Favorites" },
@@ -130,4 +127,4 @@ export default function Home() {
       </nav>
     </main>
   );
-    }
+}
